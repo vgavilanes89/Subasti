@@ -25,10 +25,11 @@ const ItemViewPage = ({ loc }) => {
     // 4. Always call hooks unconditionally (Rules of Hooks)
     // Fallback values prevent errors if item is undefined
     const targetDate = item ? item.endAt : Date.now();
-    const reviews = seller ? seller.reviews : [];
-    
     const { isFinished } = useCountdown(targetDate);
-    const averageRating = useMemo(() => calculateAverageRating(reviews), [reviews]);
+    const averageRating = useMemo(
+        () => calculateAverageRating(seller ? seller.reviews : []),
+        [seller]
+    );
     
     // 5. Handle "Not Found" case AFTER hooks
     if (!item) {

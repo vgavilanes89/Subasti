@@ -451,7 +451,7 @@ const SellPage = ({ loc, categories }) => {
                         <div className="mt-4 grid grid-cols-3 sm:grid-cols-5 gap-4">
                             {formData.images.map((img, index) => (
                                 <div key={index} className="relative">
-                                    <img src={img} className="w-full h-24 object-cover rounded-lg border" />
+                                    <img src={img} alt="" className="w-full h-24 object-cover rounded-lg border" />
                                     <button type="button" onClick={() => handleRemoveImage(index)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full h-6 w-6 flex items-center justify-center font-bold">&times;</button>
                                 </div>
                             ))}

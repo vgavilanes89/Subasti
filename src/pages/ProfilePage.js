@@ -27,7 +27,7 @@ const ProfilePageItemList = ({list, emptyMsg, onOpen, onToggleFav, isFav, loc, L
 );
 
 const ProfilePage = ({loc}) => {
-    const { user, updateProfile, saveAddress, deleteAddress, savePayment, deletePayment } = useAuth();
+    const { user, updateProfile } = useAuth();
     const { items, favorites, isFav, toggleFav } = useItems();
     const navigate = useNavigate();
     const [isEditing, setIsEditing] = useState(false);
