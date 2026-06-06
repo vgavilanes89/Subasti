@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useItems } from '../context/ItemsContext';
 import { PLACEHOLDER_IMG, CRC } from '../components/Shared';
+import { tCategory } from '../data/i18n';
 
 const CartPage = ({ loc }) => {
     const { cart, updateQuantity, removeFromCart } = useCart();
@@ -20,7 +21,9 @@ const CartPage = ({ loc }) => {
         checkout: 'Proceed to Checkout',
         emptyCart: 'Your cart is empty.',
         continueShopping: 'Continue Shopping',
-        shippingNote: 'Calculated at next step'
+        shippingNote: 'Calculated at next step',
+        remove: 'Remove',
+        each: 'each',
     } : {
         title: 'Mi Carrito',
         item: 'Artículo',
@@ -33,7 +36,9 @@ const CartPage = ({ loc }) => {
         checkout: 'Proceder al Pago',
         emptyCart: 'Tu carrito está vacío.',
         continueShopping: 'Seguir Comprando',
-        shippingNote: 'Calculado en el siguiente paso'
+        shippingNote: 'Calculado en el siguiente paso',
+        remove: 'Eliminar',
+        each: 'c/u',
     };
 
     const cartWithDetails = useMemo(() => {
@@ -68,8 +73,8 @@ const CartPage = ({ loc }) => {
                             <img src={item.image || PLACEHOLDER_IMG} alt={item.title} className="w-24 h-24 object-cover rounded-lg" />
                             <div className="flex-grow">
                                 <h3 className="font-semibold text-lg">{item.title}</h3>
-                                <p className="text-sm text-gray-500">{item.category}</p>
-                                <button onClick={() => removeFromCart(item.id)} className="text-red-500 text-sm font-semibold hover:underline mt-1">Remove</button>
+                                <p className="text-sm text-gray-500">{tCategory(item.category, loc)}</p>
+                                <button onClick={() => removeFromCart(item.id)} className="text-red-500 text-sm font-semibold hover:underline mt-1">{L.remove}</button>
                             </div>
                             <div className="flex items-center gap-2">
                                 <button onClick={() => updateQuantity(item.id, item.qty - 1)} className="w-8 h-8 border rounded-md">-</button>
@@ -78,7 +83,7 @@ const CartPage = ({ loc }) => {
                             </div>
                             <div className="text-right w-24">
                                 <p className="font-bold">{CRC(item.price * item.qty, loc)}</p>
-                                {item.qty > 1 && <p className="text-sm text-gray-500">{CRC(item.price, loc)} each</p>}
+                                {item.qty > 1 && <p className="text-sm text-gray-500">{CRC(item.price, loc)} {L.each}</p>}
                             </div>
                         </div>
                     ))}

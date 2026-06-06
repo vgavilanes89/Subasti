@@ -24,10 +24,10 @@ import AdminPage from './pages/AdminPage';
 import ContactPage from './pages/ContactPage';
 
 // Placeholder for static pages
-const PlaceholderPage = ({ title }) => (
+const PlaceholderPage = ({ title, loc }) => (
   <div className="bg-white p-8 rounded-lg shadow-md border text-center m-8">
     <h2 className="text-2xl font-bold">{title}</h2>
-    <p className="text-gray-500 mt-2">This page is under construction.</p>
+    <p className="text-gray-500 mt-2">{loc === 'en' ? 'This page is under construction.' : 'Esta página está en construcción.'}</p>
   </div>
 );
 
@@ -118,7 +118,7 @@ function App() {
                 {/* Misc Routes */}
                 <Route path="/admin" element={<AdminPage loc={loc} />} />
                 <Route path="/contact" element={<ContactPage loc={loc} />} />
-                <Route path="/terms" element={<PlaceholderPage title="Terms and Conditions" />} />
+                <Route path="/terms" element={<PlaceholderPage loc={loc} title={loc === 'en' ? 'Terms and Conditions' : 'Términos y Condiciones'} />} />
               </Routes>
             </main>
 

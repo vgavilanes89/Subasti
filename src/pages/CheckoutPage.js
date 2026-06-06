@@ -45,7 +45,10 @@ const CheckoutPage = ({ loc }) => {
         useThis: 'Use this',
         newAddress: 'Use a new address',
         saveAddress: 'Save this address for future use',
-        province: 'Province'
+        province: 'Province',
+        standardShipping: 'Standard Shipping',
+        collectFromSeller: 'Collect from seller',
+        addressAlias: 'Address',
     } : {
         title: 'Finalizar Compra',
         deliveryMethod: 'Método de Entrega',
@@ -77,7 +80,10 @@ const CheckoutPage = ({ loc }) => {
         useThis: 'Usar este',
         newAddress: 'Usar una nueva dirección',
         saveAddress: 'Guardar esta dirección para uso futuro',
-        province: 'Provincia'
+        province: 'Provincia',
+        standardShipping: 'Envío Estándar',
+        collectFromSeller: 'Recoger del vendedor',
+        addressAlias: 'Dirección',
     };
 
     const isShippingAvailable = useMemo(() => cartWithDetails.every(item => item.shippingShip), [cartWithDetails]);
@@ -170,7 +176,7 @@ const CheckoutPage = ({ loc }) => {
         if (deliveryMethod === 'ship' && selectedAddressId === 'new' && saveNewAddress) {
             if (shippingData.address && shippingData.province && shippingData.city && shippingData.postalCode) {
                 const newAddressToSave = {
-                    alias: `Dirección (${shippingData.address.substring(0, 15)}...)`,
+                    alias: `${L.addressAlias} (${shippingData.address.substring(0, 15)}...)`,
                     address: shippingData.address,
                     city: shippingData.city,
                     province: shippingData.province,
@@ -222,13 +228,13 @@ const CheckoutPage = ({ loc }) => {
                             {isShippingAvailable && (
                                 <button type="button" onClick={() => setDeliveryMethod('ship')} className={`p-4 rounded-lg border-2 flex-1 text-left ${deliveryMethod === 'ship' ? 'bg-purple-50 border-purple-600' : 'bg-gray-50'}`}>
                                     <p className="font-bold">{L.shipToAddress}</p>
-                                    <p className="text-sm text-gray-500">Standard Shipping</p>
+                                    <p className="text-sm text-gray-500">{L.standardShipping}</p>
                                 </button>
                             )}
                             {isPickupAvailable && (
                                 <button type="button" onClick={() => setDeliveryMethod('pickup')} className={`p-4 rounded-lg border-2 flex-1 text-left ${deliveryMethod === 'pickup' ? 'bg-purple-50 border-purple-600' : 'bg-gray-50'}`}>
                                     <p className="font-bold">{L.localPickup}</p>
-                                    <p className="text-sm text-gray-500">Collect from seller</p>
+                                    <p className="text-sm text-gray-500">{L.collectFromSeller}</p>
                                 </button>
                             )}
                         </div>

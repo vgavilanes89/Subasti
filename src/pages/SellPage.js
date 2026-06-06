@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useItems } from '../context/ItemsContext';
+import { tCategory, tSubCategory } from '../data/i18n';
 
 // Reusable Form Components
 const FormSection = ({ title, children }) => (
@@ -293,7 +294,7 @@ const SellPage = ({ loc, categories }) => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <FormField label={L.category}>
                                 <select name="category" value={formData.category} onChange={handleChange} className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500">
-                                    {Object.keys(CATEGORIES).map(c => <option key={c} value={c}>{c}</option>)}
+                                    {Object.keys(CATEGORIES).map(c => <option key={c} value={c}>{tCategory(c, loc)}</option>)}
                                 </select>
                             </FormField>
                             <FormField label={L.subCategory}>
@@ -304,7 +305,7 @@ const SellPage = ({ loc, categories }) => {
                                     disabled={!formData.category || !CATEGORIES[formData.category]}
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 disabled:bg-gray-100"
                                 >
-                                    {formData.category && CATEGORIES[formData.category] && CATEGORIES[formData.category].map(sub => <option key={sub} value={sub}>{sub}</option>)}
+                                    {formData.category && CATEGORIES[formData.category] && CATEGORIES[formData.category].map(sub => <option key={sub} value={sub}>{tSubCategory(sub, loc)}</option>)}
                                 </select>
                             </FormField>
                         </div>

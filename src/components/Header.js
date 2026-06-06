@@ -36,7 +36,7 @@ const Header = ({ loc, setLoc }) => {
                         {/* Admin Link */}
                         {user?.isAdmin && (
                             <Link to="/admin" className="px-3 py-2 text-sm font-medium text-red-600 hover:text-red-800 rounded-md">
-                                Admin
+                                {loc === 'en' ? 'Admin' : 'Administración'}
                             </Link>
                         )}
 

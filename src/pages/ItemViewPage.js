@@ -4,6 +4,7 @@ import { useItems } from '../context/ItemsContext';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { PLACEHOLDER_IMG, CRC, CountdownTimer, StarRating, calculateAverageRating, useCountdown } from '../components/Shared';
+import { tCategory, tSubCategory, formatCondition } from '../data/i18n';
 
 const ItemViewPage = ({ loc }) => {
     // 1. Get ID from URL and tools from Context
@@ -72,7 +73,12 @@ const ItemViewPage = ({ loc }) => {
         favAdd: 'Add to favorites', 
         favRemove: 'Remove from favorites', 
         new: 'New', 
-        used: 'Used' 
+        used: 'Used',
+        noDescription: 'No detailed description available.',
+        noShipping: 'No shipping options specified.',
+        buyNowFor: 'Buy Now for',
+        currentBid: 'Current Bid',
+        price: 'Price',
     } : { 
         back: 'Atrás', 
         add: 'Agregar al carrito', 
@@ -99,7 +105,12 @@ const ItemViewPage = ({ loc }) => {
         favAdd: 'Agregar a favoritos', 
         favRemove: 'Quitar de favoritos', 
         new: 'Nuevo', 
-        used: 'Usado' 
+        used: 'Usado',
+        noDescription: 'No hay descripción detallada.',
+        noShipping: 'No se especificaron opciones de envío.',
+        buyNowFor: 'Comprar Ahora por',
+        currentBid: 'Oferta Actual',
+        price: 'Precio',
     };
 
     const reserveMet = item.reservePrice ? item.currentBid >= item.reservePrice : true;
@@ -151,7 +162,7 @@ const ItemViewPage = ({ loc }) => {
                         <div className="flex justify-between items-start">
                             <div>
                                 <h1 className="text-3xl font-bold text-gray-900">{item.title}</h1>
-                                <p className="text-md text-gray-500 mt-1">{item.category} {item.subCategory && <span>&gt; {item.subCategory}</span>}</p>
+                                <p className="text-md text-gray-500 mt-1">{tCategory(item.category, loc)} {item.subCategory && <span>&gt; {tSubCategory(item.subCategory, loc)}</span>}</p>
                             </div>
                             <button onClick={handleToggleFav} className={`p-2 rounded-full transition-colors ${isFav(item.id) ? 'text-red-500' : 'text-gray-500 hover:text-red-500'}`} title={isFav(item.id) ? L.favRemove : L.favAdd}>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill={isFav(item.id) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
@@ -168,12 +179,12 @@ const ItemViewPage = ({ loc }) => {
                                         </div>
                                     ) : (
                                         <>
-                                            <p className="text-sm text-gray-500">{loc === 'en' ? 'Current Bid' : 'Oferta Actual'}</p>
+                                            <p className="text-sm text-gray-500">{L.currentBid}</p>
                                             <p className="text-4xl font-extrabold text-gray-900">{CRC(item.currentBid, loc)}</p>
                                             <div className="mt-4 space-y-2">
                                                 <button className="w-full bg-indigo-500 text-white py-3 rounded-lg font-bold hover:bg-indigo-600 transition-colors">{L.placeBid}</button>
                                                 {item.buyNowPrice && (
-                                                    <button className="w-full bg-purple-600 text-white py-3 rounded-lg font-bold hover:bg-purple-700 transition-colors" onClick={handleBuyNow}>{L.buyNow} for {CRC(item.buyNowPrice, loc)}</button>
+                                                    <button className="w-full bg-purple-600 text-white py-3 rounded-lg font-bold hover:bg-purple-700 transition-colors" onClick={handleBuyNow}>{L.buyNowFor} {CRC(item.buyNowPrice, loc)}</button>
                                                 )}
                                             </div>
                                             <div className="mt-4 bg-gray-50 p-4 rounded-lg">
@@ -185,7 +196,7 @@ const ItemViewPage = ({ loc }) => {
                                 </div>
                             ) : (
                                 <div>
-                                    <p className="text-sm text-gray-500">{loc === 'en' ? 'Price' : 'Precio'}</p>
+                                    <p className="text-sm text-gray-500">{L.price}</p>
                                     <p className="text-4xl font-extrabold text-gray-900">{CRC(item.price * selectedQuantity, loc)}</p>
                                     {item.quantity > 1 && (
                                         <div className="mt-4 flex items-center gap-2">
@@ -209,7 +220,7 @@ const ItemViewPage = ({ loc }) => {
             <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 text-sm">
                 <h3 className="font-bold text-lg mb-2">{L.details}</h3>
                 <p><b>{L.sale}:</b> <span className="capitalize">{item.saleType==='auc'?L.auc:L.buy}</span></p>
-                <p><b>{L.condition}:</b> <span className="capitalize">{item.condition}{item.condition==='used'&&item.conditionDetail?` (${item.conditionDetail})`:''}</span></p>
+                <p><b>{L.condition}:</b> <span>{formatCondition(item.condition, loc, item.conditionDetail)}</span></p>
                 {item.saleType === 'buy' && item.quantity > 1 && <p><b>{L.quantity}:</b> {item.quantity}</p>}
                 {seller && (
                     <p className="flex items-center gap-2">
@@ -223,13 +234,13 @@ const ItemViewPage = ({ loc }) => {
                         )}
                     </p>
                 )}
-                <p className="mt-2 text-gray-600">{item.description || 'No hay descripción detallada.'}</p>
+                <p className="mt-2 text-gray-600">{item.description || L.noDescription}</p>
                 <div className="border-t mt-4 pt-4">
                     <h4 className="font-bold text-md mb-2">{L.shipping}</h4>
                     <ul className="list-disc list-inside text-gray-600">
                         {item.shippingShip && <li>{L.ship} {item.shippingCost > 0 ? `(${CRC(item.shippingCost, loc)})` : ''}</li>}
                         {item.shippingLocal && <li>{L.localPickup}</li>}
-                        {!item.shippingShip && !item.shippingLocal && <li>No shipping options specified.</li>}
+                        {!item.shippingShip && !item.shippingLocal && <li>{L.noShipping}</li>}
                     </ul>
                 </div>
             </div>

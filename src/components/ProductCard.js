@@ -1,8 +1,11 @@
 import React from 'react';
 import { PLACEHOLDER_IMG, CRC } from './Shared';
+import { tCategory, tSubCategory, formatCondition } from '../data/i18n';
 
 const ProductCard = ({ it, onOpen, loc, onToggleFav, isFav }) => {
-    const L = loc === 'en' ? { favAdd: 'Add to favorites', favRemove: 'Remove from favorites' } : { favAdd: 'Agregar a favoritos', favRemove: 'Quitar de favoritos' };
+    const L = loc === 'en'
+        ? { favAdd: 'Add to favorites', favRemove: 'Remove from favorites', currentBid: 'Current Bid', price: 'Price', shipping: 'shipping' }
+        : { favAdd: 'Agregar a favoritos', favRemove: 'Quitar de favoritos', currentBid: 'Oferta Actual', price: 'Precio', shipping: 'envío' };
     
     return (
         <div className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-lg transition-shadow duration-300 flex flex-col group">
@@ -17,23 +20,23 @@ const ProductCard = ({ it, onOpen, loc, onToggleFav, isFav }) => {
                 )}
             </div>
             <div className="p-4 flex flex-col flex-grow">
-                <h3 className="text-sm text-gray-500 mb-1">{it.category} {it.subCategory && <span className="text-gray-400">&gt; {it.subCategory}</span>}</h3>
+                <h3 className="text-sm text-gray-500 mb-1">{tCategory(it.category, loc)} {it.subCategory && <span className="text-gray-400">&gt; {tSubCategory(it.subCategory, loc)}</span>}</h3>
                 <div className="flex-grow">
                     <h2 className="text-md font-bold text-gray-800 hover:text-purple-700 cursor-pointer" onClick={() => onOpen?.(it.id)}>{it.title}</h2>
-                    <p className="text-xs text-gray-500 capitalize mt-1">{loc === 'en' ? it.condition : (it.condition === 'new' ? 'Nuevo' : 'Usado')}</p>
+                    <p className="text-xs text-gray-500 mt-1">{formatCondition(it.condition, loc, it.conditionDetail)}</p>
                 </div>
                 <div className="mt-4">
                     {it.saleType === 'auc' ? (
                         <div>
-                            <p className="text-xs text-gray-500">{loc === 'en' ? 'Current Bid' : 'Oferta Actual'}</p>
+                            <p className="text-xs text-gray-500">{L.currentBid}</p>
                             <p className="text-xl font-black text-gray-900">{CRC(it.currentBid, loc)}</p>
-                            {it.shippingShip && it.shippingCost > 0 && <p className="text-xs text-gray-500">+ {CRC(it.shippingCost, loc)} {loc === 'en' ? 'shipping' : 'envío'}</p>}
+                            {it.shippingShip && it.shippingCost > 0 && <p className="text-xs text-gray-500">+ {CRC(it.shippingCost, loc)} {L.shipping}</p>}
                         </div>
                     ) : (
                         <div>
-                            <p className="text-xs text-gray-500">{loc === 'en' ? 'Price' : 'Precio'}</p>
+                            <p className="text-xs text-gray-500">{L.price}</p>
                             <p className="text-xl font-black text-gray-900">{CRC(it.price, loc)}</p>
-                            {it.shippingShip && it.shippingCost > 0 && <p className="text-xs text-gray-500">+ {CRC(it.shippingCost, loc)} {loc === 'en' ? 'shipping' : 'envío'}</p>}
+                            {it.shippingShip && it.shippingCost > 0 && <p className="text-xs text-gray-500">+ {CRC(it.shippingCost, loc)} {L.shipping}</p>}
                         </div>
                     )}
                 </div>

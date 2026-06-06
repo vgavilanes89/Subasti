@@ -16,8 +16,8 @@ const SignupPage = ({loc}) => {
 
 
     const L = loc === 'en' 
-        ? {title:'Create Your Account', cedula: 'ID Number (Cédula)', fetching: 'Fetching...', realName: 'Full Name', profileName: 'Profile Name (public)', email:'Email', pass:'Password', phone:'Phone Number', province:'Province', city: 'City', submit:'Create Account', switch:'Already have an account?', link:'Log in', cedulaNotFound: 'ID number not found.', profileNameInvalid: 'Profile name can only contain letters and numbers.', profileNameSameAsReal: 'Profile name cannot be the same as your full name.'}
-        : {title:'Crea Tu Cuenta', cedula: 'Número de Cédula', fetching: 'Consultando...', realName: 'Nombre Completo', profileName: 'Nombre de Perfil (público)', email:'Correo', pass:'Contraseña', phone:'Número de Teléfono', province:'Provincia', city: 'Cantón', submit:'Crear Cuenta', switch:'¿Ya tienes una cuenta?', link:'Inicia sesión', cedulaNotFound: 'Cédula no encontrada.', profileNameInvalid: 'El nombre de perfil solo puede contener letras y números.', profileNameSameAsReal: 'El nombre de perfil no puede ser igual a su nombre completo.'};
+        ? {title:'Create Your Account', cedula: 'ID Number (Cédula)', fetching: 'Fetching...', realName: 'Full Name', profileName: 'Profile Name (public)', email:'Email', pass:'Password', phone:'Phone Number', province:'Province', city: 'City', submit:'Create Account', switch:'Already have an account?', link:'Log in', cedulaNotFound: 'ID number not found.', profileNameInvalid: 'Profile name can only contain letters and numbers.', profileNameSameAsReal: 'Profile name cannot be the same as your full name.', select: 'Select...', profileNameHint: 'Letters and numbers only, no spaces.'}
+        : {title:'Crea Tu Cuenta', cedula: 'Número de Cédula', fetching: 'Consultando...', realName: 'Nombre Completo', profileName: 'Nombre de Perfil (público)', email:'Correo', pass:'Contraseña', phone:'Número de Teléfono', province:'Provincia', city: 'Cantón', submit:'Crear Cuenta', switch:'¿Ya tienes una cuenta?', link:'Inicia sesión', cedulaNotFound: 'Cédula no encontrada.', profileNameInvalid: 'El nombre de perfil solo puede contener letras y números.', profileNameSameAsReal: 'El nombre de perfil no puede ser igual a su nombre completo.', select: 'Seleccionar...', profileNameHint: 'Solo letras y números, sin espacios.'};
     
     const selectedCountry = useMemo(() => COUNTRY_CODES.find(c => c.code === formData.countryCode), [formData.countryCode]);
 
@@ -123,7 +123,7 @@ const SignupPage = ({loc}) => {
                     <div>
                         <label className="text-sm font-bold text-gray-700 block mb-2">{L.profileName}</label>
                         <input type="text" name="profileName" value={formData.profileName} onChange={handleChange} onBlur={handleProfileNameBlur} required className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500"/>
-                        <p className="text-xs text-gray-500 mt-1">{loc === 'en' ? 'Letters and numbers only, no spaces.' : 'Solo letras y números, sin espacios.'}</p>
+                        <p className="text-xs text-gray-500 mt-1">{L.profileNameHint}</p>
                         {profileNameError && <p className="text-xs text-red-500 mt-1">{profileNameError}</p>}
                     </div>
                     <div>
@@ -157,14 +157,14 @@ const SignupPage = ({loc}) => {
                         <div>
                             <label className="text-sm font-bold text-gray-700 block mb-2">{L.province}</label>
                             <select name="province" value={formData.province} onChange={handleChange} required className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500">
-                                <option value="">Select...</option>
+                                <option value="">{L.select}</option>
                                 {provinces.map(p => <option key={p} value={p}>{p}</option>)}
                             </select>
                         </div>
                         <div>
                             <label className="text-sm font-bold text-gray-700 block mb-2">{L.city}</label>
                             <select name="city" value={formData.city} onChange={handleChange} required disabled={!formData.province} className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 disabled:bg-gray-100">
-                                <option value="">Select...</option>
+                                <option value="">{L.select}</option>
                                 {cities.map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
                         </div>

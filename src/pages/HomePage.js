@@ -4,6 +4,7 @@ import { useItems } from '../context/ItemsContext';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { PLACEHOLDER_IMG, CRC, CountdownTimer } from '../components/Shared';
+import { tCategory, tSubCategory, formatCondition } from '../data/i18n';
 
 const HomePage = ({ loc, categories }) => {
   // Use global state from Contexts
@@ -31,7 +32,11 @@ const HomePage = ({ loc, categories }) => {
     placeBid: 'Place Bid', 
     buyNow: 'Buy Now', 
     favAdd: 'Add to favorites', 
-    favRemove: 'Remove from favorites' 
+    favRemove: 'Remove from favorites',
+    adjustFilters: 'Try adjusting your search filters.',
+    shipping: 'shipping',
+    auction: 'AUCTION',
+    buyNowBadge: 'BUY NOW',
   } : { 
     newest: 'Más recientes', 
     pAsc: 'Precio: menor→mayor', 
@@ -43,7 +48,11 @@ const HomePage = ({ loc, categories }) => {
     placeBid: 'Hacer Puja', 
     buyNow: 'Comprar Ahora', 
     favAdd: 'Agregar a favoritos', 
-    favRemove: 'Quitar de favoritos' 
+    favRemove: 'Quitar de favoritos',
+    adjustFilters: 'Intenta ajustar tus filtros de búsqueda.',
+    shipping: 'envío',
+    auction: 'SUBASTA',
+    buyNowBadge: 'COMPRA',
   };
 
   const allCats = useMemo(() => ['*', ...Object.keys(categories)], [categories]);
@@ -102,9 +111,9 @@ const HomePage = ({ loc, categories }) => {
         
         {/* Type Badge */}
         {it.saleType === 'auc' ? (
-          <span className="absolute top-2 left-2 bg-indigo-500 text-white text-xs font-bold px-2 py-1 rounded-full">SUBASTA</span>
+          <span className="absolute top-2 left-2 bg-indigo-500 text-white text-xs font-bold px-2 py-1 rounded-full">{L.auction}</span>
         ) : (
-          <span className="absolute top-2 left-2 bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded-full">COMPRA</span>
+          <span className="absolute top-2 left-2 bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded-full">{L.buyNowBadge}</span>
         )}
 
         {/* Favorite Button */}
@@ -116,17 +125,17 @@ const HomePage = ({ loc, categories }) => {
       </div>
 
       <div className="p-4 flex flex-col flex-grow">
-        <h3 className="text-sm text-gray-500 mb-1">{it.category} {it.subCategory && <span className="text-gray-400">&gt; {it.subCategory}</span>}</h3>
+        <h3 className="text-sm text-gray-500 mb-1">{tCategory(it.category, loc)} {it.subCategory && <span className="text-gray-400">&gt; {tSubCategory(it.subCategory, loc)}</span>}</h3>
         <div className="flex-grow">
           <h2 className="text-md font-bold text-gray-800 group-hover:text-purple-700 transition-colors">{it.title}</h2>
-          <p className="text-xs text-gray-500 capitalize mt-1">{loc === 'en' ? it.condition : (it.condition === 'new' ? 'Nuevo' : 'Usado')}</p>
+          <p className="text-xs text-gray-500 mt-1">{formatCondition(it.condition, loc, it.conditionDetail)}</p>
         </div>
         <div className="mt-4">
           {it.saleType === 'auc' ? (
             <div>
               <p className="text-xs text-gray-500">{loc === 'en' ? 'Current Bid' : 'Oferta Actual'}</p>
               <p className="text-xl font-black text-gray-900">{CRC(it.currentBid, loc)}</p>
-              {it.shippingShip && it.shippingCost > 0 && <p className="text-xs text-gray-500">+ {CRC(it.shippingCost, loc)} {loc === 'en' ? 'de envío' : 'de envío'}</p>}
+              {it.shippingShip && it.shippingCost > 0 && <p className="text-xs text-gray-500">+ {CRC(it.shippingCost, loc)} {L.shipping}</p>}
               {it.buyNowPrice && <p className="text-xs text-gray-500 mt-1">{L.buyNow}: {CRC(it.buyNowPrice, loc)}</p>}
               <div className="mt-2">
                 <CountdownTimer targetDate={it.endAt} loc={loc} />
@@ -136,7 +145,7 @@ const HomePage = ({ loc, categories }) => {
             <div>
               <p className="text-xs text-gray-500">{loc === 'en' ? 'Price' : 'Precio'}</p>
               <p className="text-xl font-black text-gray-900">{CRC(it.price, loc)}</p>
-              {it.shippingShip && it.shippingCost > 0 && <p className="text-xs text-gray-500">+ {CRC(it.shippingCost, loc)} {loc === 'en' ? 'shipping' : 'envío'}</p>}
+              {it.shippingShip && it.shippingCost > 0 && <p className="text-xs text-gray-500">+ {CRC(it.shippingCost, loc)} {L.shipping}</p>}
             </div>
           )}
         </div>
@@ -186,7 +195,7 @@ const HomePage = ({ loc, categories }) => {
             onChange={e => setCat(e.target.value)}
           >
             {allCats.map(c => (
-              <option key={c} value={c}>{c === '*' ? (loc === 'en' ? 'All Categories' : 'Todas las Categorías') : c}</option>
+              <option key={c} value={c}>{c === '*' ? (loc === 'en' ? 'All Categories' : 'Todas las Categorías') : tCategory(c, loc)}</option>
             ))}
           </select>
           <select 
@@ -207,7 +216,7 @@ const HomePage = ({ loc, categories }) => {
         {showing.length === 0 && (
           <div className="col-span-full text-center text-gray-500 py-16">
             <h3 className="text-xl font-semibold">{L.none}</h3>
-            <p>Intenta ajustar tus filtros de búsqueda.</p>
+            <p>{L.adjustFilters}</p>
           </div>
         )}
       </div>
