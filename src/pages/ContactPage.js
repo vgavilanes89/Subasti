@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 
-const ContactPage = ({ loc, user, onSendMessage }) => {
+const ContactPage = ({ loc }) => {
+    const { user } = useAuth();
     const L = loc === 'en' ? {
         title: 'Contact Us',
         subtitle: "We're here to help. Send us a message and we'll get back to you.",
@@ -8,6 +10,7 @@ const ContactPage = ({ loc, user, onSendMessage }) => {
         yourEmail: 'Your Email',
         message: 'Message',
         sendMessage: 'Send Message',
+        sent: 'Message sent! We will get back to you soon.',
         contactInfo: 'Contact Information',
         address: '123 Subasti Ave, San José, Costa Rica',
         phone: '+506 2222-2222',
@@ -20,6 +23,7 @@ const ContactPage = ({ loc, user, onSendMessage }) => {
         yourEmail: 'Tu Correo Electrónico',
         message: 'Mensaje',
         sendMessage: 'Enviar Mensaje',
+        sent: '¡Mensaje enviado! Le responderemos pronto.',
         contactInfo: 'Información de Contacto',
         address: '123 Av. Subasti, San José, Costa Rica',
         phone: '+506 2222-2222',
@@ -40,8 +44,8 @@ const ContactPage = ({ loc, user, onSendMessage }) => {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        onSendMessage();
-        setFormData(prev => ({...prev, message: ''}));
+        alert(L.sent);
+        setFormData(prev => ({ ...prev, message: '' }));
     };
 
     return (

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Link } from 'react-router-dom';
 
 // 1. Import Context Providers
 import { AuthProvider } from './context/AuthContext';
@@ -22,14 +22,14 @@ import SellerProfilePage from './pages/SellerProfilePage';
 import FavoritesPage from './pages/FavoritesPage';
 import AdminPage from './pages/AdminPage';
 import ContactPage from './pages/ContactPage';
+import AboutPage from './pages/AboutPage';
+import CareersPage from './pages/CareersPage';
+import HelpPage from './pages/HelpPage';
+import FaqPage from './pages/FaqPage';
+import TermsPage from './pages/TermsPage';
+import PrivacyPage from './pages/PrivacyPage';
 
-// Placeholder for static pages
-const PlaceholderPage = ({ title, loc }) => (
-  <div className="bg-white p-8 rounded-lg shadow-md border text-center m-8">
-    <h2 className="text-2xl font-bold">{title}</h2>
-    <p className="text-gray-500 mt-2">{loc === 'en' ? 'This page is under construction.' : 'Esta página está en construcción.'}</p>
-  </div>
-);
+const footerLinkClass = 'hover:text-white transition-colors';
 
 function App() {
   // Local state for language toggling (passed to Header and used in Footer/Banner)
@@ -118,7 +118,12 @@ function App() {
                 {/* Misc Routes */}
                 <Route path="/admin" element={<AdminPage loc={loc} />} />
                 <Route path="/contact" element={<ContactPage loc={loc} />} />
-                <Route path="/terms" element={<PlaceholderPage loc={loc} title={loc === 'en' ? 'Terms and Conditions' : 'Términos y Condiciones'} />} />
+                <Route path="/about" element={<AboutPage loc={loc} />} />
+                <Route path="/careers" element={<CareersPage loc={loc} />} />
+                <Route path="/help" element={<HelpPage loc={loc} />} />
+                <Route path="/faq" element={<FaqPage loc={loc} />} />
+                <Route path="/terms" element={<TermsPage loc={loc} />} />
+                <Route path="/privacy" element={<PrivacyPage loc={loc} />} />
               </Routes>
             </main>
 
@@ -129,23 +134,23 @@ function App() {
                   <div>
                     <h3 className="font-bold mb-4">Subasti</h3>
                     <ul className="space-y-2 text-sm text-gray-400">
-                      <li className="hover:text-white cursor-pointer">{L.about}</li>
-                      <li className="hover:text-white cursor-pointer">{L.careers}</li>
+                      <li><Link to="/about" className={footerLinkClass}>{L.about}</Link></li>
+                      <li><Link to="/careers" className={footerLinkClass}>{L.careers}</Link></li>
                     </ul>
                   </div>
                   <div>
                     <h3 className="font-bold mb-4">{L.support}</h3>
                     <ul className="space-y-2 text-sm text-gray-400">
-                      <li className="hover:text-white cursor-pointer">{L.contact}</li>
-                      <li className="hover:text-white cursor-pointer">{L.help}</li>
-                      <li className="hover:text-white cursor-pointer">{L.faq}</li>
+                      <li><Link to="/contact" className={footerLinkClass}>{L.contact}</Link></li>
+                      <li><Link to="/help" className={footerLinkClass}>{L.help}</Link></li>
+                      <li><Link to="/faq" className={footerLinkClass}>{L.faq}</Link></li>
                     </ul>
                   </div>
                   <div>
                     <h3 className="font-bold mb-4">{L.legal}</h3>
                     <ul className="space-y-2 text-sm text-gray-400">
-                      <li className="hover:text-white cursor-pointer">{L.terms}</li>
-                      <li className="hover:text-white cursor-pointer">{L.privacy}</li>
+                      <li><Link to="/terms" className={footerLinkClass}>{L.terms}</Link></li>
+                      <li><Link to="/privacy" className={footerLinkClass}>{L.privacy}</Link></li>
                     </ul>
                   </div>
                 </div>
