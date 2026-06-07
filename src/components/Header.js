@@ -32,8 +32,8 @@ const Header = ({ loc, setLoc }) => {
             <div className="container mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-16">
                     {/* Logo */}
-                    <Link to="/" onClick={handleLogoClick} className="flex items-center gap-2">
-                        <img src={logoImage} alt="Subasti" className="h-12 w-auto object-contain" />
+                    <Link to="/" onClick={handleLogoClick} className="header-logo-link">
+                        <img src={logoImage} alt="Subasti" className="header-logo-img" />
                     </Link>
 
                     {/* Navigation Actions */}

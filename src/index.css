@@ -86,6 +86,26 @@ code {
   text-align: left;
 }
 
+/* Header logo — transparent PNG on white bar */
+.header-logo-link {
+  display: flex;
+  align-items: center;
+  line-height: 0;
+}
+
+.header-logo-img {
+  height: 2.75rem;
+  width: auto;
+  display: block;
+  object-fit: contain;
+}
+
+@media (min-width: 640px) {
+  .header-logo-img {
+    height: 3rem;
+  }
+}
+
 /* Profile tabs */
 .profile-tabs {
   display: flex;
