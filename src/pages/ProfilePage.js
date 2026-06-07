@@ -3,39 +3,19 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useItems } from '../context/ItemsContext';
 import { useMessages } from '../context/MessagesContext';
-import { PLACEHOLDER_IMG, CRC, itemCurrency } from '../components/Shared';
 import SellerDashboard from '../components/SellerDashboard';
-import ChatPanel from '../components/ChatPanel';
-
-const ProfilePageItemList = ({ list, emptyMsg, onOpen, onToggleFav, isFav, loc, L }) => (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-        {list.length ? list.map(it => (
-            <div key={it.id} className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 group relative">
-                <img src={it.image || PLACEHOLDER_IMG} onClick={() => onOpen(it.id)} alt={it.title} className="w-full h-24 sm:h-32 object-cover rounded-t-lg cursor-pointer" />
-                {onToggleFav && isFav && (
-                    <button onClick={(e) => { e.stopPropagation(); onToggleFav(it.id); }} className="absolute top-1 right-1 bg-white/70 backdrop-blur-sm p-1 rounded-full text-gray-600 hover:text-red-500 hover:bg-white transition-all" title={isFav(it.id) ? L.favRemove : L.favAdd}>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill={isFav(it.id) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={isFav(it.id) ? 'text-red-500' : ''}>
-                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                        </svg>
-                    </button>
-                )}
-                <div className="p-2">
-                    <button onClick={() => onOpen(it.id)} className="text-sm font-semibold text-gray-800 hover:text-purple-700 text-left line-clamp-2">{it.title}</button>
-                    <div className="text-sm font-bold mt-1">{CRC(it.price || it.currentBid, loc, itemCurrency(it))}</div>
-                </div>
-            </div>
-        )) : <p className="col-span-full text-sm text-gray-500">{emptyMsg}</p>}
-    </div>
-);
+import BuyerDashboard from '../components/BuyerDashboard';
+import { fetchBuyerOrders } from '../api/orders';
 
 const ProfilePage = ({ loc }) => {
     const { user, users, updateProfile } = useAuth();
     const { items, favorites, isFav, toggleFav } = useItems();
-    const { buyerThreads, unreadBuyerCount } = useMessages();
+    const { unreadBuyerCount } = useMessages();
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'account');
     const [buyerThreadId, setBuyerThreadId] = useState(searchParams.get('thread') || null);
+    const [buyerAlertCount, setBuyerAlertCount] = useState(0);
     const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState(user || {});
 
@@ -50,14 +30,9 @@ const ProfilePage = ({ loc }) => {
         email: 'Email',
         phone: 'Phone',
         location: 'Location',
-        favs: 'My Favorites',
-        noFavs: 'You have no favorite items.',
-        sellerMessages: 'Messages with sellers',
         edit: 'Edit',
         save: 'Save Changes',
         cancel: 'Cancel',
-        favAdd: 'Add to favorites',
-        favRemove: 'Remove from favorites',
     } : {
         title: 'Mi Perfil',
         tabAccount: 'Cuenta',
@@ -69,14 +44,9 @@ const ProfilePage = ({ loc }) => {
         email: 'Correo',
         phone: 'Teléfono',
         location: 'Ubicación',
-        favs: 'Mis Favoritos',
-        noFavs: 'No tienes artículos favoritos.',
-        sellerMessages: 'Mensajes con vendedores',
         edit: 'Editar',
         save: 'Guardar Cambios',
         cancel: 'Cancelar',
-        favAdd: 'Agregar a favoritos',
-        favRemove: 'Quitar de favoritos',
     };
 
     useEffect(() => {
@@ -87,10 +57,14 @@ const ProfilePage = ({ loc }) => {
     }, [searchParams]);
 
     useEffect(() => {
-        if (buyerThreads.length && !buyerThreadId) {
-            setBuyerThreadId(buyerThreads[0].id);
-        }
-    }, [buyerThreads, buyerThreadId]);
+        if (!user) return;
+        fetchBuyerOrders(user.id).then(orders => {
+            const alerts = orders.filter(o =>
+                o.status === 'pending_payment' || o.status === 'shipped'
+            ).length;
+            setBuyerAlertCount(alerts);
+        });
+    }, [user]);
 
     const handleTabChange = (tabId) => {
         setActiveTab(tabId);
@@ -131,15 +105,11 @@ const ProfilePage = ({ loc }) => {
         );
     }
 
-    const myFavorites = items.filter(i => favorites.includes(i.id));
-
-    const handleOpen = (id) => {
-        navigate(`/item/${id}`);
-    };
+    const buyingBadge = unreadBuyerCount + buyerAlertCount;
 
     const tabs = [
         { id: 'account', label: L.tabAccount },
-        { id: 'buying', label: L.tabBuying, badge: unreadBuyerCount },
+        { id: 'buying', label: L.tabBuying, badge: buyingBadge },
         { id: 'selling', label: L.tabSelling },
     ];
 
@@ -212,24 +182,18 @@ const ProfilePage = ({ loc }) => {
             )}
 
             {activeTab === 'buying' && (
-                <div className="space-y-6">
-                    <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                        <h3 className="text-xl font-bold text-gray-800 mb-4">{L.sellerMessages}</h3>
-                        <ChatPanel
-                            loc={loc}
-                            user={user}
-                            users={users}
-                            threads={buyerThreads}
-                            role="buyer"
-                            activeThreadId={buyerThreadId}
-                            onSelectThread={handleBuyerThreadSelect}
-                            userEmail={user.email}
-                        />
-                    </div>
-                    <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                        <h3 className="text-xl font-bold text-gray-800 mb-4">{L.favs}</h3>
-                        <ProfilePageItemList list={myFavorites} emptyMsg={L.noFavs} onOpen={handleOpen} onToggleFav={toggleFav} isFav={isFav} loc={loc} L={L} />
-                    </div>
+                <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                    <BuyerDashboard
+                        user={user}
+                        users={users}
+                        items={items}
+                        loc={loc}
+                        favorites={favorites}
+                        toggleFav={toggleFav}
+                        isFav={isFav}
+                        activeThreadId={buyerThreadId}
+                        onSelectThread={handleBuyerThreadSelect}
+                    />
                 </div>
             )}
 

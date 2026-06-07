@@ -164,6 +164,11 @@ code {
   border-color: #fecaca;
 }
 
+.seller-stat-card--info {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
 .seller-stat-label {
   font-size: 0.75rem;
   color: #6b7280;
@@ -407,6 +412,45 @@ code {
 .seller-action-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.seller-action-btn--secondary {
+  background: #fff;
+  color: #7c3aed;
+  border: 1px solid #7c3aed;
+}
+
+.seller-action-btn--secondary:hover {
+  background: #f5f3ff;
+}
+
+.buyer-order-title {
+  background: none;
+  border: none;
+  padding: 0;
+  font-weight: 600;
+  color: #1f2937;
+  text-align: left;
+  cursor: pointer;
+}
+
+.buyer-order-title:hover {
+  color: #7c3aed;
+  text-decoration: underline;
+}
+
+.buyer-order-link-btn {
+  background: none;
+  border: none;
+  color: #7c3aed;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.buyer-order-card .seller-order-actions {
+  min-width: 8rem;
 }
 
 .seller-chat {
