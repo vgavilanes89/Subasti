@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Routes, Route, Link } from 'react-router-dom';
+import { Routes, Route, Link, useLocation } from 'react-router-dom';
 
 // 1. Import Context Providers
 import { AuthProvider } from './context/AuthContext';
@@ -34,7 +34,10 @@ import PrivacyPage from './pages/PrivacyPage';
 const footerLinkClass = 'hover:text-white transition-colors';
 
 function App() {
-  // Local state for language toggling (passed to Header and used in Footer/Banner)
+  const location = useLocation();
+  const isHomePage = location.pathname === '/';
+
+  // Local state for language toggling (passed to Header and used in Footer)
   const [loc, setLoc] = useState('es');
 
   // Static Categories definition
@@ -68,8 +71,6 @@ function App() {
     terms: 'Terms and Conditions',
     privacy: 'Privacy Policy',
     rights: 'All rights reserved.',
-    bannerText: 'Buy and Sell Your Items Now!',
-    bannerSubText: 'Join the largest online marketplace in Costa Rica.'
   } : {
     about: 'Sobre Nosotros',
     careers: 'Carreras',
@@ -81,9 +82,11 @@ function App() {
     terms: 'Términos y Condiciones',
     privacy: 'Política de Privacidad',
     rights: 'Todos los derechos reservados.',
-    bannerText: '¡Compra y Vende Tus Artículos Ahora!',
-    bannerSubText: 'Únete al mercado en línea más grande de Costa Rica.'
   };
+
+  const bannerL = loc === 'en'
+    ? { text: 'Buy and Sell Your Items Now!', sub: 'Join the largest online marketplace in Costa Rica.' }
+    : { text: '¡Compra y Vende Tus Artículos Ahora!', sub: 'Únete al mercado en línea más grande de Costa Rica.' };
 
   return (
     <AuthProvider>
@@ -96,13 +99,14 @@ function App() {
             {/* Persistent Header */}
             <Header loc={loc} setLoc={setLoc} />
 
-            {/* Banner Section */}
-            <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
-              <div className="container mx-auto py-8 px-4 text-center">
-                <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">{L.bannerText}</h2>
-                <p className="mt-2 text-lg text-purple-200">{L.bannerSubText}</p>
+            {isHomePage && (
+              <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
+                <div className="container mx-auto py-8 px-4 text-center">
+                  <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">{bannerL.text}</h2>
+                  <p className="mt-2 text-lg text-purple-200">{bannerL.sub}</p>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Main Content Area with Routing */}
             <main className="container mx-auto p-4 sm:p-6 lg:p-8 flex-grow">
