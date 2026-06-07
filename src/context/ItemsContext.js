@@ -33,8 +33,14 @@ export const ItemsProvider = ({ children }) => {
 
     const isFav = (id) => favorites.includes(id);
 
+    const placeBidOnItem = async (id, amount) => {
+        const updated = await itemsService.placeBid(id, amount);
+        setItems(prev => prev.map(i => (i.id === id ? updated : i)));
+        return updated;
+    };
+
     return (
-        <ItemsContext.Provider value={{ items, addItem, removeItem, favorites, toggleFav, isFav }}>
+        <ItemsContext.Provider value={{ items, addItem, removeItem, placeBid: placeBidOnItem, favorites, toggleFav, isFav }}>
             {children}
         </ItemsContext.Provider>
     );

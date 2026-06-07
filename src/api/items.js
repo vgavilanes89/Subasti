@@ -22,4 +22,34 @@ export const createItem = async (item) => {
 export const deleteItem = async (id) => {
     ITEMS = ITEMS.filter(i => i.id !== id);
     return id;
-}
+};
+
+export const getBidIncrement = (currentBid) =>
+    Math.max(1000, Math.ceil(currentBid * 0.05));
+
+export const getMinBid = (item) => {
+    if (!item || item.saleType !== 'auc') return 0;
+    const current = item.currentBid ?? item.price ?? 0;
+    return current + getBidIncrement(current);
+};
+
+export const placeBid = async (id, amount) => {
+    const item = ITEMS.find(i => i.id === id);
+    if (!item || item.saleType !== 'auc') {
+        throw new Error('INVALID_AUCTION');
+    }
+    if (item.endAt < Date.now()) {
+        throw new Error('AUCTION_ENDED');
+    }
+    const minBid = getMinBid(item);
+    if (amount < minBid) {
+        throw new Error('BID_TOO_LOW');
+    }
+    const updated = {
+        ...item,
+        currentBid: amount,
+        bids: (item.bids || 0) + 1,
+    };
+    ITEMS = ITEMS.map(i => (i.id === id ? updated : i));
+    return updated;
+};

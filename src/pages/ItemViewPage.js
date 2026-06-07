@@ -1,16 +1,17 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useItems } from '../context/ItemsContext';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { PLACEHOLDER_IMG, CRC, CountdownTimer, StarRating, calculateAverageRating, useCountdown } from '../components/Shared';
 import { tCategory, tSubCategory, formatCondition } from '../data/i18n';
+import { getMinBid } from '../api/items';
 
 const ItemViewPage = ({ loc }) => {
     // 1. Get ID from URL and tools from Context
     const { id } = useParams();
     const navigate = useNavigate();
-    const { items, isFav, toggleFav } = useItems();
+    const { items, isFav, toggleFav, placeBid } = useItems();
     const { addToCart } = useCart();
     // We access 'users' map here to look up seller details by ID
     const { user, users } = useAuth(); 
@@ -22,9 +23,15 @@ const ItemViewPage = ({ loc }) => {
     // 3. Local State
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [selectedQuantity, setSelectedQuantity] = useState(1);
-    
-    // 4. Always call hooks unconditionally (Rules of Hooks)
-    // Fallback values prevent errors if item is undefined
+    const [bidAmount, setBidAmount] = useState('');
+    const [bidError, setBidError] = useState('');
+
+    const minBid = useMemo(() => (item ? getMinBid(item) : 0), [item]);
+
+    useEffect(() => {
+        if (minBid > 0) setBidAmount(String(minBid));
+    }, [minBid]);
+
     const targetDate = item ? item.endAt : Date.now();
     const { isFinished } = useCountdown(targetDate);
     const averageRating = useMemo(
@@ -79,6 +86,12 @@ const ItemViewPage = ({ loc }) => {
         buyNowFor: 'Buy Now for',
         currentBid: 'Current Bid',
         price: 'Price',
+        minBid: 'Minimum bid',
+        yourBid: 'Your bid amount',
+        bidTooLow: 'Your bid must be at least',
+        bidSuccess: 'Bid placed successfully!',
+        ownItem: 'You cannot bid on your own listing.',
+        bidCount: 'Total bids',
     } : { 
         back: 'Atrás', 
         add: 'Agregar al carrito', 
@@ -111,6 +124,12 @@ const ItemViewPage = ({ loc }) => {
         buyNowFor: 'Comprar Ahora por',
         currentBid: 'Oferta Actual',
         price: 'Precio',
+        minBid: 'Puja mínima',
+        yourBid: 'Monto de tu puja',
+        bidTooLow: 'Tu puja debe ser al menos',
+        bidSuccess: '¡Puja realizada con éxito!',
+        ownItem: 'No puedes pujar en tu propio artículo.',
+        bidCount: 'Ofertas totales',
     };
 
     const reserveMet = item.reservePrice ? item.currentBid >= item.reservePrice : true;
@@ -129,6 +148,29 @@ const ItemViewPage = ({ loc }) => {
     const handleToggleFav = () => {
         if(!user) { navigate('/login'); return; }
         toggleFav(item.id);
+    };
+
+    const handlePlaceBid = async () => {
+        if (!user) {
+            navigate('/login');
+            return;
+        }
+        if (user.id === item.sellerId) {
+            setBidError(L.ownItem);
+            return;
+        }
+        const amount = Number(bidAmount);
+        if (!Number.isFinite(amount) || amount < minBid) {
+            setBidError(`${L.bidTooLow} ${CRC(minBid, loc)}`);
+            return;
+        }
+        try {
+            await placeBid(item.id, amount);
+            setBidError('');
+            alert(L.bidSuccess);
+        } catch {
+            setBidError(`${L.bidTooLow} ${CRC(minBid, loc)}`);
+        }
     };
 
     return (
@@ -181,8 +223,26 @@ const ItemViewPage = ({ loc }) => {
                                         <>
                                             <p className="text-sm text-gray-500">{L.currentBid}</p>
                                             <p className="text-4xl font-extrabold text-gray-900">{CRC(item.currentBid, loc)}</p>
+                                            <p className="text-xs text-gray-500 mt-1">{L.bidCount}: {item.bids || 0}</p>
                                             <div className="mt-4 space-y-2">
-                                                <button className="w-full bg-indigo-500 text-white py-3 rounded-lg font-bold hover:bg-indigo-600 transition-colors">{L.placeBid}</button>
+                                                <label className="block text-sm font-semibold text-gray-700">{L.yourBid}</label>
+                                                <input
+                                                    type="number"
+                                                    value={bidAmount}
+                                                    onChange={(e) => { setBidAmount(e.target.value); setBidError(''); }}
+                                                    min={minBid}
+                                                    step={1000}
+                                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+                                                />
+                                                <p className="text-xs text-gray-500">{L.minBid}: <span className="font-semibold">{CRC(minBid, loc)}</span></p>
+                                                {bidError && <p className="text-sm text-red-500">{bidError}</p>}
+                                                <button
+                                                    type="button"
+                                                    onClick={handlePlaceBid}
+                                                    className="w-full bg-indigo-500 text-white py-3 rounded-lg font-bold hover:bg-indigo-600 transition-colors"
+                                                >
+                                                    {L.placeBid}
+                                                </button>
                                                 {item.buyNowPrice && (
                                                     <button className="w-full bg-purple-600 text-white py-3 rounded-lg font-bold hover:bg-purple-700 transition-colors" onClick={handleBuyNow}>{L.buyNowFor} {CRC(item.buyNowPrice, loc)}</button>
                                                 )}
