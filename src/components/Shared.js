@@ -4,13 +4,33 @@ import React, { useState, useEffect } from 'react';
 export const PLACEHOLDER_IMG = 'https://placehold.co/600x400/e2e8f0/e2e8f0';
 
 // --- Helper Functions ---
-export const CRC = (n, loc) => {
+export const itemCurrency = (item) => item?.currency || 'CRC';
+
+export const formatMoney = (n, loc, currency = 'CRC') => {
+    const amount = Number(n);
+    if (!Number.isFinite(amount)) return '';
     try {
-        return new Intl.NumberFormat(loc === 'en' ? 'en-CR' : 'es-CR', { style: 'currency', currency: 'CRC', maximumFractionDigits: 0 }).format(n);
+        const locale = loc === 'en' ? 'en-US' : 'es-CR';
+        const isUsd = currency === 'USD';
+        return new Intl.NumberFormat(locale, {
+            style: 'currency',
+            currency,
+            maximumFractionDigits: isUsd ? 2 : 0,
+            minimumFractionDigits: isUsd ? 2 : 0,
+        }).format(amount);
     } catch {
-        return `CRC ${Math.round(n)}`;
+        return currency === 'USD' ? `$${amount.toFixed(2)}` : `₡${Math.round(amount)}`;
     }
 };
+
+/** @deprecated Use formatMoney(n, loc, currency) — kept for existing call sites */
+export const CRC = (n, loc, currency = 'CRC') => formatMoney(n, loc, currency);
+
+export const formatMoneyTotals = (amountsByCurrency, loc) =>
+    Object.entries(amountsByCurrency)
+        .filter(([, total]) => total > 0)
+        .map(([currency, total]) => formatMoney(total, loc, currency))
+        .join(' + ');
 
 export const calculateAverageRating = (reviews) => {
     if (!reviews || reviews.length === 0) {

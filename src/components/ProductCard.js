@@ -1,5 +1,5 @@
 import React from 'react';
-import { PLACEHOLDER_IMG, CRC } from './Shared';
+import { PLACEHOLDER_IMG, CRC, itemCurrency } from './Shared';
 import { tCategory, tSubCategory, formatCondition } from '../data/i18n';
 
 const ProductCard = ({ it, onOpen, loc, onToggleFav, isFav }) => {
@@ -29,14 +29,14 @@ const ProductCard = ({ it, onOpen, loc, onToggleFav, isFav }) => {
                     {it.saleType === 'auc' ? (
                         <div>
                             <p className="text-xs text-gray-500">{L.currentBid}</p>
-                            <p className="text-xl font-black text-gray-900">{CRC(it.currentBid, loc)}</p>
-                            {it.shippingShip && it.shippingCost > 0 && <p className="text-xs text-gray-500">+ {CRC(it.shippingCost, loc)} {L.shipping}</p>}
+                            <p className="text-xl font-black text-gray-900">{CRC(it.currentBid, loc, itemCurrency(it))}</p>
+                            {it.shippingShip && it.shippingCost > 0 && <p className="text-xs text-gray-500">+ {CRC(it.shippingCost, loc, itemCurrency(it))} {L.shipping}</p>}
                         </div>
                     ) : (
                         <div>
                             <p className="text-xs text-gray-500">{L.price}</p>
-                            <p className="text-xl font-black text-gray-900">{CRC(it.price, loc)}</p>
-                            {it.shippingShip && it.shippingCost > 0 && <p className="text-xs text-gray-500">+ {CRC(it.shippingCost, loc)} {L.shipping}</p>}
+                            <p className="text-xl font-black text-gray-900">{CRC(it.price, loc, itemCurrency(it))}</p>
+                            {it.shippingShip && it.shippingCost > 0 && <p className="text-xs text-gray-500">+ {CRC(it.shippingCost, loc, itemCurrency(it))} {L.shipping}</p>}
                         </div>
                     )}
                 </div>

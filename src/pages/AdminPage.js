@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { CRC } from '../components/Shared';
+import { CRC, itemCurrency, formatMoneyTotals } from '../components/Shared';
 
 const MessageUserModal = ({ user, onClose, onSend, L }) => {
     const [message, setMessage] = useState('');
@@ -86,16 +86,18 @@ const AdminPage = ({ loc, users, items, onSuspendUser, onRemoveItem, onSendMessa
         const now = new Date().getTime();
         const regularUsers = Object.values(users).filter(u => !u.isAdmin);
         const activeAuctions = items.filter(i => i.saleType === 'auc' && i.endAt > now);
-        const totalValue = items.reduce((acc, item) => {
+        const totalsByCurrency = items.reduce((sums, item) => {
+            const currency = itemCurrency(item);
             const price = item.saleType === 'auc' ? item.currentBid : item.price;
-            return acc + price;
-        }, 0);
+            sums[currency] = (sums[currency] || 0) + price;
+            return sums;
+        }, {});
 
         return {
             totalUsers: regularUsers.length,
             totalItems: items.length,
             activeAuctions: activeAuctions.length,
-            totalValue: totalValue,
+            totalValue: totalsByCurrency,
         }
     }, [users, items]);
     
@@ -134,7 +136,7 @@ const AdminPage = ({ loc, users, items, onSuspendUser, onRemoveItem, onSendMessa
                         <StatCard title={L.totalUsers} value={stats.totalUsers} />
                         <StatCard title={L.totalItems} value={stats.totalItems} />
                         <StatCard title={L.activeAuctions} value={stats.activeAuctions} />
-                        <StatCard title={L.totalValue} value={CRC(stats.totalValue, loc)} />
+                        <StatCard title={L.totalValue} value={formatMoneyTotals(stats.totalValue, loc) || '—'} />
                     </div>
                 </div>
 
@@ -188,7 +190,7 @@ const AdminPage = ({ loc, users, items, onSuspendUser, onRemoveItem, onSendMessa
                                         <td className="px-6 py-4">{item.id}</td>
                                         <td className="px-6 py-4 font-medium text-gray-900">{item.title}</td>
                                         <td className="px-6 py-4">{item.sellerName}</td>
-                                        <td className="px-6 py-4">{CRC(item.price || item.currentBid, loc)}</td>
+                                        <td className="px-6 py-4">{CRC(item.price || item.currentBid, loc, itemCurrency(item))}</td>
                                         <td className="px-6 py-4">
                                             <button onClick={() => onRemoveItem(item.id)} className="font-medium text-red-600 hover:underline">{L.remove}</button>
                                         </td>

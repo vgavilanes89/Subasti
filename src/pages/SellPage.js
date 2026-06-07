@@ -46,6 +46,7 @@ const SellPage = ({ loc, categories }) => {
         shippingShip: true,
         shippingLocal: false,
         shippingCost: '3000',
+        currency: 'CRC',
     });
     const [isDragging, setIsDragging] = useState(false);
     const fileInputRef = React.useRef(null);
@@ -96,6 +97,10 @@ const SellPage = ({ loc, categories }) => {
         ship: 'Ship this item',
         shippingCost: 'Shipping Cost',
         localPickup: 'Local pickup available',
+        currency: 'Currency',
+        colones: 'Colones (₡ CRC)',
+        dollars: 'US Dollars ($ USD)',
+        pricingNote: 'All prices for this listing use the selected currency.',
     } : {
         title: 'Publica Tu Artículo',
         itemTitle: 'Título del Artículo',
@@ -142,6 +147,10 @@ const SellPage = ({ loc, categories }) => {
         ship: 'Enviar este artículo',
         shippingCost: 'Costo de Envío',
         localPickup: 'Recogida local disponible',
+        currency: 'Moneda',
+        colones: 'Colones (₡ CRC)',
+        dollars: 'Dólares ($ USD)',
+        pricingNote: 'Todos los precios de esta publicación usarán la moneda seleccionada.',
     };
 
     const descriptionWordCount = useMemo(() => {
@@ -166,6 +175,9 @@ const SellPage = ({ loc, categories }) => {
             if (name === 'category') {
                 const subCats = CATEGORIES[value];
                 newState.subCategory = subCats && subCats.length > 0 ? subCats[0] : '';
+            }
+            if (name === 'currency') {
+                newState.shippingCost = value === 'USD' ? '5' : '3000';
             }
             return newState;
         });
@@ -243,6 +255,7 @@ const SellPage = ({ loc, categories }) => {
         const newItem = {
             id: `item_${Date.now()}`,
             sellerId: user.id,
+            currency: formData.currency,
             ...formData,
             price: Number(formData.price),
             buyNowPrice: formData.buyNowPrice ? Number(formData.buyNowPrice) : null,
@@ -346,9 +359,19 @@ const SellPage = ({ loc, categories }) => {
                     
                     {/* Pricing */}
                     <FormSection title={L.pricing}>
+                        <p className="text-sm text-gray-500 -mt-2 mb-2">{L.pricingNote}</p>
+                        <FormField label={L.currency}>
+                            <select name="currency" value={formData.currency} onChange={handleChange} className="w-full md:w-1/2 p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500">
+                                <option value="CRC">{L.colones}</option>
+                                <option value="USD">{L.dollars}</option>
+                            </select>
+                        </FormField>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <FormField label={formData.saleType === 'auc' ? L.startBid : L.price}>
-                                <input type="number" name="price" value={formData.price} onChange={handleChange} required min="0" className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" />
+                                <div className="relative">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">{formData.currency === 'USD' ? '$' : '₡'}</span>
+                                    <input type="number" name="price" value={formData.price} onChange={handleChange} required min="0" step={formData.currency === 'USD' ? '0.01' : '1'} className="w-full pl-8 p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" />
+                                </div>
                             </FormField>
                             {formData.saleType === 'buy' ? (
                                 <FormField label={L.quantity}>
@@ -357,10 +380,16 @@ const SellPage = ({ loc, categories }) => {
                             ) : ( // Auction fields
                                 <>
                                 <FormField label={L.reservePrice}>
-                                    <input type="number" name="reservePrice" value={formData.reservePrice} onChange={handleChange} min="0" className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" />
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">{formData.currency === 'USD' ? '$' : '₡'}</span>
+                                        <input type="number" name="reservePrice" value={formData.reservePrice} onChange={handleChange} min="0" step={formData.currency === 'USD' ? '0.01' : '1'} className="w-full pl-8 p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" />
+                                    </div>
                                 </FormField>
                                 <FormField label={L.buyNowPrice}>
-                                    <input type="number" name="buyNowPrice" value={formData.buyNowPrice} onChange={handleChange} min="0" className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" />
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">{formData.currency === 'USD' ? '$' : '₡'}</span>
+                                        <input type="number" name="buyNowPrice" value={formData.buyNowPrice} onChange={handleChange} min="0" step={formData.currency === 'USD' ? '0.01' : '1'} className="w-full pl-8 p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" />
+                                    </div>
                                 </FormField>
                                 <div className="md:col-span-2">
                                     <FormField label={L.auctionDuration}>
@@ -401,15 +430,19 @@ const SellPage = ({ loc, categories }) => {
                             {formData.shippingShip && (
                                 <div className="pl-7 pt-2">
                                     <FormField label={L.shippingCost}>
-                                        <input 
-                                            type="number" 
-                                            name="shippingCost" 
-                                            value={formData.shippingCost} 
-                                            onChange={handleChange} 
-                                            required 
-                                            min="0" 
-                                            className="w-full md:w-1/2 p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" 
-                                        />
+                                        <div className="relative">
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">{formData.currency === 'USD' ? '$' : '₡'}</span>
+                                            <input 
+                                                type="number" 
+                                                name="shippingCost" 
+                                                value={formData.shippingCost} 
+                                                onChange={handleChange} 
+                                                required 
+                                                min="0"
+                                                step={formData.currency === 'USD' ? '0.01' : '1'}
+                                                className="w-full md:w-1/2 pl-8 p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" 
+                                            />
+                                        </div>
                                     </FormField>
                                 </div>
                             )}

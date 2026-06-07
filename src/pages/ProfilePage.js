@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useItems } from '../context/ItemsContext';
-import { PLACEHOLDER_IMG, CRC } from '../components/Shared';
+import { PLACEHOLDER_IMG, CRC, itemCurrency } from '../components/Shared';
 
 // --- Sub-component for Listings/Favorites Grid ---
 const ProfilePageItemList = ({list, emptyMsg, onOpen, onToggleFav, isFav, loc, L}) => (
@@ -19,7 +19,7 @@ const ProfilePageItemList = ({list, emptyMsg, onOpen, onToggleFav, isFav, loc, L
                 )}
                 <div className="p-2">
                     <button onClick={() => onOpen(it.id)} className="text-sm font-semibold text-gray-800 hover:text-purple-700 text-left line-clamp-2">{it.title}</button>
-                    <div className="text-sm font-bold mt-1">{CRC(it.price || it.currentBid, loc)}</div>
+                    <div className="text-sm font-bold mt-1">{CRC(it.price || it.currentBid, loc, itemCurrency(it))}</div>
                 </div>
             </div>
         )) : <p className="col-span-full text-sm text-gray-500">{emptyMsg}</p>}

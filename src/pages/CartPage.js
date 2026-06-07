@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useItems } from '../context/ItemsContext';
-import { PLACEHOLDER_IMG, CRC } from '../components/Shared';
+import { PLACEHOLDER_IMG, CRC, itemCurrency, formatMoneyTotals } from '../components/Shared';
 import { tCategory } from '../data/i18n';
 
 const CartPage = ({ loc }) => {
@@ -48,8 +48,12 @@ const CartPage = ({ loc }) => {
         });
     }, [cart, items]);
 
-    const subtotal = useMemo(() => {
-        return cartWithDetails.reduce((sum, item) => sum + (item.price * item.qty), 0);
+    const subtotalsByCurrency = useMemo(() => {
+        return cartWithDetails.reduce((sums, item) => {
+            const currency = itemCurrency(item);
+            sums[currency] = (sums[currency] || 0) + (item.price * item.qty);
+            return sums;
+        }, {});
     }, [cartWithDetails]);
 
     if (cart.length === 0) {
@@ -82,8 +86,8 @@ const CartPage = ({ loc }) => {
                                 <button onClick={() => updateQuantity(item.id, item.qty + 1)} className="w-8 h-8 border rounded-md">+</button>
                             </div>
                             <div className="text-right w-24">
-                                <p className="font-bold">{CRC(item.price * item.qty, loc)}</p>
-                                {item.qty > 1 && <p className="text-sm text-gray-500">{CRC(item.price, loc)} {L.each}</p>}
+                                <p className="font-bold">{CRC(item.price * item.qty, loc, itemCurrency(item))}</p>
+                                {item.qty > 1 && <p className="text-sm text-gray-500">{CRC(item.price, loc, itemCurrency(item))} {L.each}</p>}
                             </div>
                         </div>
                     ))}
@@ -94,7 +98,7 @@ const CartPage = ({ loc }) => {
                         <div className="space-y-2">
                             <div className="flex justify-between">
                                 <span>{L.subtotal}</span>
-                                <span>{CRC(subtotal, loc)}</span>
+                                <span>{formatMoneyTotals(subtotalsByCurrency, loc)}</span>
                             </div>
                             <div className="flex justify-between text-gray-500">
                                 <span>{L.shipping}</span>
@@ -102,7 +106,7 @@ const CartPage = ({ loc }) => {
                             </div>
                             <div className="flex justify-between font-bold text-lg border-t pt-4 mt-2">
                                 <span>{L.orderTotal}</span>
-                                <span>{CRC(subtotal, loc)}</span>
+                                <span>{formatMoneyTotals(subtotalsByCurrency, loc)}</span>
                             </div>
                         </div>
                         <button onClick={() => navigate('/checkout')} className="mt-6 w-full bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors">

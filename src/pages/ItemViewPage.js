@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useItems } from '../context/ItemsContext';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { PLACEHOLDER_IMG, CRC, CountdownTimer, StarRating, calculateAverageRating, useCountdown } from '../components/Shared';
+import { PLACEHOLDER_IMG, CRC, CountdownTimer, StarRating, calculateAverageRating, useCountdown, itemCurrency } from '../components/Shared';
 import { tCategory, tSubCategory, formatCondition } from '../data/i18n';
 import { getMinBid } from '../api/items';
 
@@ -132,6 +132,7 @@ const ItemViewPage = ({ loc }) => {
         bidCount: 'Ofertas totales',
     };
 
+    const currency = itemCurrency(item);
     const reserveMet = item.reservePrice ? item.currentBid >= item.reservePrice : true;
     const images = item.images && item.images.length > 0 ? item.images : [PLACEHOLDER_IMG];
 
@@ -161,7 +162,7 @@ const ItemViewPage = ({ loc }) => {
         }
         const amount = Number(bidAmount);
         if (!Number.isFinite(amount) || amount < minBid) {
-            setBidError(`${L.bidTooLow} ${CRC(minBid, loc)}`);
+            setBidError(`${L.bidTooLow} ${CRC(minBid, loc, currency)}`);
             return;
         }
         try {
@@ -169,7 +170,7 @@ const ItemViewPage = ({ loc }) => {
             setBidError('');
             alert(L.bidSuccess);
         } catch {
-            setBidError(`${L.bidTooLow} ${CRC(minBid, loc)}`);
+            setBidError(`${L.bidTooLow} ${CRC(minBid, loc, currency)}`);
         }
     };
 
@@ -217,12 +218,12 @@ const ItemViewPage = ({ loc }) => {
                                     {isFinished ? (
                                         <div className="bg-gray-100 p-4 rounded-lg text-center">
                                             <h3 className="text-lg font-bold text-gray-800">{L.auctionEnded}</h3>
-                                            <p className="mt-2">{reserveMet ? `${L.sold} ${CRC(item.currentBid, loc)}` : L.reserveNotMet}</p>
+                                            <p className="mt-2">{reserveMet ? `${L.sold} ${CRC(item.currentBid, loc, currency)}` : L.reserveNotMet}</p>
                                         </div>
                                     ) : (
                                         <>
                                             <p className="text-sm text-gray-500">{L.currentBid}</p>
-                                            <p className="text-4xl font-extrabold text-gray-900">{CRC(item.currentBid, loc)}</p>
+                                            <p className="text-4xl font-extrabold text-gray-900">{CRC(item.currentBid, loc, currency)}</p>
                                             <p className="text-xs text-gray-500 mt-1">{L.bidCount}: {item.bids || 0}</p>
                                             <div className="mt-4 space-y-2">
                                                 <label className="block text-sm font-semibold text-gray-700">{L.yourBid}</label>
@@ -231,10 +232,10 @@ const ItemViewPage = ({ loc }) => {
                                                     value={bidAmount}
                                                     onChange={(e) => { setBidAmount(e.target.value); setBidError(''); }}
                                                     min={minBid}
-                                                    step={1000}
+                                                    step={currency === 'USD' ? '0.01' : '1000'}
                                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
                                                 />
-                                                <p className="text-xs text-gray-500">{L.minBid}: <span className="font-semibold">{CRC(minBid, loc)}</span></p>
+                                                <p className="text-xs text-gray-500">{L.minBid}: <span className="font-semibold">{CRC(minBid, loc, currency)}</span></p>
                                                 {bidError && <p className="text-sm text-red-500">{bidError}</p>}
                                                 <button
                                                     type="button"
@@ -244,7 +245,7 @@ const ItemViewPage = ({ loc }) => {
                                                     {L.placeBid}
                                                 </button>
                                                 {item.buyNowPrice && (
-                                                    <button className="w-full bg-purple-600 text-white py-3 rounded-lg font-bold hover:bg-purple-700 transition-colors" onClick={handleBuyNow}>{L.buyNowFor} {CRC(item.buyNowPrice, loc)}</button>
+                                                    <button className="w-full bg-purple-600 text-white py-3 rounded-lg font-bold hover:bg-purple-700 transition-colors" onClick={handleBuyNow}>{L.buyNowFor} {CRC(item.buyNowPrice, loc, currency)}</button>
                                                 )}
                                             </div>
                                             <div className="mt-4 bg-gray-50 p-4 rounded-lg">
@@ -257,7 +258,7 @@ const ItemViewPage = ({ loc }) => {
                             ) : (
                                 <div>
                                     <p className="text-sm text-gray-500">{L.price}</p>
-                                    <p className="text-4xl font-extrabold text-gray-900">{CRC(item.price * selectedQuantity, loc)}</p>
+                                    <p className="text-4xl font-extrabold text-gray-900">{CRC(item.price * selectedQuantity, loc, currency)}</p>
                                     {item.quantity > 1 && (
                                         <div className="mt-4 flex items-center gap-2">
                                             <button onClick={() => setSelectedQuantity(q => Math.max(1, q - 1))} className="w-10 h-10 border rounded-md font-bold">-</button>
@@ -298,7 +299,7 @@ const ItemViewPage = ({ loc }) => {
                 <div className="border-t mt-4 pt-4">
                     <h4 className="font-bold text-md mb-2">{L.shipping}</h4>
                     <ul className="list-disc list-inside text-gray-600">
-                        {item.shippingShip && <li>{L.ship} {item.shippingCost > 0 ? `(${CRC(item.shippingCost, loc)})` : ''}</li>}
+                        {item.shippingShip && <li>{L.ship} {item.shippingCost > 0 ? `(${CRC(item.shippingCost, loc, currency)})` : ''}</li>}
                         {item.shippingLocal && <li>{L.localPickup}</li>}
                         {!item.shippingShip && !item.shippingLocal && <li>{L.noShipping}</li>}
                     </ul>

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useItems } from '../context/ItemsContext';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { PLACEHOLDER_IMG, CRC, CountdownTimer } from '../components/Shared';
+import { PLACEHOLDER_IMG, CRC, CountdownTimer, itemCurrency } from '../components/Shared';
 import { tCategory, tSubCategory, formatCondition } from '../data/i18n';
 
 const HomePage = ({ loc, categories }) => {
@@ -134,9 +134,9 @@ const HomePage = ({ loc, categories }) => {
           {it.saleType === 'auc' ? (
             <div>
               <p className="text-xs text-gray-500">{loc === 'en' ? 'Current Bid' : 'Oferta Actual'}</p>
-              <p className="text-xl font-black text-gray-900">{CRC(it.currentBid, loc)}</p>
-              {it.shippingShip && it.shippingCost > 0 && <p className="text-xs text-gray-500">+ {CRC(it.shippingCost, loc)} {L.shipping}</p>}
-              {it.buyNowPrice && <p className="text-xs text-gray-500 mt-1">{L.buyNow}: {CRC(it.buyNowPrice, loc)}</p>}
+              <p className="text-xl font-black text-gray-900">{CRC(it.currentBid, loc, itemCurrency(it))}</p>
+              {it.shippingShip && it.shippingCost > 0 && <p className="text-xs text-gray-500">+ {CRC(it.shippingCost, loc, itemCurrency(it))} {L.shipping}</p>}
+              {it.buyNowPrice && <p className="text-xs text-gray-500 mt-1">{L.buyNow}: {CRC(it.buyNowPrice, loc, itemCurrency(it))}</p>}
               <div className="mt-2">
                 <CountdownTimer targetDate={it.endAt} loc={loc} />
               </div>
@@ -144,8 +144,8 @@ const HomePage = ({ loc, categories }) => {
           ) : (
             <div>
               <p className="text-xs text-gray-500">{loc === 'en' ? 'Price' : 'Precio'}</p>
-              <p className="text-xl font-black text-gray-900">{CRC(it.price, loc)}</p>
-              {it.shippingShip && it.shippingCost > 0 && <p className="text-xs text-gray-500">+ {CRC(it.shippingCost, loc)} {L.shipping}</p>}
+              <p className="text-xl font-black text-gray-900">{CRC(it.price, loc, itemCurrency(it))}</p>
+              {it.shippingShip && it.shippingCost > 0 && <p className="text-xs text-gray-500">+ {CRC(it.shippingCost, loc, itemCurrency(it))} {L.shipping}</p>}
             </div>
           )}
         </div>

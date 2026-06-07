@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useItems } from '../context/ItemsContext';
 import { COSTA_RICA_LOCATIONS } from '../data/Constants';
-import { CRC } from '../components/Shared';
+import { CRC, itemCurrency, formatMoneyTotals } from '../components/Shared';
 
 const CheckoutPage = ({ loc }) => {
     const { user, saveAddress } = useAuth();
@@ -157,15 +157,31 @@ const CheckoutPage = ({ loc }) => {
         });
     };
 
-    const subtotal = useMemo(() => cartWithDetails.reduce((sum, item) => sum + ((item.buyNowPrice || item.price) * item.qty), 0), [cartWithDetails]);
-    
-    const shippingCost = useMemo(() => {
-        if (deliveryMethod !== 'ship') return 0;
-        const costs = cartWithDetails.map(item => item.shippingCost || 0);
-        return costs.length > 0 ? Math.max(...costs) : 0;
+    const subtotalsByCurrency = useMemo(() => cartWithDetails.reduce((sums, item) => {
+        const currency = itemCurrency(item);
+        const lineTotal = (item.buyNowPrice || item.price) * item.qty;
+        sums[currency] = (sums[currency] || 0) + lineTotal;
+        return sums;
+    }, {}), [cartWithDetails]);
+
+    const shippingByCurrency = useMemo(() => {
+        if (deliveryMethod !== 'ship') return {};
+        return cartWithDetails.reduce((sums, item) => {
+            const currency = itemCurrency(item);
+            const cost = item.shippingCost || 0;
+            sums[currency] = Math.max(sums[currency] || 0, cost);
+            return sums;
+        }, {});
     }, [cartWithDetails, deliveryMethod]);
 
-    const total = subtotal + shippingCost;
+    const totalsByCurrency = useMemo(() => {
+        const currencies = new Set([...Object.keys(subtotalsByCurrency), ...Object.keys(shippingByCurrency)]);
+        const totals = {};
+        currencies.forEach((currency) => {
+            totals[currency] = (subtotalsByCurrency[currency] || 0) + (shippingByCurrency[currency] || 0);
+        });
+        return totals;
+    }, [subtotalsByCurrency, shippingByCurrency]);
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -368,14 +384,14 @@ const CheckoutPage = ({ loc }) => {
                                         <img src={item.image} className="w-12 h-12 rounded-md mr-3" alt={item.title}/>
                                         <span>{item.title} <span className="text-gray-500">x{item.qty}</span></span>
                                     </div>
-                                    <span className="font-semibold">{CRC((item.buyNowPrice || item.price) * item.qty, loc)}</span>
+                                    <span className="font-semibold">{CRC((item.buyNowPrice || item.price) * item.qty, loc, itemCurrency(item))}</span>
                                 </div>
                             ))}
                         </div>
                         <div className="space-y-2 border-t pt-4">
-                            <div className="flex justify-between"><span>{L.subtotal}</span><span>{CRC(subtotal, loc)}</span></div>
-                            <div className="flex justify-between"><span>{L.shipping}</span><span>{shippingCost === 0 ? L.free : CRC(shippingCost, loc)}</span></div>
-                            <div className="flex justify-between font-bold text-lg border-t pt-4 mt-2"><span>{L.total}</span><span>{CRC(total, loc)}</span></div>
+                            <div className="flex justify-between"><span>{L.subtotal}</span><span>{formatMoneyTotals(subtotalsByCurrency, loc)}</span></div>
+                            <div className="flex justify-between"><span>{L.shipping}</span><span>{Object.keys(shippingByCurrency).length === 0 ? L.free : formatMoneyTotals(shippingByCurrency, loc)}</span></div>
+                            <div className="flex justify-between font-bold text-lg border-t pt-4 mt-2"><span>{L.total}</span><span>{formatMoneyTotals(totalsByCurrency, loc)}</span></div>
                         </div>
                         <button type="submit" className="mt-6 w-full bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors">
                             {L.placeOrder}
