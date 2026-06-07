@@ -182,15 +182,15 @@ const HomePage = ({ loc, categories }) => {
     <div className="space-y-6">
       {/* Filter Bar */}
       <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+        <div className="home-filter-bar">
           <input 
-            className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 p-2 border" 
+            className="home-filter-search border-gray-300 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 p-2.5 border" 
             placeholder={loc === 'en' ? 'Search items…' : 'Buscar artículos…'} 
             value={q} 
             onChange={e => setQ(e.target.value)} 
           />
           <select 
-            className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 p-2 border" 
+            className="home-filter-category border-gray-300 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 p-2.5 border text-sm" 
             value={cat} 
             onChange={e => setCat(e.target.value)}
           >
@@ -199,7 +199,7 @@ const HomePage = ({ loc, categories }) => {
             ))}
           </select>
           <select 
-            className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 p-2 border" 
+            className="home-filter-sort border-gray-300 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 p-2.5 border text-sm" 
             value={sort} 
             onChange={e => setSort(e.target.value)}
           >
