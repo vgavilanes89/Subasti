@@ -24,6 +24,7 @@ const CartPage = ({ loc }) => {
         shippingNote: 'Calculated at next step',
         remove: 'Remove',
         each: 'each',
+        escrowNote: 'Subasti holds your payment in escrow until you receive the item and confirm satisfaction.',
     } : {
         title: 'Mi Carrito',
         item: 'Artículo',
@@ -39,6 +40,7 @@ const CartPage = ({ loc }) => {
         shippingNote: 'Calculado en el siguiente paso',
         remove: 'Eliminar',
         each: 'c/u',
+        escrowNote: 'Subasti retiene su pago en depósito hasta que reciba el artículo y confirme conformidad.',
     };
 
     const cartWithDetails = useMemo(() => {
@@ -109,7 +111,8 @@ const CartPage = ({ loc }) => {
                                 <span>{formatMoneyTotals(subtotalsByCurrency, loc)}</span>
                             </div>
                         </div>
-                        <button onClick={() => navigate('/checkout')} className="mt-6 w-full bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors">
+                        <p className="text-xs text-gray-500 mt-4">{L.escrowNote}</p>
+                        <button onClick={() => navigate('/checkout')} className="mt-4 w-full bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors">
                             {L.checkout}
                         </button>
                     </div>

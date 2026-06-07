@@ -4,33 +4,8 @@ import { PLACEHOLDER_IMG, formatMoney } from './Shared';
 import { useMessages } from '../context/MessagesContext';
 import ChatPanel from './ChatPanel';
 import * as ordersApi from '../api/orders';
-
-const buyerStatusLabel = (order, loc) => {
-    const { status, fulfillment } = order;
-    const en = {
-        pending_payment: 'Payment required',
-        pending_ship: fulfillment === 'pickup' ? 'Awaiting pickup' : 'Awaiting shipment',
-        shipped: 'On the way',
-        completed: fulfillment === 'pickup' ? 'Picked up' : 'Delivered',
-        cancelled: 'Cancelled',
-    };
-    const es = {
-        pending_payment: 'Pago requerido',
-        pending_ship: fulfillment === 'pickup' ? 'Esperando recogida' : 'Esperando envío',
-        shipped: 'En camino',
-        completed: fulfillment === 'pickup' ? 'Recogido' : 'Entregado',
-        cancelled: 'Cancelado',
-    };
-    return (loc === 'en' ? en : es)[status] || status;
-};
-
-const buyerStatusClass = (status) => {
-    if (status === 'pending_payment') return 'seller-badge seller-badge--warn';
-    if (status === 'pending_ship') return 'seller-badge seller-badge--warn';
-    if (status === 'shipped') return 'seller-badge seller-badge--info';
-    if (status === 'completed') return 'seller-badge seller-badge--ok';
-    return 'seller-badge';
-};
+import { buyerStatusLabel, orderStatusClass } from '../data/escrow';
+import EscrowPanel from './EscrowPanel';
 
 const StatCard = ({ label, value, sub, accent }) => (
     <div className={`seller-stat-card ${accent ? `seller-stat-card--${accent}` : ''}`}>
@@ -47,10 +22,15 @@ const BuyerOrderCard = ({
     L,
     onPay,
     onConfirmReceived,
+    onReleaseFunds,
+    onSubmitClaim,
     onOpenItem,
     onMessageSeller,
     paying,
+    claiming,
 }) => {
+    const [claimDraft, setClaimDraft] = useState('');
+    const [showClaimForm, setShowClaimForm] = useState(false);
     const seller = users[order.sellerId];
     const total = order.amount + (order.shippingCost || 0);
 
@@ -78,14 +58,20 @@ const BuyerOrderCard = ({
                     )}
                     <p className="text-sm text-gray-600">
                         {order.fulfillment === 'ship' ? L.fulfillmentShip : L.fulfillmentPickup}
-                        {order.status === 'pending_payment' && order.payBy && (
-                            <> · {L.payBy} {formatDate(order.payBy)}</>
+                        {order.status === 'pending_payment' && order.paymentDueAt && (
+                            <> · {L.payBy} {formatDate(order.paymentDueAt)}</>
+                        )}
+                        {order.status === 'escrow_held' && (
+                            <span className="block text-xs text-purple-600 font-medium mt-0.5">{L.escrowHeld}</span>
+                        )}
+                        {order.shippingTimeframe && (
+                            <> · {L.shipTimeframe}: {order.shippingTimeframe}</>
                         )}
                         {order.status === 'shipped' && order.estimatedDelivery && (
                             <> · {L.estDelivery} {formatDate(order.estimatedDelivery)}</>
                         )}
-                        {order.status === 'pending_ship' && order.fulfillment === 'pickup' && order.shipBy && (
-                            <> · {L.pickupBy} {formatDate(order.shipBy)}</>
+                        {order.status === 'awaiting_confirmation' && order.confirmationDueAt && (
+                            <> · {L.claimBy} {formatDate(order.confirmationDueAt)}</>
                         )}
                     </p>
                     <p className="text-sm font-bold text-purple-700 mt-1">
@@ -107,7 +93,7 @@ const BuyerOrderCard = ({
                 </div>
             </div>
             <div className="seller-order-actions">
-                <span className={buyerStatusClass(order.status)}>
+                <span className={orderStatusClass(order.status)}>
                     {buyerStatusLabel(order, loc)}
                 </span>
                 {order.status === 'pending_payment' && (
@@ -128,6 +114,39 @@ const BuyerOrderCard = ({
                     >
                         {L.markReceived}
                     </button>
+                )}
+                {order.status === 'awaiting_confirmation' && (
+                    <>
+                        <button type="button" onClick={() => onReleaseFunds(order.id)} className="seller-action-btn">
+                            {L.releaseFunds}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setShowClaimForm(s => !s)}
+                            className="buyer-order-link-btn"
+                        >
+                            {L.fileClaim}
+                        </button>
+                        {showClaimForm && (
+                            <div className="buyer-claim-form">
+                                <textarea
+                                    value={claimDraft}
+                                    onChange={e => setClaimDraft(e.target.value)}
+                                    placeholder={L.claimPlaceholder}
+                                    rows={3}
+                                    className="seller-input"
+                                />
+                                <button
+                                    type="button"
+                                    disabled={!claimDraft.trim() || claiming === order.id}
+                                    onClick={() => onSubmitClaim(order.id, claimDraft, () => { setClaimDraft(''); setShowClaimForm(false); })}
+                                    className="seller-action-btn seller-action-btn--secondary"
+                                >
+                                    {claiming === order.id ? '…' : L.submitClaim}
+                                </button>
+                            </div>
+                        )}
+                    </>
                 )}
                 <button
                     type="button"
@@ -177,6 +196,7 @@ const BuyerDashboard = ({
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [paying, setPaying] = useState(null);
+    const [claiming, setClaiming] = useState(null);
 
     const L = loc === 'en' ? {
         dashboard: 'Buying Dashboard',
@@ -206,7 +226,10 @@ const BuyerDashboard = ({
         tracking: 'Tracking',
         paidWith: 'Paid with',
         paySuccess: 'Payment recorded! The seller has been notified.',
-        receivedSuccess: 'Marked as received. Thanks for confirming!',
+        receivedSuccess: 'Marked as received. You have 48 hours to release funds or file a claim.',
+        releaseSuccess: 'Funds released to the seller. Thank you!',
+        claimSuccess: 'Claim submitted. Subasti will review and email you updates.',
+        escrowNotice: 'order(s) need you to release funds or file a claim within 48 hours.',
         messageSeller: 'Message seller',
         sellerMessages: 'Messages with sellers',
         favs: 'My Favorites',
@@ -214,6 +237,15 @@ const BuyerDashboard = ({
         favAdd: 'Add to favorites',
         favRemove: 'Remove from favorites',
         markReceived: 'Mark received',
+        releaseFunds: 'Release funds to seller',
+        fileClaim: 'File a claim',
+        submitClaim: 'Submit claim',
+        claimPlaceholder: 'Describe how the item differs from the listing or suspected fraud…',
+        claimBy: 'Claim or release by',
+        shipTimeframe: 'Est. delivery',
+        escrowHeld: 'Payment secured in Subasti escrow',
+        escrowSection: 'Confirm or claim',
+        noEscrow: 'No orders awaiting your confirmation.',
         fulfillmentShip: 'Shipping',
         fulfillmentPickup: 'Local pickup',
         auctionWon: 'Auction won',
@@ -247,7 +279,10 @@ const BuyerDashboard = ({
         tracking: 'Rastreo',
         paidWith: 'Pagado con',
         paySuccess: '¡Pago registrado! El vendedor fue notificado.',
-        receivedSuccess: 'Marcado como recibido. ¡Gracias por confirmar!',
+        receivedSuccess: 'Marcado como recibido. Tiene 48 horas para liberar fondos o reclamar.',
+        releaseSuccess: 'Fondos liberados al vendedor. ¡Gracias!',
+        claimSuccess: 'Reclamo enviado. Subasti revisará y le escribirá por correo.',
+        escrowNotice: 'pedido(s) requieren liberar fondos o reclamar en 48 horas.',
         messageSeller: 'Mensaje al vendedor',
         sellerMessages: 'Mensajes con vendedores',
         favs: 'Mis Favoritos',
@@ -255,6 +290,15 @@ const BuyerDashboard = ({
         favAdd: 'Agregar a favoritos',
         favRemove: 'Quitar de favoritos',
         markReceived: 'Marcar recibido',
+        releaseFunds: 'Liberar fondos al vendedor',
+        fileClaim: 'Presentar reclamo',
+        submitClaim: 'Enviar reclamo',
+        claimPlaceholder: 'Describa en qué difiere el artículo de la publicación o el fraude…',
+        claimBy: 'Reclamar o liberar antes de',
+        shipTimeframe: 'Entrega est.',
+        escrowHeld: 'Pago asegurado en depósito Subasti',
+        escrowSection: 'Confirmar o reclamar',
+        noEscrow: 'No hay pedidos esperando su confirmación.',
         fulfillmentShip: 'Envío',
         fulfillmentPickup: 'Recogida local',
         auctionWon: 'Subasta ganada',
@@ -278,20 +322,19 @@ const BuyerDashboard = ({
 
     const pendingPayment = useMemo(() => orders.filter(o => o.status === 'pending_payment'), [orders]);
     const inTransit = useMemo(() => orders.filter(o => o.status === 'shipped'), [orders]);
-    const awaitingPickup = useMemo(
-        () => orders.filter(o => o.status === 'pending_ship' && o.fulfillment === 'pickup'),
-        [orders]
-    );
-    const awaitingShip = useMemo(
-        () => orders.filter(o => o.status === 'pending_ship' && o.fulfillment === 'ship'),
-        [orders]
-    );
-    const completed = useMemo(() => orders.filter(o => o.status === 'completed'), [orders]);
-    const activeCount = orders.filter(o => o.status !== 'completed' && o.status !== 'cancelled').length;
+    const awaitingConfirmation = useMemo(() => orders.filter(o => o.status === 'awaiting_confirmation'), [orders]);
+    const claimPending = useMemo(() => orders.filter(o => o.status === 'claim_pending'), [orders]);
+    const escrowWaiting = useMemo(() => orders.filter(o => o.status === 'escrow_held'), [orders]);
+    const completed = useMemo(() => orders.filter(o =>
+        o.status === 'completed' || o.status === 'refunded' || o.status === 'cancelled'
+    ), [orders]);
+    const activeCount = orders.filter(o =>
+        !['completed', 'cancelled', 'refunded'].includes(o.status)
+    ).length;
 
     const myFavorites = items.filter(i => favorites.includes(i.id));
 
-    const hasUrgent = pendingPayment.length > 0 || inTransit.length > 0 || awaitingPickup.length > 0;
+    const hasUrgent = pendingPayment.length > 0 || awaitingConfirmation.length > 0 || inTransit.length > 0;
 
     const handlePay = async (orderId) => {
         setPaying(orderId);
@@ -310,6 +353,26 @@ const BuyerDashboard = ({
         const updated = await ordersApi.confirmOrderReceived(orderId);
         setOrders(prev => prev.map(o => (o.id === orderId ? updated : o)));
         alert(L.receivedSuccess);
+    };
+
+    const handleReleaseFunds = async (orderId) => {
+        const updated = await ordersApi.releaseFundsToSeller(orderId);
+        setOrders(prev => prev.map(o => (o.id === orderId ? updated : o)));
+        alert(L.releaseSuccess);
+    };
+
+    const handleSubmitClaim = async (orderId, reason, onDone) => {
+        setClaiming(orderId);
+        try {
+            const updated = await ordersApi.submitBuyerClaim(orderId, reason);
+            setOrders(prev => prev.map(o => (o.id === orderId ? updated : o)));
+            alert(L.claimSuccess);
+            onDone?.();
+        } catch {
+            // ignore
+        } finally {
+            setClaiming(null);
+        }
     };
 
     const handleOpenItem = (itemId) => {
@@ -338,8 +401,8 @@ const BuyerDashboard = ({
 
     const noticeParts = [];
     if (pendingPayment.length) noticeParts.push(`${pendingPayment.length} ${L.payNotice}`);
+    if (awaitingConfirmation.length) noticeParts.push(`${awaitingConfirmation.length} ${L.escrowNotice}`);
     if (inTransit.length) noticeParts.push(`${inTransit.length} ${L.shipNotice}`);
-    if (awaitingPickup.length) noticeParts.push(`${awaitingPickup.length} ${L.pickupNotice}`);
 
     const renderOrderList = (list, emptyMsg) => (
         list.length === 0
@@ -355,9 +418,12 @@ const BuyerDashboard = ({
                             L={L}
                             onPay={handlePay}
                             onConfirmReceived={handleConfirmReceived}
+                            onReleaseFunds={handleReleaseFunds}
+                            onSubmitClaim={handleSubmitClaim}
                             onOpenItem={handleOpenItem}
                             onMessageSeller={handleMessageSeller}
                             paying={paying}
+                            claiming={claiming}
                         />
                     ))}
                 </div>
@@ -367,6 +433,10 @@ const BuyerDashboard = ({
     return (
         <div className="seller-dashboard buyer-dashboard">
             <h3 className="text-xl font-bold text-gray-800 mb-4">{L.dashboard}</h3>
+
+            <div className="seller-section">
+                <EscrowPanel loc={loc} compact />
+            </div>
 
             <div className="seller-stats-grid">
                 <StatCard
@@ -382,14 +452,15 @@ const BuyerDashboard = ({
                     accent={inTransit.length ? 'info' : undefined}
                 />
                 <StatCard
-                    label={L.activeOrders}
-                    value={activeCount}
-                    sub={`${awaitingShip.length} ${loc === 'en' ? 'awaiting ship' : 'por enviar'}`}
+                    label={L.escrowSection}
+                    value={awaitingConfirmation.length}
+                    sub={awaitingConfirmation.length ? L.escrowNotice : L.noEscrow}
+                    accent={awaitingConfirmation.length ? 'amber' : undefined}
                 />
                 <StatCard
-                    label={L.pickupScheduled}
-                    value={awaitingPickup.length}
-                    sub={awaitingPickup.length ? L.pickupNotice : L.noPickups}
+                    label={L.activeOrders}
+                    value={activeCount}
+                    sub={`${escrowWaiting.length} ${loc === 'en' ? 'in escrow' : 'en depósito'}`}
                 />
             </div>
 
@@ -404,23 +475,21 @@ const BuyerDashboard = ({
             </div>
 
             <div className="seller-section">
+                <h4>{L.escrowSection}</h4>
+                {renderOrderList(awaitingConfirmation, L.noEscrow)}
+            </div>
+
+            {claimPending.length > 0 && (
+                <div className="seller-section">
+                    <h4>{loc === 'en' ? 'Claims under review' : 'Reclamos en revisión'}</h4>
+                    {renderOrderList(claimPending, '')}
+                </div>
+            )}
+
+            <div className="seller-section">
                 <h4>{L.shipping}</h4>
                 {renderOrderList(inTransit, L.noShipping)}
             </div>
-
-            {awaitingPickup.length > 0 && (
-                <div className="seller-section">
-                    <h4>{L.pickups}</h4>
-                    {renderOrderList(awaitingPickup, L.noPickups)}
-                </div>
-            )}
-
-            {awaitingShip.length > 0 && (
-                <div className="seller-section">
-                    <h4>{loc === 'en' ? 'Awaiting shipment' : 'Esperando envío del vendedor'}</h4>
-                    {renderOrderList(awaitingShip, loc === 'en' ? 'No orders awaiting shipment.' : 'No hay pedidos esperando envío.')}
-                </div>
-            )}
 
             <div className="seller-section">
                 <h4>{L.history}</h4>

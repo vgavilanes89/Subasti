@@ -8,6 +8,7 @@ import { tCategory, tSubCategory, formatCondition } from '../data/i18n';
 import { getMinBid } from '../api/items';
 import { useMessages } from '../context/MessagesContext';
 import ChatPanel from '../components/ChatPanel';
+import EscrowPanel from '../components/EscrowPanel';
 
 const ItemViewPage = ({ loc }) => {
     // 1. Get ID from URL and tools from Context
@@ -255,6 +256,8 @@ const ItemViewPage = ({ loc }) => {
                             </button>
                         </div>
                         
+                        <EscrowPanel loc={loc} compact />
+
                         <div className="mt-6">
                             {item.saleType === 'auc' ? (
                                 <div>

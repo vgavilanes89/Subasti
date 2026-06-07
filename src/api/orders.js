@@ -1,5 +1,8 @@
+import { ESCROW_WINDOW_MS, ORDER_STATUS } from '../data/escrow';
+
 const now = Date.now();
 const day = 24 * 60 * 60 * 1000;
+const h48 = ESCROW_WINDOW_MS;
 
 let ORDERS = [
     {
@@ -12,15 +15,20 @@ let ORDERS = [
         amount: 85000,
         currency: 'CRC',
         shippingCost: 2500,
-        status: 'pending_ship',
+        status: ORDER_STATUS.ESCROW_HELD,
         fulfillment: 'ship',
         orderType: 'buy_now',
         purchasedAt: now - 2 * day,
-        soldAt: now - 2 * day,
-        payBy: null,
-        shipBy: now + 3 * day,
-        estimatedDelivery: now + 6 * day,
+        paymentDueAt: null,
+        escrowHeldAt: now - 2 * day,
+        shipByAt: now + 1 * day,
+        shippingTimeframe: null,
+        shippedAt: null,
+        estimatedDelivery: null,
         trackingNumber: null,
+        receivedAt: null,
+        confirmationDueAt: null,
+        claimReason: null,
         paymentMethod: 'card',
     },
     {
@@ -33,37 +41,17 @@ let ORDERS = [
         amount: 65000,
         currency: 'CRC',
         shippingCost: 0,
-        status: 'completed',
+        status: ORDER_STATUS.COMPLETED,
         fulfillment: 'pickup',
         orderType: 'buy_now',
         purchasedAt: now - 12 * day,
-        soldAt: now - 12 * day,
-        payBy: null,
-        shipBy: null,
-        estimatedDelivery: null,
-        trackingNumber: null,
+        escrowHeldAt: now - 12 * day,
+        shipByAt: now - 11 * day,
+        shippingTimeframe: 'Pickup same day',
+        receivedAt: now - 10 * day,
+        confirmationDueAt: now - 10 * day + h48,
+        fundsReleasedAt: now - 9 * day,
         paymentMethod: 'sinpe',
-    },
-    {
-        id: 'ord3',
-        sellerId: 'user1',
-        buyerId: 'guest1',
-        itemId: 'sold3',
-        itemTitle: 'Apple Watch SE',
-        image: 'https://placehold.co/80x80/f43f5e/ffffff?text=Watch',
-        amount: 180,
-        currency: 'USD',
-        shippingCost: 12,
-        status: 'completed',
-        fulfillment: 'ship',
-        orderType: 'buy_now',
-        purchasedAt: now - 25 * day,
-        soldAt: now - 25 * day,
-        payBy: null,
-        shipBy: now - 22 * day,
-        estimatedDelivery: now - 20 * day,
-        trackingNumber: 'CR-8849201',
-        paymentMethod: 'card',
     },
     {
         id: 'ord4',
@@ -75,15 +63,12 @@ let ORDERS = [
         amount: 165000,
         currency: 'CRC',
         shippingCost: 0,
-        status: 'pending_ship',
+        status: ORDER_STATUS.ESCROW_HELD,
         fulfillment: 'pickup',
         orderType: 'auction_won',
         purchasedAt: now - 1 * day,
-        soldAt: now - 1 * day,
-        payBy: null,
-        shipBy: now + 5 * day,
-        estimatedDelivery: null,
-        trackingNumber: null,
+        escrowHeldAt: now - 1 * day,
+        shipByAt: now + 1 * day,
         paymentMethod: 'card',
     },
     {
@@ -96,15 +81,11 @@ let ORDERS = [
         amount: 1560,
         currency: 'USD',
         shippingCost: 15,
-        status: 'pending_payment',
+        status: ORDER_STATUS.PENDING_PAYMENT,
         fulfillment: 'ship',
         orderType: 'auction_won',
         purchasedAt: now - 4 * 60 * 60 * 1000,
-        soldAt: now - 4 * 60 * 60 * 1000,
-        payBy: now + 2 * day,
-        shipBy: null,
-        estimatedDelivery: null,
-        trackingNumber: null,
+        paymentDueAt: now + h48,
         paymentMethod: null,
     },
     {
@@ -117,15 +98,18 @@ let ORDERS = [
         amount: 45000,
         currency: 'CRC',
         shippingCost: 2500,
-        status: 'shipped',
+        status: ORDER_STATUS.AWAITING_CONFIRMATION,
         fulfillment: 'ship',
         orderType: 'buy_now',
         purchasedAt: now - 5 * day,
-        soldAt: now - 5 * day,
-        payBy: null,
-        shipBy: now - 3 * day,
-        estimatedDelivery: now + 2 * day,
+        escrowHeldAt: now - 5 * day,
+        shipByAt: now - 4 * day,
+        shippingTimeframe: '3-5 business days',
+        shippedAt: now - 3 * day,
+        estimatedDelivery: now - 1 * day,
         trackingNumber: 'CR-5529104',
+        receivedAt: now - 12 * 60 * 60 * 1000,
+        confirmationDueAt: now - 12 * 60 * 60 * 1000 + h48,
         paymentMethod: 'card',
     },
     {
@@ -138,14 +122,15 @@ let ORDERS = [
         amount: 120000,
         currency: 'CRC',
         shippingCost: 3000,
-        status: 'completed',
+        status: ORDER_STATUS.COMPLETED,
         fulfillment: 'ship',
         orderType: 'buy_now',
         purchasedAt: now - 40 * day,
-        soldAt: now - 40 * day,
-        payBy: null,
-        shipBy: now - 38 * day,
-        estimatedDelivery: now - 35 * day,
+        escrowHeldAt: now - 40 * day,
+        shippingTimeframe: '2-4 business days',
+        shippedAt: now - 38 * day,
+        receivedAt: now - 36 * day,
+        fundsReleasedAt: now - 35 * day,
         trackingNumber: 'CR-1102938',
         paymentMethod: 'card',
     },
@@ -159,18 +144,41 @@ let ORDERS = [
         amount: 280000,
         currency: 'CRC',
         shippingCost: 0,
-        status: 'pending_payment',
+        status: ORDER_STATUS.PENDING_PAYMENT,
         fulfillment: 'pickup',
         orderType: 'buy_now',
         purchasedAt: now - 2 * 60 * 60 * 1000,
-        soldAt: now - 2 * 60 * 60 * 1000,
-        payBy: now + 1 * day,
-        shipBy: null,
-        estimatedDelivery: null,
-        trackingNumber: null,
+        paymentDueAt: now + h48,
         paymentMethod: null,
     },
+    {
+        id: 'ord9',
+        sellerId: 'user1',
+        buyerId: 'user2',
+        itemId: 'sold6',
+        itemTitle: 'MacBook Air M2',
+        image: 'https://placehold.co/80x80/475569/ffffff?text=Mac',
+        amount: 520000,
+        currency: 'CRC',
+        shippingCost: 3500,
+        status: ORDER_STATUS.SHIPPED,
+        fulfillment: 'ship',
+        orderType: 'buy_now',
+        purchasedAt: now - 3 * day,
+        escrowHeldAt: now - 3 * day,
+        shipByAt: now - 2 * day,
+        shippingTimeframe: '2-3 business days',
+        shippedAt: now - 2 * day,
+        estimatedDelivery: now + 1 * day,
+        trackingNumber: 'CR-9912003',
+        paymentMethod: 'card',
+    },
 ];
+
+const patchOrder = (orderId, patch) => {
+    ORDERS = ORDERS.map(o => (o.id === orderId ? { ...o, ...patch } : o));
+    return ORDERS.find(o => o.id === orderId);
+};
 
 export const fetchSellerOrders = async (sellerId) => {
     await new Promise(r => setTimeout(r, 150));
@@ -182,44 +190,143 @@ export const fetchBuyerOrders = async (buyerId) => {
     return ORDERS.filter(o => o.buyerId === buyerId).sort((a, b) => b.purchasedAt - a.purchasedAt);
 };
 
-export const markOrderShipped = async (orderId, trackingNumber = '') => {
-    await new Promise(r => setTimeout(r, 200));
-    const order = ORDERS.find(o => o.id === orderId);
-    if (!order) throw new Error('ORDER_NOT_FOUND');
-    const updated = {
-        ...order,
-        status: order.fulfillment === 'pickup' ? 'completed' : 'shipped',
-        trackingNumber: trackingNumber.trim() || order.trackingNumber,
-        estimatedDelivery: order.fulfillment === 'ship' && !order.estimatedDelivery
-            ? Date.now() + 5 * day
-            : order.estimatedDelivery,
-    };
-    ORDERS = ORDERS.map(o => (o.id === orderId ? updated : o));
-    return updated;
+export const createCheckoutOrders = async ({ buyerId, items, fulfillment, paymentMethod }) => {
+    await new Promise(r => setTimeout(r, 300));
+    const created = items.map((item, idx) => {
+        const id = `ord_${Date.now()}_${idx}`;
+        const amount = (item.buyNowPrice || item.price) * (item.qty || 1);
+        const order = {
+            id,
+            sellerId: item.sellerId,
+            buyerId,
+            itemId: item.id,
+            itemTitle: item.title,
+            image: item.image,
+            amount,
+            currency: item.currency || 'CRC',
+            shippingCost: fulfillment === 'ship' ? (item.shippingCost || 0) : 0,
+            status: ORDER_STATUS.ESCROW_HELD,
+            fulfillment,
+            orderType: 'buy_now',
+            purchasedAt: Date.now(),
+            paymentDueAt: null,
+            escrowHeldAt: Date.now(),
+            shipByAt: Date.now() + h48,
+            shippingTimeframe: null,
+            shippedAt: null,
+            estimatedDelivery: null,
+            trackingNumber: null,
+            receivedAt: null,
+            confirmationDueAt: null,
+            claimReason: null,
+            paymentMethod,
+        };
+        return order;
+    });
+    ORDERS = [...created, ...ORDERS];
+    return created;
 };
 
 export const payBuyerOrder = async (orderId, paymentMethod = 'card') => {
     await new Promise(r => setTimeout(r, 250));
     const order = ORDERS.find(o => o.id === orderId);
     if (!order) throw new Error('ORDER_NOT_FOUND');
-    if (order.status !== 'pending_payment') throw new Error('NOT_PAYABLE');
+    if (order.status !== ORDER_STATUS.PENDING_PAYMENT) throw new Error('NOT_PAYABLE');
 
-    const updated = {
-        ...order,
-        status: 'pending_ship',
+    return patchOrder(orderId, {
+        status: ORDER_STATUS.ESCROW_HELD,
         paymentMethod,
-        payBy: null,
-        shipBy: order.fulfillment === 'pickup' ? Date.now() + 7 * day : Date.now() + 3 * day,
-    };
-    ORDERS = ORDERS.map(o => (o.id === orderId ? updated : o));
-    return updated;
+        paymentDueAt: null,
+        escrowHeldAt: Date.now(),
+        shipByAt: Date.now() + h48,
+    });
+};
+
+export const markOrderShipped = async (orderId, { trackingNumber = '', shippingTimeframe = '' } = {}) => {
+    await new Promise(r => setTimeout(r, 200));
+    const order = ORDERS.find(o => o.id === orderId);
+    if (!order) throw new Error('ORDER_NOT_FOUND');
+    if (order.status !== ORDER_STATUS.ESCROW_HELD) throw new Error('FUNDS_NOT_SECURED');
+
+    const timeframe = shippingTimeframe.trim();
+    if (!timeframe) throw new Error('TIMEFRAME_REQUIRED');
+
+    const shippedAt = Date.now();
+    return patchOrder(orderId, {
+        status: ORDER_STATUS.SHIPPED,
+        trackingNumber: trackingNumber.trim() || null,
+        shippingTimeframe: timeframe,
+        shippedAt,
+        estimatedDelivery: shippedAt + 5 * day,
+    });
+};
+
+export const markOrderReadyForPickup = async (orderId, { shippingTimeframe = '' } = {}) => {
+    await new Promise(r => setTimeout(r, 200));
+    const order = ORDERS.find(o => o.id === orderId);
+    if (!order) throw new Error('ORDER_NOT_FOUND');
+    if (order.status !== ORDER_STATUS.ESCROW_HELD) throw new Error('FUNDS_NOT_SECURED');
+
+    const timeframe = shippingTimeframe.trim();
+    if (!timeframe) throw new Error('TIMEFRAME_REQUIRED');
+
+    return patchOrder(orderId, {
+        status: ORDER_STATUS.SHIPPED,
+        shippingTimeframe: timeframe,
+        shippedAt: Date.now(),
+    });
 };
 
 export const confirmOrderReceived = async (orderId) => {
     await new Promise(r => setTimeout(r, 200));
     const order = ORDERS.find(o => o.id === orderId);
     if (!order) throw new Error('ORDER_NOT_FOUND');
-    const updated = { ...order, status: 'completed' };
-    ORDERS = ORDERS.map(o => (o.id === orderId ? updated : o));
-    return updated;
+    if (order.status !== ORDER_STATUS.SHIPPED) throw new Error('NOT_SHIPPED');
+
+    const receivedAt = Date.now();
+    return patchOrder(orderId, {
+        status: ORDER_STATUS.AWAITING_CONFIRMATION,
+        receivedAt,
+        confirmationDueAt: receivedAt + h48,
+    });
 };
+
+export const releaseFundsToSeller = async (orderId) => {
+    await new Promise(r => setTimeout(r, 200));
+    const order = ORDERS.find(o => o.id === orderId);
+    if (!order) throw new Error('ORDER_NOT_FOUND');
+    if (order.status !== ORDER_STATUS.AWAITING_CONFIRMATION) throw new Error('NOT_READY');
+
+    return patchOrder(orderId, {
+        status: ORDER_STATUS.COMPLETED,
+        fundsReleasedAt: Date.now(),
+    });
+};
+
+export const submitBuyerClaim = async (orderId, reason) => {
+    await new Promise(r => setTimeout(r, 250));
+    const order = ORDERS.find(o => o.id === orderId);
+    if (!order) throw new Error('ORDER_NOT_FOUND');
+    if (order.status !== ORDER_STATUS.AWAITING_CONFIRMATION) throw new Error('CLAIM_WINDOW_CLOSED');
+
+    const trimmed = reason.trim();
+    if (!trimmed) throw new Error('REASON_REQUIRED');
+
+    return patchOrder(orderId, {
+        status: ORDER_STATUS.CLAIM_PENDING,
+        claimReason: trimmed,
+        claimFiledAt: Date.now(),
+    });
+};
+
+export const sellerCancelOrder = async (orderId) => {
+    await new Promise(r => setTimeout(r, 200));
+    const order = ORDERS.find(o => o.id === orderId);
+    if (!order) throw new Error('ORDER_NOT_FOUND');
+    if (order.status !== ORDER_STATUS.PENDING_PAYMENT) throw new Error('CANNOT_CANCEL');
+
+    return patchOrder(orderId, { status: ORDER_STATUS.CANCELLED, cancelledAt: Date.now() });
+};
+
+/** @deprecated use releaseFundsToSeller */
+export const confirmOrderReceivedLegacy = confirmOrderReceived;

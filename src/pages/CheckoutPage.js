@@ -5,6 +5,8 @@ import { useCart } from '../context/CartContext';
 import { useItems } from '../context/ItemsContext';
 import { COSTA_RICA_LOCATIONS } from '../data/Constants';
 import { CRC, itemCurrency, formatMoneyTotals } from '../components/Shared';
+import EscrowPanel from '../components/EscrowPanel';
+import { createCheckoutOrders } from '../api/orders';
 
 const CheckoutPage = ({ loc }) => {
     const { user, saveAddress } = useAuth();
@@ -49,6 +51,9 @@ const CheckoutPage = ({ loc }) => {
         standardShipping: 'Standard Shipping',
         collectFromSeller: 'Collect from seller',
         addressAlias: 'Address',
+        escrowNote: 'Your payment is held securely by Subasti until you receive the item and confirm satisfaction (or 48 hours pass).',
+        orderSuccess: 'Payment secured in Subasti escrow. Track your order in Buying.',
+        placing: 'Securing payment…',
     } : {
         title: 'Finalizar Compra',
         deliveryMethod: 'Método de Entrega',
@@ -84,6 +89,9 @@ const CheckoutPage = ({ loc }) => {
         standardShipping: 'Envío Estándar',
         collectFromSeller: 'Recoger del vendedor',
         addressAlias: 'Dirección',
+        escrowNote: 'Su pago queda retenido de forma segura por Subasti hasta que reciba el artículo y confirme conformidad (o pasen 48 horas).',
+        orderSuccess: 'Pago asegurado en depósito Subasti. Rastree su pedido en Compras.',
+        placing: 'Asegurando pago…',
     };
 
     const isShippingAvailable = useMemo(() => cartWithDetails.every(item => item.shippingShip), [cartWithDetails]);
@@ -113,6 +121,7 @@ const CheckoutPage = ({ loc }) => {
     const [paymentDetails, setPaymentDetails] = useState({ nameOnCard: '', number: '', expiry: '', cvc: '' });
     
     const [showPaymentPrompt, setShowPaymentPrompt] = useState(true);
+    const [placing, setPlacing] = useState(false);
     
     const defaultPayment = useMemo(() => user?.savedPayments?.find(p => p.id === user.defaultPaymentId), [user]);
 
@@ -183,7 +192,7 @@ const CheckoutPage = ({ loc }) => {
         return totals;
     }, [subtotalsByCurrency, shippingByCurrency]);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         if (!user) {
             navigate('/login');
@@ -201,9 +210,25 @@ const CheckoutPage = ({ loc }) => {
                 saveAddress(newAddressToSave);
             }
         }
-        alert(loc === 'en' ? 'Order placed successfully!' : '¡Pedido realizado con éxito!');
-        clearCart();
-        navigate('/');
+        setPlacing(true);
+        try {
+            await createCheckoutOrders({
+                buyerId: user.id,
+                items: cartWithDetails.map(item => ({
+                    ...item,
+                    qty: item.qty,
+                })),
+                fulfillment: deliveryMethod,
+                paymentMethod,
+            });
+            clearCart();
+            alert(L.orderSuccess);
+            navigate('/profile?tab=buying');
+        } catch {
+            alert(loc === 'en' ? 'Checkout failed. Please try again.' : 'Error en la compra. Intente de nuevo.');
+        } finally {
+            setPlacing(false);
+        }
     };
 
     if (!user) {
@@ -235,6 +260,8 @@ const CheckoutPage = ({ loc }) => {
     return (
         <div>
             <h1 className="text-3xl font-bold text-gray-800 mb-6">{L.title}</h1>
+            <EscrowPanel loc={loc} />
+            <p className="text-sm text-gray-600 mb-6 -mt-2">{L.escrowNote}</p>
             <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 space-y-6">
                     {/* Delivery Method */}
@@ -393,9 +420,10 @@ const CheckoutPage = ({ loc }) => {
                             <div className="flex justify-between"><span>{L.shipping}</span><span>{Object.keys(shippingByCurrency).length === 0 ? L.free : formatMoneyTotals(shippingByCurrency, loc)}</span></div>
                             <div className="flex justify-between font-bold text-lg border-t pt-4 mt-2"><span>{L.total}</span><span>{formatMoneyTotals(totalsByCurrency, loc)}</span></div>
                         </div>
-                        <button type="submit" className="mt-6 w-full bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors">
-                            {L.placeOrder}
+                        <button type="submit" disabled={placing} className="mt-6 w-full bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors disabled:opacity-60">
+                            {placing ? L.placing : L.placeOrder}
                         </button>
+                        <p className="text-xs text-gray-500 mt-3 text-center">{L.escrowNote}</p>
                     </div>
                 </div>
             </form>

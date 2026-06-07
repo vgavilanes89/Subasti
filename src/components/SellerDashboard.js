@@ -12,6 +12,8 @@ import { saleTypeBadge } from '../data/i18n';
 import * as sellerApi from '../api/seller';
 import { useMessages } from '../context/MessagesContext';
 import ChatPanel from './ChatPanel';
+import { sellerStatusLabel, orderStatusClass, canSellerShip, canSellerCancel } from '../data/escrow';
+import EscrowPanel from './EscrowPanel';
 
 const sumByCurrency = (entries, getAmount) =>
     entries.reduce((acc, entry) => {
@@ -19,31 +21,6 @@ const sumByCurrency = (entries, getAmount) =>
         acc[currency] = (acc[currency] || 0) + getAmount(entry);
         return acc;
     }, {});
-
-const orderStatusLabel = (status, loc) => {
-    const en = {
-        pending_payment: 'Awaiting payment',
-        pending_ship: 'Ship now',
-        shipped: 'Shipped',
-        completed: 'Completed',
-        cancelled: 'Cancelled',
-    };
-    const es = {
-        pending_payment: 'Esperando pago',
-        pending_ship: 'Enviar ahora',
-        shipped: 'Enviado',
-        completed: 'Completado',
-        cancelled: 'Cancelado',
-    };
-    return (loc === 'en' ? en : es)[status] || status;
-};
-
-const orderStatusClass = (status) => {
-    if (status === 'pending_ship' || status === 'pending_payment') return 'seller-badge seller-badge--warn';
-    if (status === 'shipped') return 'seller-badge seller-badge--info';
-    if (status === 'completed') return 'seller-badge seller-badge--ok';
-    return 'seller-badge';
-};
 
 const listingStatus = (item, loc) => {
     if (item.saleType === 'auc') {
@@ -69,7 +46,9 @@ const SellerDashboard = ({ user, users, items, loc }) => {
     const [orders, setOrders] = useState([]);
     const [activeThreadId, setActiveThreadId] = useState(null);
     const [trackingDraft, setTrackingDraft] = useState({});
+    const [timeframeDraft, setTimeframeDraft] = useState({});
     const [loading, setLoading] = useState(true);
+    const [acting, setActing] = useState(null);
 
     const L = loc === 'en' ? {
         dashboard: 'Seller Dashboard',
@@ -109,6 +88,14 @@ const SellerDashboard = ({ user, users, items, loc }) => {
         thisMonth: 'This month',
         liveAuctions: 'live auctions',
         buyNow: 'buy now',
+        escrowHeld: 'Funds secured in Subasti escrow — ship within 48h',
+        awaitingPayment: 'Do not ship until buyer payment is secured',
+        cancelOrder: 'Cancel & relist',
+        cancelSuccess: 'Order cancelled. You may repost the item.',
+        shipTimeframe: 'Delivery timeframe',
+        shipTimeframePh: 'e.g. 3-5 business days',
+        timeframeRequired: 'Enter the expected delivery timeframe before shipping.',
+        paymentDue: 'Payment due by',
     } : {
         dashboard: 'Panel de Vendedor',
         totalEarned: 'Total ganado',
@@ -147,6 +134,14 @@ const SellerDashboard = ({ user, users, items, loc }) => {
         thisMonth: 'Este mes',
         liveAuctions: 'subastas activas',
         buyNow: 'compra directa',
+        escrowHeld: 'Fondos asegurados en depósito Subasti — envíe en 48h',
+        awaitingPayment: 'No envíe hasta que el pago del comprador esté asegurado',
+        cancelOrder: 'Cancelar y republicar',
+        cancelSuccess: 'Pedido cancelado. Puede volver a publicar el artículo.',
+        shipTimeframe: 'Plazo de entrega',
+        shipTimeframePh: 'ej. 3-5 días hábiles',
+        timeframeRequired: 'Indique el plazo estimado de entrega antes de enviar.',
+        paymentDue: 'Pago antes de',
     };
 
     useEffect(() => {
@@ -179,9 +174,12 @@ const SellerDashboard = ({ user, users, items, loc }) => {
     const liveAuctions = activeListings.filter(i => i.saleType === 'auc').length;
     const buyNowCount = activeListings.filter(i => i.saleType === 'buy').length;
 
-    const completedOrders = orders.filter(o => o.status === 'completed' || o.status === 'shipped');
-    const pendingShip = orders.filter(o => o.status === 'pending_ship');
-    const pendingPayout = orders.filter(o => o.status === 'pending_payment' || o.status === 'pending_ship');
+    const completedOrders = orders.filter(o => o.status === 'completed');
+    const pendingShip = orders.filter(o => o.status === 'escrow_held');
+    const awaitingPayment = orders.filter(o => o.status === 'pending_payment');
+    const pendingPayout = orders.filter(o =>
+        ['escrow_held', 'shipped', 'awaiting_confirmation', 'claim_pending'].includes(o.status)
+    );
 
     const earnedAllTime = sumByCurrency(completedOrders, o => o.amount + (o.shippingCost || 0));
     const monthStart = new Date();
@@ -209,10 +207,37 @@ const SellerDashboard = ({ user, users, items, loc }) => {
         });
     };
 
-    const handleMarkShipped = async (orderId) => {
-        const tracking = trackingDraft[orderId] || '';
-        const updated = await sellerApi.markOrderShipped(orderId, tracking);
-        setOrders(prev => prev.map(o => (o.id === orderId ? updated : o)));
+    const handleMarkShipped = async (order) => {
+        const timeframe = (timeframeDraft[order.id] || '').trim();
+        if (!timeframe) {
+            alert(L.timeframeRequired);
+            return;
+        }
+        setActing(order.id);
+        try {
+            const tracking = trackingDraft[order.id] || '';
+            const updated = order.fulfillment === 'pickup'
+                ? await sellerApi.markOrderReadyForPickup(order.id, { shippingTimeframe: timeframe })
+                : await sellerApi.markOrderShipped(order.id, { trackingNumber: tracking, shippingTimeframe: timeframe });
+            setOrders(prev => prev.map(o => (o.id === order.id ? updated : o)));
+        } catch {
+            // ignore
+        } finally {
+            setActing(null);
+        }
+    };
+
+    const handleCancelOrder = async (orderId) => {
+        setActing(orderId);
+        try {
+            const updated = await sellerApi.sellerCancelOrder(orderId);
+            setOrders(prev => prev.map(o => (o.id === orderId ? updated : o)));
+            alert(L.cancelSuccess);
+        } catch {
+            // ignore
+        } finally {
+            setActing(null);
+        }
     };
 
     if (loading) {
@@ -226,6 +251,10 @@ const SellerDashboard = ({ user, users, items, loc }) => {
     return (
         <div className="seller-dashboard">
             <h3 className="text-xl font-bold text-gray-800 mb-4">{L.dashboard}</h3>
+
+            <div className="seller-section">
+                <EscrowPanel loc={loc} compact />
+            </div>
 
             <div className="seller-stats-grid">
                 <StatCard
@@ -263,11 +292,13 @@ const SellerDashboard = ({ user, users, items, loc }) => {
                 />
             </div>
 
-            <div className={`seller-notice ${pendingShip.length ? 'seller-notice--warn' : 'seller-notice--ok'}`}>
+            <div className={`seller-notice ${pendingShip.length || awaitingPayment.length ? 'seller-notice--warn' : 'seller-notice--ok'}`}>
                 <strong>{L.notices}:</strong>{' '}
                 {pendingShip.length
                     ? `${pendingShip.length} ${L.shipNotice}`
-                    : L.noNotices}
+                    : awaitingPayment.length
+                        ? `${awaitingPayment.length} ${loc === 'en' ? 'awaiting buyer payment (do not ship yet).' : 'esperando pago del comprador (no envíe aún).'}` 
+                        : L.noNotices}
             </div>
 
             <div className="seller-section">
@@ -346,10 +377,22 @@ const SellerDashboard = ({ user, users, items, loc }) => {
                                         </p>
                                         <p className="text-sm text-gray-600">
                                             {order.fulfillment === 'ship' ? L.fulfillmentShip : L.fulfillmentPickup}
-                                            {order.shipBy && order.status === 'pending_ship' && (
-                                                <> · {L.shipBy} {formatDate(order.shipBy)}</>
+                                            {order.shipByAt && order.status === 'escrow_held' && (
+                                                <> · {L.shipBy} {formatDate(order.shipByAt)}</>
+                                            )}
+                                            {order.status === 'pending_payment' && order.paymentDueAt && (
+                                                <> · {L.paymentDue} {formatDate(order.paymentDueAt)}</>
+                                            )}
+                                            {order.shippingTimeframe && (
+                                                <> · {L.shipTimeframe}: {order.shippingTimeframe}</>
                                             )}
                                         </p>
+                                        {order.status === 'escrow_held' && (
+                                            <p className="text-xs text-purple-600 font-medium mt-0.5">{L.escrowHeld}</p>
+                                        )}
+                                        {order.status === 'pending_payment' && (
+                                            <p className="text-xs text-amber-700 font-medium mt-0.5">{L.awaitingPayment}</p>
+                                        )}
                                         <p className="text-sm font-bold text-purple-700 mt-1">
                                             {formatMoney(order.amount, loc, order.currency)}
                                             {order.shippingCost > 0 && (
@@ -362,10 +405,18 @@ const SellerDashboard = ({ user, users, items, loc }) => {
                                 </div>
                                 <div className="seller-order-actions">
                                     <span className={orderStatusClass(order.status)}>
-                                        {orderStatusLabel(order.status, loc)}
+                                        {sellerStatusLabel(order, loc)}
                                     </span>
-                                    {order.status === 'pending_ship' && (
+                                    {canSellerShip(order) && (
                                         <div className="seller-ship-form">
+                                            <input
+                                                type="text"
+                                                placeholder={L.shipTimeframePh}
+                                                value={timeframeDraft[order.id] || ''}
+                                                onChange={e => setTimeframeDraft(prev => ({ ...prev, [order.id]: e.target.value }))}
+                                                className="seller-input"
+                                                required
+                                            />
                                             {order.fulfillment === 'ship' && (
                                                 <input
                                                     type="text"
@@ -377,12 +428,23 @@ const SellerDashboard = ({ user, users, items, loc }) => {
                                             )}
                                             <button
                                                 type="button"
-                                                onClick={() => handleMarkShipped(order.id)}
+                                                disabled={acting === order.id}
+                                                onClick={() => handleMarkShipped(order)}
                                                 className="seller-action-btn"
                                             >
-                                                {order.fulfillment === 'ship' ? L.markShipped : L.markPickup}
+                                                {acting === order.id ? '…' : (order.fulfillment === 'ship' ? L.markShipped : L.markPickup)}
                                             </button>
                                         </div>
+                                    )}
+                                    {canSellerCancel(order) && (
+                                        <button
+                                            type="button"
+                                            disabled={acting === order.id}
+                                            onClick={() => handleCancelOrder(order.id)}
+                                            className="buyer-order-link-btn"
+                                        >
+                                            {L.cancelOrder}
+                                        </button>
                                     )}
                                     {order.trackingNumber && (
                                         <p className="text-xs text-gray-500">{L.tracking}: {order.trackingNumber}</p>

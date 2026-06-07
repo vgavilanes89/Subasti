@@ -60,7 +60,7 @@ const ProfilePage = ({ loc }) => {
         if (!user) return;
         fetchBuyerOrders(user.id).then(orders => {
             const alerts = orders.filter(o =>
-                o.status === 'pending_payment' || o.status === 'shipped'
+                o.status === 'pending_payment' || o.status === 'shipped' || o.status === 'awaiting_confirmation'
             ).length;
             setBuyerAlertCount(alerts);
         });

@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { useHomeFilters } from '../context/HomeFilterContext';
 import { PLACEHOLDER_IMG, CRC, CountdownTimer, itemCurrency } from '../components/Shared';
 import { tCategory, tSubCategory, formatCondition } from '../data/i18n';
+import EscrowPanel from '../components/EscrowPanel';
 
 const getItemPrice = (item) =>
   item.saleType === 'auc' ? (item.currentBid ?? item.price ?? 0) : (item.price ?? 0);
@@ -242,6 +243,7 @@ const HomePage = ({ loc, categories }) => {
 
   return (
     <div className="space-y-6">
+      <EscrowPanel loc={loc} />
       {/* Filter Bar */}
       <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
         <div className="home-filter-bar">
