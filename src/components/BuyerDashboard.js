@@ -1,16 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PLACEHOLDER_IMG, formatMoney, formatMoneyTotals } from './Shared';
+import { PLACEHOLDER_IMG, formatMoney } from './Shared';
 import { useMessages } from '../context/MessagesContext';
 import ChatPanel from './ChatPanel';
 import * as ordersApi from '../api/orders';
-
-const sumByCurrency = (entries, getAmount) =>
-    entries.reduce((acc, entry) => {
-        const currency = entry.currency || 'CRC';
-        acc[currency] = (acc[currency] || 0) + getAmount(entry);
-        return acc;
-    }, {});
 
 const buyerStatusLabel = (order, loc) => {
     const { status, fulfillment } = order;
@@ -187,7 +180,6 @@ const BuyerDashboard = ({
 
     const L = loc === 'en' ? {
         dashboard: 'Buying Dashboard',
-        totalSpent: 'Total spent',
         pendingPayment: 'Awaiting payment',
         inTransit: 'In transit',
         activeOrders: 'Active orders',
@@ -229,7 +221,6 @@ const BuyerDashboard = ({
         orders: 'orders',
     } : {
         dashboard: 'Panel de Compras',
-        totalSpent: 'Total gastado',
         pendingPayment: 'Esperando pago',
         inTransit: 'En tránsito',
         activeOrders: 'Pedidos activos',
@@ -297,8 +288,6 @@ const BuyerDashboard = ({
     );
     const completed = useMemo(() => orders.filter(o => o.status === 'completed'), [orders]);
     const activeCount = orders.filter(o => o.status !== 'completed' && o.status !== 'cancelled').length;
-
-    const spentTotals = sumByCurrency(completed, o => o.amount + (o.shippingCost || 0));
 
     const myFavorites = items.filter(i => favorites.includes(i.id));
 
@@ -380,12 +369,6 @@ const BuyerDashboard = ({
             <h3 className="text-xl font-bold text-gray-800 mb-4">{L.dashboard}</h3>
 
             <div className="seller-stats-grid">
-                <StatCard
-                    label={L.totalSpent}
-                    value={formatMoneyTotals(spentTotals, loc) || '—'}
-                    sub={`${completed.length} ${loc === 'en' ? 'completed' : 'completados'}`}
-                    accent="purple"
-                />
                 <StatCard
                     label={L.pendingPayment}
                     value={pendingPayment.length}
