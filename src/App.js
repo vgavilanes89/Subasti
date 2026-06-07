@@ -37,12 +37,21 @@ function App() {
 
   // Static Categories definition
   const CATEGORIES = useMemo(() => ({
-    'Electrónicos': ['Celulares', 'Computadoras', 'Cámaras', 'Audio y Video', 'Videojuegos', 'Otro'],
-    'Hogar': ['Muebles', 'Electrodomésticos', 'Decoración', 'Jardinería', 'Herramientas', 'Otro'],
-    'Deportes': ['Ciclismo', 'Fitness', 'Deportes de Equipo', 'Acuáticos', 'Otro'],
-    'Moda': ['Ropa de Mujer', 'Ropa de Hombre', 'Calzado', 'Accesorios', 'Bolsos', 'Otro'],
+    'Electrónicos': ['Celulares', 'Computadoras', 'Tablets', 'Cámaras', 'Televisores', 'Audio y Video', 'Videojuegos', 'Accesorios Tech', 'Otro'],
+    'Hogar': ['Muebles', 'Electrodomésticos', 'Cocina', 'Decoración', 'Jardinería', 'Herramientas', 'Limpieza', 'Otro'],
+    'Deportes': ['Ciclismo', 'Fitness', 'Deportes de Equipo', 'Acuáticos', 'Camping', 'Otro'],
+    'Moda': ['Ropa de Mujer', 'Ropa de Hombre', 'Ropa Infantil', 'Calzado', 'Accesorios', 'Bolsos', 'Joyería', 'Otro'],
+    'Salud y Belleza': ['Cuidado Personal', 'Maquillaje', 'Perfumes', 'Suplementos', 'Otro'],
+    'Juguetes y Bebés': ['Juguetes', 'Bebés', 'Juegos de Mesa', 'Otro'],
+    'Mascotas': ['Alimentos para Mascotas', 'Accesorios para Mascotas', 'Higiene Animal', 'Otro'],
     'Libros': ['Ficción', 'No Ficción', 'Infantil y Juvenil', 'Académicos', 'Comics y Manga', 'Otro'],
-    'Vehículos': ['Repuestos y Accesorios', 'Otro'],
+    'Música e Instrumentos': ['Guitarras', 'Teclados', 'Batería y Percusión', 'Audio DJ', 'Otro'],
+    'Arte y Artesanía': ['Arte y Dibujo', 'Hecho a Mano', 'Manualidades', 'Otro'],
+    'Coleccionables': ['Monedas y Billetes', 'Tarjetas Coleccionables', 'Memorabilia', 'Antigüedades', 'Otro'],
+    'Oficina y Escuela': ['Útiles Escolares', 'Muebles de Oficina', 'Impresión', 'Otro'],
+    'Jardín y Exterior': ['Plantas', 'Parrillas', 'Muebles de Exterior', 'Otro'],
+    'Alimentos': ['Gourmet', 'Bebidas', 'Orgánicos', 'Otro'],
+    'Vehículos': ['Repuestos y Accesorios', 'Motos y ATV', 'Llantas y Rines', 'Audio para Carro', 'Otro'],
   }), []);
 
   // Localization for Layout elements
