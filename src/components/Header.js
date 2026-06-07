@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import { useHomeFilters } from '../context/HomeFilterContext';
 import logoImage from '../images/subasti-logo.png';
 
 const Header = ({ loc, setLoc }) => {
     const { user, logout } = useAuth();
     const { cartCount } = useCart();
+    const { resetFilters } = useHomeFilters();
     const navigate = useNavigate();
+    const location = useLocation();
     const [menuOpen, setMenuOpen] = useState(false);
 
     const handleLogout = () => {
@@ -16,12 +19,20 @@ const Header = ({ loc, setLoc }) => {
         navigate('/');
     };
 
+    const handleLogoClick = (e) => {
+        resetFilters();
+        if (location.pathname !== '/') {
+            e.preventDefault();
+            navigate('/');
+        }
+    };
+
     return (
         <header className="bg-white shadow-md sticky top-0 z-50 border-b">
             <div className="container mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-16">
                     {/* Logo */}
-                    <Link to="/" className="flex items-center gap-2">
+                    <Link to="/" onClick={handleLogoClick} className="flex items-center gap-2">
                         <img src={logoImage} alt="Subasti" className="h-12 w-auto object-contain" />
                     </Link>
 

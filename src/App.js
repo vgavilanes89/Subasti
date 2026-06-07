@@ -5,6 +5,7 @@ import { Routes, Route, Link } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ItemsProvider } from './context/ItemsContext';
 import { CartProvider } from './context/CartContext';
+import { HomeFilterProvider } from './context/HomeFilterContext';
 
 // 2. Import Layout Components
 import Header from './components/Header';
@@ -84,11 +85,11 @@ function App() {
   };
 
   return (
-    /* Wrap App in Providers to share state globally */
     <AuthProvider>
       <ItemsProvider>
         <CartProvider>
-          <div className="bg-gray-50 min-h-screen text-gray-800 font-sans flex flex-col">
+          <HomeFilterProvider>
+            <div className="bg-gray-50 min-h-screen text-gray-800 font-sans flex flex-col">
             
             {/* Persistent Header */}
             <Header loc={loc} setLoc={setLoc} />
@@ -168,7 +169,8 @@ function App() {
                 </div>
               </div>
             </footer>
-          </div>
+            </div>
+          </HomeFilterProvider>
         </CartProvider>
       </ItemsProvider>
     </AuthProvider>

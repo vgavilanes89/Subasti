@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useItems } from '../context/ItemsContext';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { useHomeFilters } from '../context/HomeFilterContext';
 import { PLACEHOLDER_IMG, CRC, CountdownTimer, itemCurrency } from '../components/Shared';
 import { tCategory, tSubCategory, formatCondition } from '../data/i18n';
 
@@ -14,11 +15,7 @@ const HomePage = ({ loc, categories }) => {
   
   // Use React Router for navigation
   const navigate = useNavigate();
-
-  // Local state for filters
-  const [q, setQ] = useState('');
-  const [cat, setCat] = useState('*');
-  const [sort, setSort] = useState('newest');
+  const { q, setQ, cat, setCat, sort, setSort } = useHomeFilters();
 
   // Localization strings
   const L = loc === 'en' ? { 
