@@ -94,16 +94,16 @@ function App() {
       <ItemsProvider>
         <CartProvider>
           <HomeFilterProvider>
-            <div className="bg-gray-50 min-h-screen text-gray-800 font-sans flex flex-col">
+            <div className="bg-brand-cream min-h-screen text-gray-800 font-sans flex flex-col">
             
             {/* Persistent Header */}
             <Header loc={loc} setLoc={setLoc} />
 
             {isHomePage && (
-              <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
+              <div className="bg-gradient-to-r from-purple-700 via-purple-600 to-indigo-500 text-white">
                 <div className="container mx-auto py-8 px-4 text-center">
                   <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">{bannerL.text}</h2>
-                  <p className="mt-2 text-lg text-purple-200">{bannerL.sub}</p>
+                  <p className="mt-2 text-lg text-indigo-100">{bannerL.sub}</p>
                 </div>
               </div>
             )}
@@ -144,7 +144,7 @@ function App() {
             </main>
 
             {/* Persistent Footer */}
-            <footer className="bg-gray-800 text-white">
+            <footer className="bg-purple-900 text-white">
               <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
                   <div>

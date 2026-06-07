@@ -3,16 +3,53 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
+    <meta name="theme-color" content="#1e3a5f" />
     <meta
       name="description"
       content="Subasti - Online Auction and Marketplace"
     />
     <title>Subasti App</title>
     
-    <!-- Tailwind CSS -->
-    <!-- Note: In a production build, you might install this via npm, 
-         but we keep the CDN here for easy setup -->
+    <!-- Tailwind CSS + Subasti brand palette (navy + gold) -->
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              purple: {
+                50: '#eef2f7',
+                100: '#dce4ef',
+                200: '#b8c5d9',
+                300: '#8fa3be',
+                400: '#5c7596',
+                500: '#3d5a80',
+                600: '#1e3a5f',
+                700: '#152a45',
+                800: '#0f2035',
+                900: '#0a1628',
+              },
+              indigo: {
+                50: '#fdf9ef',
+                100: '#f5ecd4',
+                200: '#e8d9a8',
+                300: '#d9c078',
+                400: '#c9a227',
+                500: '#c9a227',
+                600: '#a8861f',
+                700: '#876f18',
+                800: '#6b5813',
+                900: '#4f400e',
+              },
+              brand: {
+                cream: '#faf8f4',
+                navy: '#1e3a5f',
+                gold: '#c9a227',
+              },
+            },
+          },
+        },
+      };
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Font Awesome (Optional, for icons if needed) -->
