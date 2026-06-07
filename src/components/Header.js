@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
-import logoImage from '../images/istockphoto-691094018-612x612.jpg';
+import logoImage from '../images/subasti-logo.png';
 
 const Header = ({ loc, setLoc }) => {
     const { user, logout } = useAuth();
@@ -21,9 +21,8 @@ const Header = ({ loc, setLoc }) => {
             <div className="container mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-16">
                     {/* Logo */}
-                    <Link to="/" className="flex items-center gap-2 text-2xl font-bold text-purple-600">
-                        <img src={logoImage} alt="Subasti Logo" className="h-10 w-10 object-contain" />
-                        <span className="mt-1">SUBASTI</span>
+                    <Link to="/" className="flex items-center gap-2">
+                        <img src={logoImage} alt="Subasti" className="h-12 w-auto object-contain" />
                     </Link>
 
                     {/* Navigation Actions */}
