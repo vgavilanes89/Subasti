@@ -7,6 +7,47 @@ import { useHomeFilters } from '../context/HomeFilterContext';
 import { PLACEHOLDER_IMG, CRC, CountdownTimer, itemCurrency } from '../components/Shared';
 import { tCategory, tSubCategory, formatCondition } from '../data/i18n';
 
+const getItemPrice = (item) =>
+  item.saleType === 'auc' ? (item.currentBid ?? item.price ?? 0) : (item.price ?? 0);
+
+const sortItems = (list, sortKey, itemOrder, locale) => {
+  const sorted = [...list];
+  const localeTag = locale === 'en' ? 'en' : 'es';
+
+  switch (sortKey) {
+    case 'pAsc':
+      return sorted.sort((a, b) => getItemPrice(a) - getItemPrice(b));
+    case 'pDesc':
+      return sorted.sort((a, b) => getItemPrice(b) - getItemPrice(a));
+    case 'titleAsc':
+      return sorted.sort((a, b) => a.title.localeCompare(b.title, localeTag, { sensitivity: 'base' }));
+    case 'titleDesc':
+      return sorted.sort((a, b) => b.title.localeCompare(a.title, localeTag, { sensitivity: 'base' }));
+    case 'endingSoon':
+      return sorted.sort((a, b) => {
+        if (a.saleType !== 'auc' && b.saleType !== 'auc') return 0;
+        if (a.saleType !== 'auc') return 1;
+        if (b.saleType !== 'auc') return -1;
+        return (a.endAt ?? 0) - (b.endAt ?? 0);
+      });
+    case 'mostBids':
+      return sorted.sort((a, b) => (b.bids ?? 0) - (a.bids ?? 0));
+    case 'auctionsFirst':
+      return sorted.sort((a, b) => {
+        if (a.saleType === b.saleType) return (itemOrder.get(a.id) ?? 0) - (itemOrder.get(b.id) ?? 0);
+        return a.saleType === 'auc' ? -1 : 1;
+      });
+    case 'buyFirst':
+      return sorted.sort((a, b) => {
+        if (a.saleType === b.saleType) return (itemOrder.get(a.id) ?? 0) - (itemOrder.get(b.id) ?? 0);
+        return a.saleType === 'buy' ? -1 : 1;
+      });
+    case 'newest':
+    default:
+      return sorted.sort((a, b) => (itemOrder.get(a.id) ?? 0) - (itemOrder.get(b.id) ?? 0));
+  }
+};
+
 const HomePage = ({ loc, categories }) => {
   // Use global state from Contexts
   const { items, isFav, toggleFav } = useItems();
@@ -35,6 +76,12 @@ const HomePage = ({ loc, categories }) => {
     auction: 'AUCTION',
     buyNowBadge: 'BUY NOW',
     allCategories: 'All',
+    titleAsc: 'Title: A→Z',
+    titleDesc: 'Title: Z→A',
+    endingSoon: 'Ending soon',
+    mostBids: 'Most bids',
+    auctionsFirst: 'Auctions first',
+    buyFirst: 'Buy now first',
   } : { 
     newest: 'Más recientes', 
     pAsc: 'Precio: menor→mayor', 
@@ -52,6 +99,12 @@ const HomePage = ({ loc, categories }) => {
     auction: 'SUBASTA',
     buyNowBadge: 'COMPRA',
     allCategories: 'Todos',
+    titleAsc: 'Título: A→Z',
+    titleDesc: 'Título: Z→A',
+    endingSoon: 'Termina pronto',
+    mostBids: 'Más ofertas',
+    auctionsFirst: 'Subastas primero',
+    buyFirst: 'Compra primero',
   };
 
   const allCats = useMemo(() => ['*', ...Object.keys(categories)], [categories]);
@@ -70,6 +123,8 @@ const HomePage = ({ loc, categories }) => {
   const categoryLinkClass = (value) =>
     `transition-colors ${cat === value ? 'text-purple-600 font-semibold' : 'text-gray-600 hover:text-purple-600'}`;
 
+  const itemOrder = useMemo(() => new Map(items.map((item, index) => [item.id, index])), [items]);
+
   // Apply search and category filters
   const filtered = activeItems.filter(i => {
     const qq = (q ?? '').trim().toLowerCase();
@@ -79,7 +134,10 @@ const HomePage = ({ loc, categories }) => {
   });
 
   // Apply sorting
-  const showing = [...filtered].sort((a, b) => sort === 'pAsc' ? (a.price - b.price) : sort === 'pDesc' ? (b.price - a.price) : 0);
+  const showing = useMemo(
+    () => sortItems(filtered, sort, itemOrder, loc),
+    [filtered, sort, itemOrder, loc]
+  );
 
   // Handlers
   const handleBuyNow = (id) => {
@@ -210,6 +268,12 @@ const HomePage = ({ loc, categories }) => {
             <option value="newest">{L.newest}</option>
             <option value="pAsc">{L.pAsc}</option>
             <option value="pDesc">{L.pDesc}</option>
+            <option value="titleAsc">{L.titleAsc}</option>
+            <option value="titleDesc">{L.titleDesc}</option>
+            <option value="endingSoon">{L.endingSoon}</option>
+            <option value="mostBids">{L.mostBids}</option>
+            <option value="auctionsFirst">{L.auctionsFirst}</option>
+            <option value="buyFirst">{L.buyFirst}</option>
           </select>
         </div>
         <nav className="home-category-links mt-3 pt-3 border-t border-gray-100" aria-label={loc === 'en' ? 'Browse by category' : 'Explorar por categoría'}>
