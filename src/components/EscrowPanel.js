@@ -5,11 +5,11 @@ const EscrowPanel = ({ loc, compact = false }) => {
     const steps = escrowPolicySteps(loc);
     const L = loc === 'en' ? {
         title: 'Subasti Secure Escrow',
-        subtitle: 'eBay-style protection for buyers and sellers in Costa Rica',
+        subtitle: 'Secure protection for buyers and sellers in Costa Rica',
         badge: 'Funds held by Subasti until you are satisfied',
     } : {
         title: 'Depósito en Garantía Subasti',
-        subtitle: 'Protección estilo eBay para compradores y vendedores en Costa Rica',
+        subtitle: 'Protección segura para compradores y vendedores en Costa Rica',
         badge: 'Los fondos los retiene Subasti hasta que usted esté conforme',
     };
 

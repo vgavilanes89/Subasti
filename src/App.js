@@ -85,8 +85,8 @@ function App() {
   };
 
   const bannerL = loc === 'en'
-    ? { text: 'Buy & Sell Securely in Costa Rica', sub: 'Subasti holds your payment in escrow until you receive your item — eBay-style protection, built for local commerce.' }
-    : { text: 'Compre y Venda con Seguridad en Costa Rica', sub: 'Subasti retiene su pago en depósito hasta que reciba el artículo — protección estilo eBay, hecha para el comercio local.' };
+    ? { text: 'Buy and Sell Your Items Now!', sub: 'Join the largest online marketplace in Costa Rica.' }
+    : { text: '¡Compra y Vende Tus Artículos Ahora!', sub: 'Únete al mercado en línea más grande de Costa Rica.' };
 
   return (
     <AuthProvider>
