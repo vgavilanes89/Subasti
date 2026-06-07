@@ -6,6 +6,8 @@ import { useAuth } from '../context/AuthContext';
 import { PLACEHOLDER_IMG, CRC, CountdownTimer, StarRating, calculateAverageRating, useCountdown, itemCurrency } from '../components/Shared';
 import { tCategory, tSubCategory, formatCondition } from '../data/i18n';
 import { getMinBid } from '../api/items';
+import { useMessages } from '../context/MessagesContext';
+import ChatPanel from '../components/ChatPanel';
 
 const ItemViewPage = ({ loc }) => {
     // 1. Get ID from URL and tools from Context
@@ -14,7 +16,8 @@ const ItemViewPage = ({ loc }) => {
     const { items, isFav, toggleFav, placeBid } = useItems();
     const { addToCart } = useCart();
     // We access 'users' map here to look up seller details by ID
-    const { user, users } = useAuth(); 
+    const { user, users } = useAuth();
+    const { getOrCreateThread, buyerThreads } = useMessages();
 
     // 2. Find specific data
     const item = items.find(i => i.id === id);
@@ -25,6 +28,9 @@ const ItemViewPage = ({ loc }) => {
     const [selectedQuantity, setSelectedQuantity] = useState(1);
     const [bidAmount, setBidAmount] = useState('');
     const [bidError, setBidError] = useState('');
+    const [chatOpen, setChatOpen] = useState(false);
+    const [chatThreadId, setChatThreadId] = useState(null);
+    const [chatLoading, setChatLoading] = useState(false);
 
     const minBid = useMemo(() => (item ? getMinBid(item) : 0), [item]);
 
@@ -92,6 +98,11 @@ const ItemViewPage = ({ loc }) => {
         bidSuccess: 'Bid placed successfully!',
         ownItem: 'You cannot bid on your own listing.',
         bidCount: 'Total bids',
+        messageSeller: 'Message seller',
+        closeChat: 'Close chat',
+        loginToMessage: 'Log in to message the seller',
+        ownItemMessage: 'You cannot message yourself about your own listing.',
+        viewInProfile: 'View all messages in your profile',
     } : { 
         back: 'Atrás', 
         add: 'Agregar al carrito', 
@@ -130,6 +141,11 @@ const ItemViewPage = ({ loc }) => {
         bidSuccess: '¡Puja realizada con éxito!',
         ownItem: 'No puedes pujar en tu propio artículo.',
         bidCount: 'Ofertas totales',
+        messageSeller: 'Enviar mensaje al vendedor',
+        closeChat: 'Cerrar chat',
+        loginToMessage: 'Inicia sesión para escribirle al vendedor',
+        ownItemMessage: 'No puedes enviarte mensajes sobre tu propio artículo.',
+        viewInProfile: 'Ver todos los mensajes en tu perfil',
     };
 
     const currency = itemCurrency(item);
@@ -150,6 +166,33 @@ const ItemViewPage = ({ loc }) => {
         if(!user) { navigate('/login'); return; }
         toggleFav(item.id);
     };
+
+    const handleMessageSeller = async () => {
+        if (!user) {
+            navigate('/login');
+            return;
+        }
+        if (user.id === item.sellerId) {
+            alert(L.ownItemMessage);
+            return;
+        }
+        setChatLoading(true);
+        try {
+            const thread = await getOrCreateThread({
+                itemId: item.id,
+                itemTitle: item.title,
+                sellerId: item.sellerId,
+                buyerId: user.id,
+            });
+            setChatThreadId(thread.id);
+            setChatOpen(true);
+        } finally {
+            setChatLoading(false);
+        }
+    };
+
+    const activeChatThread = buyerThreads.find(t => t.id === chatThreadId)
+        || (chatThreadId ? { id: chatThreadId, itemTitle: item.title, messages: [], buyerId: user?.id, sellerId: item.sellerId } : null);
 
     const handlePlaceBid = async () => {
         if (!user) {
@@ -284,16 +327,28 @@ const ItemViewPage = ({ loc }) => {
                 <p><b>{L.condition}:</b> <span>{formatCondition(item.condition, loc, item.conditionDetail)}</span></p>
                 {item.saleType === 'buy' && item.quantity > 1 && <p><b>{L.quantity}:</b> {item.quantity}</p>}
                 {seller && (
-                    <p className="flex items-center gap-2">
-                        <b>{L.soldBy}:</b>
-                        <button onClick={() => handleSellerClick(seller.id)} className="text-purple-600 hover:underline font-semibold">{seller.profileName}</button>
-                        {averageRating > 0 && (
-                            <span className="inline-flex items-center">
-                                <StarRating rating={averageRating} />
-                                <span className="text-xs text-gray-500 ml-1">({seller.reviews.length})</span>
-                            </span>
+                    <div className="space-y-3">
+                        <p className="flex items-center gap-2 flex-wrap">
+                            <b>{L.soldBy}:</b>
+                            <button onClick={() => handleSellerClick(seller.id)} className="text-purple-600 hover:underline font-semibold">{seller.profileName}</button>
+                            {averageRating > 0 && (
+                                <span className="inline-flex items-center">
+                                    <StarRating rating={averageRating} />
+                                    <span className="text-xs text-gray-500 ml-1">({seller.reviews.length})</span>
+                                </span>
+                            )}
+                        </p>
+                        {user?.id !== item.sellerId && (
+                            <button
+                                type="button"
+                                onClick={handleMessageSeller}
+                                disabled={chatLoading}
+                                className="item-message-seller-btn"
+                            >
+                                {chatLoading ? '…' : L.messageSeller}
+                            </button>
                         )}
-                    </p>
+                    </div>
                 )}
                 <p className="mt-2 text-gray-600">{item.description || L.noDescription}</p>
                 <div className="border-t mt-4 pt-4">
@@ -305,6 +360,42 @@ const ItemViewPage = ({ loc }) => {
                     </ul>
                 </div>
             </div>
+
+            {chatOpen && user && activeChatThread && (
+                <div className="item-chat-box">
+                    <div className="item-chat-box-header">
+                        <h3 className="font-bold text-gray-800">{L.messageSeller}</h3>
+                        <div className="item-chat-box-actions">
+                            <button
+                                type="button"
+                                onClick={() => navigate('/profile?tab=buying')}
+                                className="text-sm text-purple-600 hover:underline"
+                            >
+                                {L.viewInProfile}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setChatOpen(false)}
+                                className="item-chat-close"
+                                aria-label={L.closeChat}
+                            >
+                                ×
+                            </button>
+                        </div>
+                    </div>
+                    <ChatPanel
+                        loc={loc}
+                        user={user}
+                        users={users}
+                        threads={[activeChatThread]}
+                        role="buyer"
+                        activeThreadId={chatThreadId}
+                        onSelectThread={setChatThreadId}
+                        compact
+                        userEmail={user.email}
+                    />
+                </div>
+            )}
         </div>
     );
 };

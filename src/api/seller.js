@@ -68,81 +68,9 @@ let ORDERS = [
     },
 ];
 
-let THREADS = [
-    {
-        id: 'thread1',
-        sellerId: 'user1',
-        buyerId: 'user2',
-        itemId: 'ord1',
-        itemTitle: 'AirPods Pro 2da Gen',
-        unreadForSeller: 2,
-        messages: [
-            { id: 'm1', from: 'user2', text: 'Hi! When will you ship the AirPods?', at: now - 6 * 60 * 60 * 1000 },
-            { id: 'm2', from: 'user1', text: 'Hello! I will ship them tomorrow morning.', at: now - 5 * 60 * 60 * 1000 },
-            { id: 'm3', from: 'user2', text: 'Perfect, can you share tracking when ready?', at: now - 2 * 60 * 60 * 1000 },
-            { id: 'm4', from: 'user2', text: 'Also — can you include the original box?', at: now - 30 * 60 * 1000 },
-        ],
-    },
-    {
-        id: 'thread2',
-        sellerId: 'user1',
-        buyerId: 'guest1',
-        itemId: 'i4',
-        itemTitle: 'Cámara Canon EOS R con Lente 24-105mm',
-        unreadForSeller: 0,
-        messages: [
-            { id: 'm5', from: 'guest1', text: 'Is the lens included in the auction?', at: now - 3 * day },
-            { id: 'm6', from: 'user1', text: 'Yes, the RF 24-105mm lens is included.', at: now - 3 * day + 3600000 },
-        ],
-    },
-    {
-        id: 'thread3',
-        sellerId: 'user2',
-        buyerId: 'user1',
-        itemId: 'i2',
-        itemTitle: 'Sofá Seccional Gris Moderno',
-        unreadForSeller: 1,
-        messages: [
-            { id: 'm7', from: 'user1', text: 'Can I pick up Saturday afternoon in Heredia?', at: now - 4 * 60 * 60 * 1000 },
-        ],
-    },
-];
-
-const threadLastAt = (thread) =>
-    thread.messages.length ? Math.max(...thread.messages.map(m => m.at)) : 0;
-
 export const fetchSellerOrders = async (sellerId) => {
     await new Promise(r => setTimeout(r, 150));
     return ORDERS.filter(o => o.sellerId === sellerId).sort((a, b) => b.soldAt - a.soldAt);
-};
-
-export const fetchSellerThreads = async (sellerId) => {
-    await new Promise(r => setTimeout(r, 150));
-    return THREADS.filter(t => t.sellerId === sellerId)
-        .map(t => ({ ...t, lastMessageAt: threadLastAt(t) }))
-        .sort((a, b) => b.lastMessageAt - a.lastMessageAt);
-};
-
-export const sendSellerMessage = async (threadId, fromUserId, text) => {
-    await new Promise(r => setTimeout(r, 100));
-    const trimmed = text.trim();
-    if (!trimmed) throw new Error('EMPTY_MESSAGE');
-
-    const thread = THREADS.find(t => t.id === threadId);
-    if (!thread) throw new Error('THREAD_NOT_FOUND');
-
-    const message = { id: `m_${Date.now()}`, from: fromUserId, text: trimmed, at: Date.now() };
-    thread.messages = [...thread.messages, message];
-    if (fromUserId !== thread.sellerId) {
-        thread.unreadForSeller = (thread.unreadForSeller || 0) + 1;
-    }
-    return { thread: { ...thread, lastMessageAt: message.at }, message };
-};
-
-export const markThreadRead = async (threadId) => {
-    const thread = THREADS.find(t => t.id === threadId);
-    if (thread) thread.unreadForSeller = 0;
-    return thread;
 };
 
 export const markOrderShipped = async (orderId, trackingNumber = '') => {

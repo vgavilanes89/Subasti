@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useItems } from '../context/ItemsContext';
+import { useMessages } from '../context/MessagesContext';
 import { PLACEHOLDER_IMG, CRC, itemCurrency } from '../components/Shared';
 import SellerDashboard from '../components/SellerDashboard';
+import ChatPanel from '../components/ChatPanel';
 
 const ProfilePageItemList = ({ list, emptyMsg, onOpen, onToggleFav, isFav, loc, L }) => (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
@@ -29,8 +31,11 @@ const ProfilePageItemList = ({ list, emptyMsg, onOpen, onToggleFav, isFav, loc, 
 const ProfilePage = ({ loc }) => {
     const { user, users, updateProfile } = useAuth();
     const { items, favorites, isFav, toggleFav } = useItems();
+    const { buyerThreads, unreadBuyerCount } = useMessages();
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState('account');
+    const [searchParams, setSearchParams] = useSearchParams();
+    const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'account');
+    const [buyerThreadId, setBuyerThreadId] = useState(searchParams.get('thread') || null);
     const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState(user || {});
 
@@ -47,6 +52,7 @@ const ProfilePage = ({ loc }) => {
         location: 'Location',
         favs: 'My Favorites',
         noFavs: 'You have no favorite items.',
+        sellerMessages: 'Messages with sellers',
         edit: 'Edit',
         save: 'Save Changes',
         cancel: 'Cancel',
@@ -65,11 +71,41 @@ const ProfilePage = ({ loc }) => {
         location: 'Ubicación',
         favs: 'Mis Favoritos',
         noFavs: 'No tienes artículos favoritos.',
+        sellerMessages: 'Mensajes con vendedores',
         edit: 'Editar',
         save: 'Guardar Cambios',
         cancel: 'Cancelar',
         favAdd: 'Agregar a favoritos',
         favRemove: 'Quitar de favoritos',
+    };
+
+    useEffect(() => {
+        const tab = searchParams.get('tab');
+        const thread = searchParams.get('thread');
+        if (tab) setActiveTab(tab);
+        if (thread) setBuyerThreadId(thread);
+    }, [searchParams]);
+
+    useEffect(() => {
+        if (buyerThreads.length && !buyerThreadId) {
+            setBuyerThreadId(buyerThreads[0].id);
+        }
+    }, [buyerThreads, buyerThreadId]);
+
+    const handleTabChange = (tabId) => {
+        setActiveTab(tabId);
+        const next = new URLSearchParams(searchParams);
+        next.set('tab', tabId);
+        if (tabId !== 'buying') next.delete('thread');
+        setSearchParams(next, { replace: true });
+    };
+
+    const handleBuyerThreadSelect = (threadId) => {
+        setBuyerThreadId(threadId);
+        const next = new URLSearchParams(searchParams);
+        next.set('tab', 'buying');
+        next.set('thread', threadId);
+        setSearchParams(next, { replace: true });
     };
 
     const handleChange = (e) => {
@@ -103,7 +139,7 @@ const ProfilePage = ({ loc }) => {
 
     const tabs = [
         { id: 'account', label: L.tabAccount },
-        { id: 'buying', label: L.tabBuying },
+        { id: 'buying', label: L.tabBuying, badge: unreadBuyerCount },
         { id: 'selling', label: L.tabSelling },
     ];
 
@@ -117,9 +153,10 @@ const ProfilePage = ({ loc }) => {
                             key={tab.id}
                             type="button"
                             className={`profile-tab ${activeTab === tab.id ? 'profile-tab--active' : ''}`}
-                            onClick={() => setActiveTab(tab.id)}
+                            onClick={() => handleTabChange(tab.id)}
                         >
                             {tab.label}
+                            {tab.badge > 0 && <span className="profile-tab-badge">{tab.badge}</span>}
                         </button>
                     ))}
                 </nav>
@@ -175,9 +212,24 @@ const ProfilePage = ({ loc }) => {
             )}
 
             {activeTab === 'buying' && (
-                <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                    <h3 className="text-xl font-bold text-gray-800 mb-4">{L.favs}</h3>
-                    <ProfilePageItemList list={myFavorites} emptyMsg={L.noFavs} onOpen={handleOpen} onToggleFav={toggleFav} isFav={isFav} loc={loc} L={L} />
+                <div className="space-y-6">
+                    <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                        <h3 className="text-xl font-bold text-gray-800 mb-4">{L.sellerMessages}</h3>
+                        <ChatPanel
+                            loc={loc}
+                            user={user}
+                            users={users}
+                            threads={buyerThreads}
+                            role="buyer"
+                            activeThreadId={buyerThreadId}
+                            onSelectThread={handleBuyerThreadSelect}
+                            userEmail={user.email}
+                        />
+                    </div>
+                    <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                        <h3 className="text-xl font-bold text-gray-800 mb-4">{L.favs}</h3>
+                        <ProfilePageItemList list={myFavorites} emptyMsg={L.noFavs} onOpen={handleOpen} onToggleFav={toggleFav} isFav={isFav} loc={loc} L={L} />
+                    </div>
                 </div>
             )}
 

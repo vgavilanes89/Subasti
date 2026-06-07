@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     PLACEHOLDER_IMG,
@@ -10,6 +10,8 @@ import {
 } from './Shared';
 import { saleTypeBadge } from '../data/i18n';
 import * as sellerApi from '../api/seller';
+import { useMessages } from '../context/MessagesContext';
+import ChatPanel from './ChatPanel';
 
 const sumByCurrency = (entries, getAmount) =>
     entries.reduce((acc, entry) => {
@@ -63,13 +65,11 @@ const StatCard = ({ label, value, sub, accent }) => (
 
 const SellerDashboard = ({ user, users, items, loc }) => {
     const navigate = useNavigate();
+    const { sellerThreads } = useMessages();
     const [orders, setOrders] = useState([]);
-    const [threads, setThreads] = useState([]);
     const [activeThreadId, setActiveThreadId] = useState(null);
-    const [messageDraft, setMessageDraft] = useState('');
     const [trackingDraft, setTrackingDraft] = useState({});
     const [loading, setLoading] = useState(true);
-    const chatEndRef = useRef(null);
 
     const L = loc === 'en' ? {
         dashboard: 'Seller Dashboard',
@@ -100,10 +100,6 @@ const SellerDashboard = ({ user, users, items, loc }) => {
         tracking: 'Tracking #',
         optional: 'optional',
         messages: 'Buyer messages',
-        noThreads: 'No conversations yet. Buyers can message you from your listings.',
-        typeMessage: 'Type a message…',
-        send: 'Send',
-        you: 'You',
         anonymous: 'Buyer',
         fulfillmentShip: 'Shipping',
         fulfillmentPickup: 'Local pickup',
@@ -142,10 +138,6 @@ const SellerDashboard = ({ user, users, items, loc }) => {
         tracking: 'Número de rastreo',
         optional: 'opcional',
         messages: 'Mensajes de compradores',
-        noThreads: 'Aún no hay conversaciones. Los compradores pueden escribirte desde tus publicaciones.',
-        typeMessage: 'Escribe un mensaje…',
-        send: 'Enviar',
-        you: 'Tú',
         anonymous: 'Comprador',
         fulfillmentShip: 'Envío',
         fulfillmentPickup: 'Recogida local',
@@ -161,22 +153,21 @@ const SellerDashboard = ({ user, users, items, loc }) => {
         let cancelled = false;
         const load = async () => {
             setLoading(true);
-            const [orderData, threadData] = await Promise.all([
-                sellerApi.fetchSellerOrders(user.id),
-                sellerApi.fetchSellerThreads(user.id),
-            ]);
+            const orderData = await sellerApi.fetchSellerOrders(user.id);
             if (!cancelled) {
                 setOrders(orderData);
-                setThreads(threadData);
-                if (threadData.length && !activeThreadId) {
-                    setActiveThreadId(threadData[0].id);
-                }
                 setLoading(false);
             }
         };
         load();
         return () => { cancelled = true; };
-    }, [user.id]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [user.id]);
+
+    useEffect(() => {
+        if (sellerThreads.length && !activeThreadId) {
+            setActiveThreadId(sellerThreads[0].id);
+        }
+    }, [sellerThreads, activeThreadId]);
 
     const myListings = useMemo(() => items.filter(i => i.sellerId === user.id), [items, user.id]);
 
@@ -202,25 +193,9 @@ const SellerDashboard = ({ user, users, items, loc }) => {
     );
     const pendingTotals = sumByCurrency(pendingPayout, o => o.amount);
 
-    const unreadTotal = threads.reduce((n, t) => n + (t.unreadForSeller || 0), 0);
+    const unreadTotal = sellerThreads.reduce((n, t) => n + (t.unreadForSeller || 0), 0);
     const avgRating = calculateAverageRating(user.reviews || []);
     const reviewCount = user.reviews?.length || 0;
-
-    const activeThread = threads.find(t => t.id === activeThreadId);
-
-    useEffect(() => {
-        if (activeThreadId) {
-            sellerApi.markThreadRead(activeThreadId).then(() => {
-                setThreads(prev => prev.map(t =>
-                    t.id === activeThreadId ? { ...t, unreadForSeller: 0 } : t
-                ));
-            });
-        }
-    }, [activeThreadId, activeThread?.messages?.length]);
-
-    useEffect(() => {
-        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [activeThread?.messages?.length, activeThreadId]);
 
     const buyerName = (buyerId) => {
         if (buyerId.startsWith('guest')) return L.anonymous;
@@ -232,18 +207,6 @@ const SellerDashboard = ({ user, users, items, loc }) => {
         return new Date(ts).toLocaleDateString(loc === 'en' ? 'en-US' : 'es-CR', {
             month: 'short', day: 'numeric', year: 'numeric',
         });
-    };
-
-    const handleSendMessage = async (e) => {
-        e.preventDefault();
-        if (!activeThreadId || !messageDraft.trim()) return;
-        try {
-            const { thread } = await sellerApi.sendSellerMessage(activeThreadId, user.id, messageDraft);
-            setThreads(prev => prev.map(t => (t.id === thread.id ? { ...thread } : t)).sort((a, b) => b.lastMessageAt - a.lastMessageAt));
-            setMessageDraft('');
-        } catch {
-            // ignore empty
-        }
     };
 
     const handleMarkShipped = async (orderId) => {
@@ -291,7 +254,7 @@ const SellerDashboard = ({ user, users, items, loc }) => {
                 <StatCard
                     label={L.unreadMessages}
                     value={unreadTotal}
-                    sub={`${threads.length} ${loc === 'en' ? 'conversations' : 'conversaciones'}`}
+                    sub={`${sellerThreads.length} ${loc === 'en' ? 'conversations' : 'conversaciones'}`}
                 />
                 <StatCard
                     label={L.avgRating}
@@ -433,63 +396,16 @@ const SellerDashboard = ({ user, users, items, loc }) => {
 
             <div className="seller-section">
                 <h4>{L.messages}</h4>
-                {threads.length === 0 ? (
-                    <p className="text-sm text-gray-500">{L.noThreads}</p>
-                ) : (
-                    <div className="seller-chat">
-                        <div className="seller-chat-threads">
-                            {threads.map(thread => (
-                                <button
-                                    key={thread.id}
-                                    type="button"
-                                    className={`seller-chat-thread ${activeThreadId === thread.id ? 'seller-chat-thread--active' : ''}`}
-                                    onClick={() => setActiveThreadId(thread.id)}
-                                >
-                                    <span className="seller-chat-thread-title">{buyerName(thread.buyerId)}</span>
-                                    <span className="seller-chat-thread-item">{thread.itemTitle}</span>
-                                    {thread.unreadForSeller > 0 && (
-                                        <span className="seller-chat-unread">{thread.unreadForSeller}</span>
-                                    )}
-                                </button>
-                            ))}
-                        </div>
-                        {activeThread && (
-                            <div className="seller-chat-panel">
-                                <div className="seller-chat-header">
-                                    <strong>{buyerName(activeThread.buyerId)}</strong>
-                                    <span className="text-sm text-gray-500">{activeThread.itemTitle}</span>
-                                </div>
-                                <div className="seller-chat-messages">
-                                    {activeThread.messages.map(msg => {
-                                        const isMe = msg.from === user.id;
-                                        return (
-                                            <div
-                                                key={msg.id}
-                                                className={`seller-chat-bubble ${isMe ? 'seller-chat-bubble--me' : 'seller-chat-bubble--them'}`}
-                                            >
-                                                <p className="seller-chat-meta">{isMe ? L.you : buyerName(msg.from)}</p>
-                                                <p>{msg.text}</p>
-                                            </div>
-                                        );
-                                    })}
-                                    <div ref={chatEndRef} />
-                                </div>
-                                <form onSubmit={handleSendMessage} className="seller-chat-compose">
-                                    <input
-                                        type="text"
-                                        value={messageDraft}
-                                        onChange={e => setMessageDraft(e.target.value)}
-                                        placeholder={L.typeMessage}
-                                        className="seller-input seller-input--grow"
-                                    />
-                                    <button type="submit" className="seller-action-btn" disabled={!messageDraft.trim()}>
-                                        {L.send}
-                                    </button>
-                                </form>
-                            </div>
-                        )}
-                    </div>
-                )}
+                <ChatPanel
+                    loc={loc}
+                    user={user}
+                    users={users}
+                    threads={sellerThreads}
+                    role="seller"
+                    activeThreadId={activeThreadId}
+                    onSelectThread={setActiveThreadId}
+                    userEmail={user.email}
+                />
             </div>
         </div>
     );

@@ -6,6 +6,7 @@ import { AuthProvider } from './context/AuthContext';
 import { ItemsProvider } from './context/ItemsContext';
 import { CartProvider } from './context/CartContext';
 import { HomeFilterProvider } from './context/HomeFilterContext';
+import { MessagesProvider } from './context/MessagesContext';
 
 // 2. Import Layout Components
 import Header from './components/Header';
@@ -86,6 +87,7 @@ function App() {
 
   return (
     <AuthProvider>
+      <MessagesProvider>
       <ItemsProvider>
         <CartProvider>
           <HomeFilterProvider>
@@ -173,6 +175,7 @@ function App() {
           </HomeFilterProvider>
         </CartProvider>
       </ItemsProvider>
+      </MessagesProvider>
     </AuthProvider>
   );
 }
