@@ -37,6 +37,7 @@ const HomePage = ({ loc, categories }) => {
     shipping: 'shipping',
     auction: 'AUCTION',
     buyNowBadge: 'BUY NOW',
+    allCategories: 'All',
   } : { 
     newest: 'Más recientes', 
     pAsc: 'Precio: menor→mayor', 
@@ -53,6 +54,7 @@ const HomePage = ({ loc, categories }) => {
     shipping: 'envío',
     auction: 'SUBASTA',
     buyNowBadge: 'COMPRA',
+    allCategories: 'Todos',
   };
 
   const allCats = useMemo(() => ['*', ...Object.keys(categories)], [categories]);
@@ -65,6 +67,11 @@ const HomePage = ({ loc, categories }) => {
       return true;
     });
   }, [items]);
+
+  const categoryKeys = useMemo(() => Object.keys(categories), [categories]);
+
+  const categoryLinkClass = (value) =>
+    `transition-colors ${cat === value ? 'text-purple-600 font-semibold' : 'text-gray-600 hover:text-purple-600'}`;
 
   // Apply search and category filters
   const filtered = activeItems.filter(i => {
@@ -208,6 +215,18 @@ const HomePage = ({ loc, categories }) => {
             <option value="pDesc">{L.pDesc}</option>
           </select>
         </div>
+        <nav className="home-category-links mt-3 pt-3 border-t border-gray-100" aria-label={loc === 'en' ? 'Browse by category' : 'Explorar por categoría'}>
+          <div className="home-category-links-inner">
+            <button type="button" onClick={() => setCat('*')} className={categoryLinkClass('*')}>
+              {L.allCategories}
+            </button>
+            {categoryKeys.map((key) => (
+              <button type="button" key={key} onClick={() => setCat(key)} className={categoryLinkClass(key)}>
+                {tCategory(key, loc)}
+              </button>
+            ))}
+          </div>
+        </nav>
       </div>
 
       {/* Grid */}
