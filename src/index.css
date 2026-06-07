@@ -35,3 +35,37 @@ code {
 ::-webkit-scrollbar-thumb:hover {
   background: #a855f7; 
 }
+
+/* Homepage filter bar — explicit layout so it works without Tailwind build */
+.home-filter-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.home-filter-bar input,
+.home-filter-bar select {
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .home-filter-bar {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .home-filter-search {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .home-filter-category {
+    flex: 0 0 11rem;
+    width: 11rem;
+  }
+
+  .home-filter-sort {
+    flex: 0 0 9rem;
+    width: 9rem;
+  }
+}
