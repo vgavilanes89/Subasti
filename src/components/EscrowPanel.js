@@ -1,21 +1,38 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { escrowPolicySteps } from '../data/escrow.js';
 
 const EscrowPanel = ({ loc, compact = false }) => {
+    const [dismissed, setDismissed] = useState(false);
     const steps = escrowPolicySteps(loc);
     const L = loc === 'en' ? {
         title: 'Subasti Secure Escrow',
         subtitle: 'Secure protection for buyers and sellers in Costa Rica',
         badge: 'Funds held by Subasti until you are satisfied',
+        close: 'Close',
     } : {
         title: 'Depósito en Garantía Subasti',
         subtitle: 'Protección segura para compradores y vendedores en Costa Rica',
         badge: 'Los fondos los retiene Subasti hasta que usted esté conforme',
+        close: 'Cerrar',
     };
+
+    if (dismissed) return null;
+
+    const closeBtn = (
+        <button
+            type="button"
+            className="escrow-panel-close"
+            onClick={() => setDismissed(true)}
+            aria-label={L.close}
+        >
+            ×
+        </button>
+    );
 
     if (compact) {
         return (
             <div className="escrow-panel escrow-panel--compact">
+                {closeBtn}
                 <p className="escrow-panel-badge">{L.badge}</p>
                 <p className="escrow-panel-compact-text">
                     {loc === 'en'
@@ -28,6 +45,7 @@ const EscrowPanel = ({ loc, compact = false }) => {
 
     return (
         <div className="escrow-panel">
+            {closeBtn}
             <div className="escrow-panel-header">
                 <h3>{L.title}</h3>
                 <p>{L.subtitle}</p>
