@@ -1,5 +1,7 @@
-// Mock User Database
-let USERS = {
+// Mock user directory — only used for looking up OTHER users' public data
+// (seller profiles, reviews, message senders). Real login/signup goes through
+// /api/auth/* against Postgres; these entries can no longer log in.
+const USERS = {
     'admin': {
         id: 'admin',
         isAdmin: true,
@@ -8,7 +10,6 @@ let USERS = {
         realName: 'Admin User',
         profileName: 'Admin',
         email: 'admin@subasti.com',
-        password: 'admin',
         countryCode: '+506',
         phone: '0000-0000',
         province: 'San José',
@@ -20,9 +21,8 @@ let USERS = {
         accountNumber: 'SUB-10018374',
         cedula: '1-1234-5678',
         realName: 'Ana Rodriguez',
-        profileName: 'AnaRdz', 
-        email: 'ana@subasti.com', 
-        password: '123',
+        profileName: 'AnaRdz',
+        email: 'ana@subasti.com',
         countryCode: '+506',
         phone: '8888-8888',
         province: 'San José',
@@ -48,7 +48,6 @@ let USERS = {
         realName: 'Carlos Perez',
         profileName: 'CPerez',
         email: 'carlos@subasti.com',
-        password: '123',
         countryCode: '+506',
         phone: '7777-7777',
         province: 'Heredia',
@@ -58,30 +57,6 @@ let USERS = {
             { from: 'guest', rating: 4, comment: "Good communication." }
         ],
     }
-};
-
-export const loginUser = async (email, password) => {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    const user = Object.values(USERS).find(u => u.email === email && u.password === password);
-    if (!user) throw new Error('Invalid credentials');
-    return user;
-};
-
-export const registerUser = async (userData) => {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    const newId = `user${Object.keys(USERS).length + 1}`;
-    const accountNumber = `SUB-${Math.floor(10000000 + Math.random() * 90000000)}`;
-    const newUser = {
-        ...userData,
-        id: newId,
-        accountNumber,
-        savedAddresses: [],
-        savedPayments: [],
-        reviews: []
-    };
-    USERS[newId] = newUser;
-    return newUser;
 };
 
 export const getUserById = (id) => USERS[id];

@@ -1,6 +1,6 @@
 # Subasti
 
-Online auction and marketplace (React). Demo data lives in the browser (mock API in `src/api/`).
+Online auction and marketplace (React). Most demo data lives in the browser (mock API in `src/api/`); accounts (`api/auth/*.js`) are real, backed by Postgres.
 
 ## Run locally
 
@@ -27,11 +27,18 @@ The app is a static React build. Use any host below; all configs send unknown UR
 1. Push this folder to GitHub (see below).
 2. Go to [vercel.com](https://vercel.com) → **Add New Project** → import the repo.
 3. Framework preset: **Create React App**. Build: `npm run build`, output: `build`.
-4. Deploy. You get a URL like `https://subasti-xxx.vercel.app`.
+4. **Storage tab** → **Create Database** → Postgres (Neon) → connect it to this project. This injects `DATABASE_URL` automatically.
+5. Run [sql/001_create_users.sql](sql/001_create_users.sql) against that database once (Storage tab → your database → **Query**, or `psql "$DATABASE_URL" -f sql/001_create_users.sql`) to create the `users` table.
+6. In **Settings → Environment Variables**, add for Production and Preview:
+   - `VERIFIK_API_KEY` (from [Verifik](https://verifik.co)) — cédula auto-fill on signup (`/api/cedula`).
+   - `SESSION_SECRET` — a long random string (e.g. `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`) — signs login sessions (`/api/auth/*`).
+7. Deploy. You get a URL like `https://subasti-xxx.vercel.app`.
 
-`vercel.json` in the repo already sets rewrites for client-side routes.
+`vercel.json` in the repo already sets rewrites for client-side routes; `/api/*` serverless functions are routed automatically by Vercel.
 
 ### Netlify
+
+Static hosting only — `/api/auth/*` and `/api/cedula` are Vercel serverless functions and won't run here as-is, so login/signup and cédula lookup won't work. Fine for previewing everything else:
 
 1. Push to GitHub.
 2. [app.netlify.com](https://app.netlify.com) → **Add new site** → **Import from Git**.

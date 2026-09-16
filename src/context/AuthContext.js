@@ -1,28 +1,77 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import * as authService from '../api/auth';
 
 const AuthContext = createContext();
 
 export const useAuth = () => useContext(AuthContext);
 
+async function parseErrorMessage(res, fallback) {
+    try {
+        const body = await res.json();
+        return body?.error || fallback;
+    } catch {
+        return fallback;
+    }
+}
+
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
-    const [usersMap, setUsersMap] = useState(authService.getAllUsers()); // Keep a local map of all users for UI display
+    // Real accounts (from /api/auth/*) aren't in this mock map, so merge each
+    // one in on login/signup/session-restore — the rest of the app (seller
+    // profiles, reviews, messages) still reads other users from here.
+    const [usersMap, setUsersMap] = useState(authService.getAllUsers());
+
+    useEffect(() => {
+        let cancelled = false;
+        fetch('/api/auth/me')
+            .then((res) => (res.ok ? res.json() : null))
+            .then((restoredUser) => {
+                if (cancelled || !restoredUser) return;
+                setUser(restoredUser);
+                setUsersMap(prev => ({ ...prev, [restoredUser.id]: restoredUser }));
+            })
+            .catch(() => {});
+        return () => { cancelled = true; };
+    }, []);
 
     const login = async (email, password) => {
-        const loggedUser = await authService.loginUser(email, password);
+        const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password }),
+        });
+        if (!res.ok) {
+            throw new Error(await parseErrorMessage(res, 'Invalid credentials'));
+        }
+        const loggedUser = await res.json();
         setUser(loggedUser);
+        setUsersMap(prev => ({ ...prev, [loggedUser.id]: loggedUser }));
         return loggedUser;
     };
 
-    const logout = () => {
+    const logout = async () => {
         setUser(null);
+        try {
+            await fetch('/api/auth/logout', { method: 'POST' });
+        } catch {
+            // Client-side state is already cleared; a failed request here just
+            // leaves a stale cookie that the next /api/auth/me call will reject.
+        }
     };
 
     const signup = async (userData) => {
-        const newUser = await authService.registerUser(userData);
+        const res = await fetch('/api/auth/signup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(userData),
+        });
+        if (!res.ok) {
+            throw new Error(await parseErrorMessage(res, 'Could not create account'));
+        }
+        const newUser = await res.json();
         setUser(newUser);
         setUsersMap(prev => ({...prev, [newUser.id]: newUser}));
+        return newUser;
     };
 
     const updateProfile = (updatedData) => {

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { COSTA_RICA_LOCATIONS, COUNTRY_CODES } from '../data/Constants';
@@ -10,7 +10,10 @@ const SignupPage = ({loc}) => {
     const [isFetchingCedula, setIsFetchingCedula] = useState(false);
     const [profileNameError, setProfileNameError] = useState('');
     const [isNameFetched, setIsNameFetched] = useState(false);
-    
+    // Caches the outcome of the last completed lookup so re-blurring an unchanged
+    // cedula (e.g. tabbing through the field) doesn't re-bill the paid lookup.
+    const cedulaLookupCache = useRef(null);
+
     const provinces = Object.keys(COSTA_RICA_LOCATIONS);
     const cities = formData.province ? COSTA_RICA_LOCATIONS[formData.province] : [];
 
@@ -27,6 +30,9 @@ const SignupPage = ({loc}) => {
         if (name === 'profileName') {
             setProfileNameError(''); // Clear error on change
         }
+        if (name === 'cedula') {
+            setIsNameFetched(false);
+        }
         setFormData(prev => {
             const newState = {...prev, [name]: value};
             if(name === 'province') {
@@ -34,6 +40,9 @@ const SignupPage = ({loc}) => {
             }
             if (name === 'countryCode') {
                 newState.phone = ''; // Reset phone when country changes
+            }
+            if (name === 'cedula') {
+                newState.realName = '';
             }
             return newState;
         });
@@ -70,29 +79,63 @@ const SignupPage = ({loc}) => {
         }
     };
 
-    const handleFetchCedulaData = () => {
+    const toTitleCase = (str) =>
+        (str || '')
+            .toLowerCase()
+            .split(/\s+/)
+            .filter(Boolean)
+            .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+            .join(' ');
+
+    const handleFetchCedulaData = async () => {
         if (!formData.cedula) return;
-        setIsFetchingCedula(true);
-        // Simulate API call to a national registry
-        setTimeout(() => {
-            const mockApiData = {
-                '1-1573-0196': { name: 'Nora', firstLastName: 'Marin', secondLastName: 'Loria' },
-                '2-2222-2222': { name: 'Maria', firstLastName: 'Salas', secondLastName: 'Rojas' },
-            };
-            const userData = mockApiData[formData.cedula];
-            if (userData) {
-                setFormData(prev => ({
-                    ...prev,
-                    realName: `${userData.name} ${userData.firstLastName} ${userData.secondLastName}`,
-                    profileName: `${userData.name}${userData.firstLastName}`,
-                }));
+
+        const documentNumber = formData.cedula.replace(/[\s-]/g, '');
+        if (!/^\d{9,12}$/.test(documentNumber)) {
+            return;
+        }
+
+        const cached = cedulaLookupCache.current;
+        if (cached && cached.cedula === formData.cedula) {
+            if (cached.result === 'success') {
+                setFormData((prev) => ({ ...prev, realName: cached.realName, profileName: cached.profileName }));
                 setIsNameFetched(true);
-            } else {
+            } else if (cached.result === 'not_found') {
                 alert(L.cedulaNotFound);
-                setIsNameFetched(false);
             }
+            return;
+        }
+
+        setIsFetchingCedula(true);
+        setIsNameFetched(false);
+        try {
+            const res = await fetch(`/api/cedula?cedula=${encodeURIComponent(formData.cedula)}`);
+            if (res.status === 404) {
+                cedulaLookupCache.current = { cedula: formData.cedula, result: 'not_found' };
+                alert(L.cedulaNotFound);
+                return;
+            }
+            if (res.status === 429) {
+                alert(loc === 'en' ? 'Too many attempts. Please wait a moment and try again.' : 'Demasiados intentos. Espere un momento e intente de nuevo.');
+                return;
+            }
+            if (!res.ok) {
+                alert(loc === 'en' ? 'Could not look up ID number.' : 'No se pudo consultar la cédula.');
+                return;
+            }
+            const data = await res.json();
+            const fullName = toTitleCase(data.fullName);
+            const firstName = toTitleCase(data.firstName).replace(/\s/g, '');
+            const lastNameFirst = toTitleCase(data.lastName).split(/\s+/)[0] || '';
+            const profileName = `${firstName}${lastNameFirst}`.replace(/[^a-zA-Z0-9]/g, '');
+            cedulaLookupCache.current = { cedula: formData.cedula, result: 'success', realName: fullName, profileName };
+            setFormData((prev) => ({ ...prev, realName: fullName, profileName }));
+            setIsNameFetched(true);
+        } catch {
+            alert(loc === 'en' ? 'Could not look up ID number.' : 'No se pudo consultar la cédula.');
+        } finally {
             setIsFetchingCedula(false);
-        }, 1200);
+        }
     };
 
     return (
