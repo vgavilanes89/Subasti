@@ -50,6 +50,8 @@ export default async function handler(req, res) {
     }
 
     if (!upstream.ok) {
+      const upstreamBody = await upstream.text().catch(() => '');
+      console.error('Verifik lookup failed', upstream.status, upstreamBody.slice(0, 500));
       return res.status(502).json({ error: 'Lookup failed' });
     }
 
@@ -64,7 +66,8 @@ export default async function handler(req, res) {
       firstName: data.firstName || '',
       lastName: data.lastName || '',
     });
-  } catch {
+  } catch (err) {
+    console.error('Verifik lookup error', err.message);
     return res.status(500).json({ error: 'Lookup failed' });
   }
 }
