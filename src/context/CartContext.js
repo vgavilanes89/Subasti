@@ -12,13 +12,15 @@ export const CartProvider = ({ children }) => {
     const addToCart = (id, qtyToAdd = 1) => {
         const item = items.find(i => i.id === id);
         if(!item) return;
+        const maxQty = item.quantity ?? Infinity;
 
         setCart(currentCart => {
             const existing = currentCart.find(x => x.id === id);
             if (existing) {
-                return currentCart.map(x => x.id === id ? { ...x, qty: x.qty + qtyToAdd } : x);
+                const nextQty = Math.min(existing.qty + qtyToAdd, maxQty);
+                return currentCart.map(x => x.id === id ? { ...x, qty: nextQty } : x);
             }
-            return [...currentCart, { id, qty: qtyToAdd, price: item.price || item.buyNowPrice }];
+            return [...currentCart, { id, qty: Math.min(qtyToAdd, maxQty), price: item.buyNowPrice || item.price }];
         });
     };
 
@@ -27,11 +29,14 @@ export const CartProvider = ({ children }) => {
     };
 
     const updateQuantity = (id, quantity) => {
-        if (quantity <= 0) {
+        const parsed = Math.floor(Number(quantity));
+        if (!Number.isFinite(parsed) || parsed <= 0) {
             removeFromCart(id);
-        } else {
-            setCart(current => current.map(item => item.id === id ? { ...item, qty: quantity } : item));
+            return;
         }
+        const item = items.find(i => i.id === id);
+        const maxQty = item?.quantity ?? Infinity;
+        setCart(current => current.map(x => x.id === id ? { ...x, qty: Math.min(parsed, maxQty) } : x));
     };
 
     const clearCart = () => setCart([]);

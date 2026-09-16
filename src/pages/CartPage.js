@@ -53,7 +53,8 @@ const CartPage = ({ loc }) => {
     const subtotalsByCurrency = useMemo(() => {
         return cartWithDetails.reduce((sums, item) => {
             const currency = itemCurrency(item);
-            sums[currency] = (sums[currency] || 0) + (item.price * item.qty);
+            const unitPrice = item.buyNowPrice || item.price;
+            sums[currency] = (sums[currency] || 0) + (unitPrice * item.qty);
             return sums;
         }, {});
     }, [cartWithDetails]);
@@ -88,8 +89,8 @@ const CartPage = ({ loc }) => {
                                 <button onClick={() => updateQuantity(item.id, item.qty + 1)} className="w-8 h-8 border rounded-md">+</button>
                             </div>
                             <div className="text-right w-24">
-                                <p className="font-bold">{CRC(item.price * item.qty, loc, itemCurrency(item))}</p>
-                                {item.qty > 1 && <p className="text-sm text-gray-500">{CRC(item.price, loc, itemCurrency(item))} {L.each}</p>}
+                                <p className="font-bold">{CRC((item.buyNowPrice || item.price) * item.qty, loc, itemCurrency(item))}</p>
+                                {item.qty > 1 && <p className="text-sm text-gray-500">{CRC(item.buyNowPrice || item.price, loc, itemCurrency(item))} {L.each}</p>}
                             </div>
                         </div>
                     ))}

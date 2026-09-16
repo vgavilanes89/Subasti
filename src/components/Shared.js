@@ -103,7 +103,7 @@ export const StarRating = ({ rating }) => {
     const emptyStars = totalStars - fullStars - (halfStar ? 1 : 0);
 
     return (
-        <div className="flex items-center">
+        <span className="inline-flex items-center">
             {[...Array(fullStars)].map((_, i) => (
                 <svg key={`full-${i}`} className="w-4 h-4 text-yellow-400 fill-current" viewBox="0 0 24 24"><path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279L12 18.896l-7.416 4.517 1.48-8.279-6.064-5.828 8.332-1.151L12 .587z"/></svg>
             ))}
@@ -113,6 +113,6 @@ export const StarRating = ({ rating }) => {
             {[...Array(emptyStars)].map((_, i) => (
                 <svg key={`empty-${i}`} className="w-4 h-4 text-gray-300 fill-current" viewBox="0 0 24 24"><path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279L12 18.896l-7.416 4.517 1.48-8.279-6.064-5.828 8.332-1.151L12 .587z"/></svg>
             ))}
-        </div>
+        </span>
     );
 };

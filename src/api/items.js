@@ -26,7 +26,9 @@ export const deleteItem = async (id) => {
 
 export const getBidIncrement = (currentBid, currency = 'CRC') => {
     if (currency === 'USD') {
-        return Math.max(1, Math.ceil(currentBid * 0.05 * 100) / 100);
+        // currentBid * 5 (not * 0.05 * 100) avoids floating-point drift that
+        // rounded some increments a cent too high (e.g. 1638 -> 81.91 instead of 81.90).
+        return Math.max(1, Math.ceil(currentBid * 5) / 100);
     }
     return Math.max(1000, Math.ceil(currentBid * 0.05));
 };
