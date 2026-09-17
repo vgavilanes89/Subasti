@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useItems } from '../context/ItemsContext';
@@ -7,13 +8,27 @@ import { COSTA_RICA_LOCATIONS } from '../data/Constants';
 import { CRC, itemCurrency, formatMoneyTotals } from '../components/Shared';
 import EscrowPanel from '../components/EscrowPanel';
 import { createCheckoutOrders } from '../api/orders';
+import { getStripePromise } from '../lib/stripe';
+
+async function waitForOrders(paymentIntentId, attempts = 8, delayMs = 800) {
+    for (let i = 0; i < attempts; i++) {
+        const res = await fetch(`/api/payments/status?paymentIntentId=${encodeURIComponent(paymentIntentId)}`);
+        if (res.ok) {
+            const body = await res.json();
+            if (body.ready) return true;
+        }
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+    return false;
+}
 
 const CheckoutPage = ({ loc }) => {
     const { user, saveAddress } = useAuth();
     const { cart, clearCart } = useCart();
     const { items } = useItems();
     const navigate = useNavigate();
-    
+    const [searchParams] = useSearchParams();
+
     const cartWithDetails = useMemo(() => cart.map(cartItem => ({ ...cartItem, ...items.find(item => item.id === cartItem.id) })), [cart, items]);
 
     const L = loc === 'en' ? {
@@ -30,10 +45,6 @@ const CheckoutPage = ({ loc }) => {
         city: 'City',
         country: 'Country',
         postalCode: 'Postal Code',
-        cardName: 'Name on Card',
-        cardNumber: 'Card Number',
-        expiry: 'Expiry (MM/YY)',
-        cvc: 'CVC',
         placeOrder: 'Place Order',
         subtotal: 'Subtotal',
         shipping: 'Shipping',
@@ -54,6 +65,9 @@ const CheckoutPage = ({ loc }) => {
         escrowNote: 'Your payment is held securely by Subasti until you receive the item and confirm satisfaction (or 48 hours pass).',
         orderSuccess: 'Payment secured in Subasti escrow. Track your order in Buying.',
         placing: 'Securing payment…',
+        mixedCurrency: 'Your cart mixes CRC and USD items. Card payment supports one currency per order — remove items so only one currency remains, or pay with SINPE Móvil.',
+        cardUnavailable: 'Card payment is unavailable right now.',
+        confirming: 'Confirming your payment…',
     } : {
         title: 'Finalizar Compra',
         deliveryMethod: 'Método de Entrega',
@@ -68,10 +82,6 @@ const CheckoutPage = ({ loc }) => {
         city: 'Ciudad',
         country: 'País',
         postalCode: 'Código Postal',
-        cardName: 'Nombre en la Tarjeta',
-        cardNumber: 'Número de Tarjeta',
-        expiry: 'Vencimiento (MM/AA)',
-        cvc: 'CVC',
         placeOrder: 'Realizar Pedido',
         subtotal: 'Subtotal',
         shipping: 'Envío',
@@ -92,13 +102,16 @@ const CheckoutPage = ({ loc }) => {
         escrowNote: 'Su pago queda retenido de forma segura por Subasti hasta que reciba el artículo y confirme conformidad (o pasen 48 horas).',
         orderSuccess: 'Pago asegurado en depósito Subasti. Rastree su pedido en Compras.',
         placing: 'Asegurando pago…',
+        mixedCurrency: 'Su carrito mezcla artículos en CRC y USD. El pago con tarjeta admite una sola moneda por orden — elimine artículos hasta dejar una sola moneda, o pague con SINPE Móvil.',
+        cardUnavailable: 'El pago con tarjeta no está disponible en este momento.',
+        confirming: 'Confirmando su pago…',
     };
 
     const isShippingAvailable = useMemo(() => cartWithDetails.every(item => item.shippingShip), [cartWithDetails]);
     const isPickupAvailable = useMemo(() => cartWithDetails.every(item => item.shippingLocal), [cartWithDetails]);
-    
+
     const [deliveryMethod, setDeliveryMethod] = useState(isShippingAvailable ? 'ship' : 'pickup');
-    
+
     const [selectedAddressId, setSelectedAddressId] = useState(user?.defaultAddressId || 'new');
     const [saveNewAddress, setSaveNewAddress] = useState(true);
 
@@ -118,11 +131,10 @@ const CheckoutPage = ({ loc }) => {
     });
 
     const [paymentMethod, setPaymentMethod] = useState('card');
-    const [paymentDetails, setPaymentDetails] = useState({ nameOnCard: '', number: '', expiry: '', cvc: '' });
-    
     const [showPaymentPrompt, setShowPaymentPrompt] = useState(true);
     const [placing, setPlacing] = useState(false);
-    
+    const [resumingRedirect, setResumingRedirect] = useState(() => searchParams.get('redirect_status') === 'succeeded');
+
     const defaultPayment = useMemo(() => user?.savedPayments?.find(p => p.id === user.defaultPaymentId), [user]);
 
     const handleAddressSelection = (addressId) => {
@@ -143,17 +155,13 @@ const CheckoutPage = ({ loc }) => {
             }
         }
     };
-    
+
     const handleUseDefaultPayment = () => {
-        if(defaultPayment) {
-            setPaymentMethod(defaultPayment.type);
-            if (defaultPayment.type === 'card') {
-                setPaymentDetails({ nameOnCard: defaultPayment.nameOnCard || '', number: defaultPayment.number, expiry: defaultPayment.expiry, cvc: ''});
-            }
+        if (defaultPayment) {
+            setPaymentMethod(defaultPayment.type === 'sinpe' ? 'sinpe' : 'card');
             setShowPaymentPrompt(false);
         }
     };
-
 
     const handleFormChange = (setter) => (e) => {
         const { name, value } = e.target;
@@ -192,43 +200,64 @@ const CheckoutPage = ({ loc }) => {
         return totals;
     }, [subtotalsByCurrency, shippingByCurrency]);
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        if (!user) {
-            navigate('/login');
-            return;
-        }
+    const currencyKeys = Object.keys(totalsByCurrency);
+    const isSingleCurrency = currencyKeys.length === 1;
+    const cardCurrency = isSingleCurrency ? currencyKeys[0] : null;
+    const cardTotal = cardCurrency ? totalsByCurrency[cardCurrency] : 0;
+
+    const stripeOptions = useMemo(() => ({
+        mode: 'payment',
+        // This only hints to Stripe.js which payment-method UIs to offer (e.g.
+        // wallet eligibility) — the real charge amount is always whatever the
+        // server computes fresh in create-intent.js at submit time, from
+        // authoritative item data, not from this client-side value.
+        amount: cardTotal > 0 ? Math.round(cardTotal * 100) : 100,
+        currency: (cardCurrency || 'usd').toLowerCase(),
+    }), [cardTotal, cardCurrency]);
+
+    // Resume after a 3D Secure redirect: Stripe sends the shopper back to this
+    // same page with these query params instead of resolving confirmPayment() inline.
+    useEffect(() => {
+        const paymentIntentId = searchParams.get('payment_intent');
+        const redirectStatus = searchParams.get('redirect_status');
+        if (redirectStatus !== 'succeeded' || !paymentIntentId) return;
+        let cancelled = false;
+        waitForOrders(paymentIntentId).then((ready) => {
+            if (cancelled) return;
+            setResumingRedirect(false);
+            if (ready) {
+                clearCart();
+                alert(L.orderSuccess);
+            }
+            navigate('/profile?tab=buying', { replace: true });
+        });
+        return () => { cancelled = true; };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const saveShippingAddressIfNeeded = () => {
         if (deliveryMethod === 'ship' && selectedAddressId === 'new' && saveNewAddress) {
             if (shippingData.address && shippingData.province && shippingData.city && shippingData.postalCode) {
-                const newAddressToSave = {
+                saveAddress({
                     alias: `${L.addressAlias} (${shippingData.address.substring(0, 15)}...)`,
                     address: shippingData.address,
                     city: shippingData.city,
                     province: shippingData.province,
                     postalCode: shippingData.postalCode,
-                };
-                saveAddress(newAddressToSave);
+                });
             }
         }
-        setPlacing(true);
-        try {
-            await createCheckoutOrders({
-                buyerId: user.id,
-                items: cartWithDetails.map(item => ({
-                    ...item,
-                    qty: item.qty,
-                })),
-                fulfillment: deliveryMethod,
-                paymentMethod,
-            });
-            clearCart();
-            alert(L.orderSuccess);
-            navigate('/profile?tab=buying');
-        } catch {
-            alert(loc === 'en' ? 'Checkout failed. Please try again.' : 'Error en la compra. Intente de nuevo.');
-        } finally {
-            setPlacing(false);
-        }
+    };
+
+    const handleSinpeSubmit = async () => {
+        await createCheckoutOrders({
+            items: cartWithDetails.map(item => ({ ...item, qty: item.qty })),
+            fulfillment: deliveryMethod,
+            paymentMethod: 'sinpe',
+        });
+        clearCart();
+        alert(L.orderSuccess);
+        navigate('/profile?tab=buying');
     };
 
     if (!user) {
@@ -238,6 +267,14 @@ const CheckoutPage = ({ loc }) => {
                 <button onClick={() => navigate('/login')} className="mt-6 bg-purple-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-purple-700 transition-colors">
                     {loc === 'en' ? 'Log In' : 'Iniciar Sesión'}
                 </button>
+            </div>
+        );
+    }
+
+    if (resumingRedirect) {
+        return (
+            <div className="bg-white p-8 rounded-lg shadow-md border text-center">
+                <h2 className="text-2xl font-bold text-gray-800">{L.confirming}</h2>
             </div>
         );
     }
@@ -256,6 +293,103 @@ const CheckoutPage = ({ loc }) => {
     const provinces = Object.keys(COSTA_RICA_LOCATIONS);
     const cities = shippingData.province ? COSTA_RICA_LOCATIONS[shippingData.province] : [];
 
+    const sharedProps = {
+        loc, L, user, cartWithDetails, deliveryMethod, setDeliveryMethod, isShippingAvailable, isPickupAvailable,
+        selectedAddressId, handleAddressSelection, shippingData, handleFormChange, setShippingData, saveNewAddress,
+        setSaveNewAddress, provinces, cities, paymentMethod, setPaymentMethod, defaultPayment, showPaymentPrompt,
+        handleUseDefaultPayment, subtotalsByCurrency, shippingByCurrency, totalsByCurrency, placing, setPlacing,
+        cardCurrency, cardTotal, saveShippingAddressIfNeeded, handleSinpeSubmit, navigate, clearCart,
+    };
+
+    return (
+        <Elements stripe={getStripePromise()} options={stripeOptions}>
+            <CheckoutFormBody {...sharedProps} />
+        </Elements>
+    );
+};
+
+const CheckoutFormBody = (props) => {
+    const {
+        loc, L, cartWithDetails, deliveryMethod, setDeliveryMethod, isShippingAvailable, isPickupAvailable,
+        selectedAddressId, handleAddressSelection, shippingData, handleFormChange, setShippingData, saveNewAddress,
+        setSaveNewAddress, provinces, cities, paymentMethod, setPaymentMethod, defaultPayment, showPaymentPrompt,
+        handleUseDefaultPayment, subtotalsByCurrency, shippingByCurrency, totalsByCurrency, placing, setPlacing,
+        cardCurrency, saveShippingAddressIfNeeded, handleSinpeSubmit, navigate, user, clearCart,
+    } = props;
+
+    const stripe = useStripe();
+    const elements = useElements();
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!user) {
+            navigate('/login');
+            return;
+        }
+        saveShippingAddressIfNeeded();
+        setPlacing(true);
+        try {
+            if (paymentMethod === 'sinpe') {
+                await handleSinpeSubmit();
+                return;
+            }
+
+            if (!cardCurrency) {
+                alert(L.mixedCurrency);
+                return;
+            }
+            if (!stripe || !elements) {
+                alert(L.cardUnavailable);
+                return;
+            }
+
+            const submitResult = await elements.submit();
+            if (submitResult.error) {
+                alert(submitResult.error.message || L.cardUnavailable);
+                return;
+            }
+
+            const intentRes = await fetch('/api/payments/create-intent', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    items: cartWithDetails.map(item => ({ id: item.id, qty: item.qty })),
+                    fulfillment: deliveryMethod,
+                }),
+            });
+            if (!intentRes.ok) {
+                const body = await intentRes.json().catch(() => ({}));
+                throw new Error(body.error || 'CREATE_INTENT_FAILED');
+            }
+            const { clientSecret, paymentIntentId } = await intentRes.json();
+
+            const { error, paymentIntent } = await stripe.confirmPayment({
+                elements,
+                clientSecret,
+                confirmParams: { return_url: window.location.href.split('?')[0] },
+                redirect: 'if_required',
+            });
+
+            if (error) {
+                alert(error.message || (loc === 'en' ? 'Payment failed. Please try again.' : 'El pago falló. Intente de nuevo.'));
+                return;
+            }
+
+            if (paymentIntent && paymentIntent.status === 'succeeded') {
+                // Webhook is the source of truth for order creation and can land a
+                // beat after this resolves; wait briefly, then proceed regardless —
+                // the order will show up in Buying shortly even if it's not ready yet.
+                await waitForOrders(paymentIntent.id || paymentIntentId);
+                clearCart();
+                alert(L.orderSuccess);
+                navigate('/profile?tab=buying');
+            }
+        } catch {
+            alert(loc === 'en' ? 'Checkout failed. Please try again.' : 'Error en la compra. Intente de nuevo.');
+        } finally {
+            setPlacing(false);
+        }
+    };
 
     return (
         <div>
@@ -290,10 +424,10 @@ const CheckoutPage = ({ loc }) => {
                             <div className="space-y-2 mb-4">
                                 {user?.savedAddresses?.map(addr => (
                                     <label key={addr.id} className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                                        <input 
-                                            type="radio" 
-                                            name="addressSelection" 
-                                            value={addr.id} 
+                                        <input
+                                            type="radio"
+                                            name="addressSelection"
+                                            value={addr.id}
                                             checked={selectedAddressId === addr.id}
                                             onChange={() => handleAddressSelection(addr.id)}
                                             className="h-4 w-4 text-purple-600 focus:ring-purple-500"
@@ -305,10 +439,10 @@ const CheckoutPage = ({ loc }) => {
                                     </label>
                                 ))}
                                 <label className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                                    <input 
-                                        type="radio" 
-                                        name="addressSelection" 
-                                        value="new" 
+                                    <input
+                                        type="radio"
+                                        name="addressSelection"
+                                        value="new"
                                         checked={selectedAddressId === 'new'}
                                         onChange={() => handleAddressSelection('new')}
                                         className="h-4 w-4 text-purple-600 focus:ring-purple-500"
@@ -316,11 +450,11 @@ const CheckoutPage = ({ loc }) => {
                                     <p className="ml-3 font-bold">{L.newAddress}</p>
                                 </label>
                             </div>
-                            
+
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
                                 <input name="fullName" value={shippingData.fullName} onChange={handleFormChange(setShippingData)} placeholder={L.fullName} className="w-full p-3 border rounded-lg col-span-2 disabled:bg-gray-100" required disabled={selectedAddressId !== 'new'} />
                                 <input name="address" value={shippingData.address} onChange={handleFormChange(setShippingData)} placeholder={L.address} className="w-full p-3 border rounded-lg col-span-2 disabled:bg-gray-100" required disabled={selectedAddressId !== 'new'}/>
-                                
+
                                 <select name="province" value={shippingData.province} onChange={handleFormChange(setShippingData)} required disabled={selectedAddressId !== 'new'} className="w-full p-3 border rounded-lg disabled:bg-gray-100">
                                     <option value="">{L.province}</option>
                                     {provinces.map(p => <option key={p} value={p}>{p}</option>)}
@@ -330,7 +464,7 @@ const CheckoutPage = ({ loc }) => {
                                     <option value="">{L.city}</option>
                                     {cities.map(c => <option key={c} value={c}>{c}</option>)}
                                 </select>
-                                
+
                                 <input name="postalCode" value={shippingData.postalCode} onChange={handleFormChange(setShippingData)} placeholder={L.postalCode} className="w-full p-3 border rounded-lg disabled:bg-gray-100" required disabled={selectedAddressId !== 'new'}/>
                                 <input name="country" value={shippingData.country} onChange={handleFormChange(setShippingData)} placeholder={L.country} className="w-full p-3 border rounded-lg col-span-2 disabled:bg-gray-100" required disabled={selectedAddressId !== 'new'}/>
                                 {selectedAddressId === 'new' && (
@@ -383,14 +517,11 @@ const CheckoutPage = ({ loc }) => {
                             </button>
                         </div>
                         {paymentMethod === 'card' && (
-                            <div className="space-y-4">
-                                <input name="nameOnCard" value={paymentDetails.nameOnCard} onChange={handleFormChange(setPaymentDetails)} placeholder={L.cardName} className="w-full p-3 border rounded-lg" required={paymentMethod === 'card'} />
-                                <input name="number" value={paymentDetails.number} onChange={handleFormChange(setPaymentDetails)} placeholder={L.cardNumber} type="tel" inputMode="numeric" pattern="[0-9\s]{13,19}" className="w-full p-3 border rounded-lg" required={paymentMethod === 'card'} />
-                                <div className="grid grid-cols-2 gap-4">
-                                    <input name="expiry" value={paymentDetails.expiry} onChange={handleFormChange(setPaymentDetails)} placeholder={L.expiry} className="w-full p-3 border rounded-lg" required={paymentMethod === 'card'} />
-                                    <input name="cvc" value={paymentDetails.cvc} onChange={handleFormChange(setPaymentDetails)} placeholder={L.cvc} className="w-full p-3 border rounded-lg" required={paymentMethod === 'card'} />
-                                </div>
-                            </div>
+                            cardCurrency ? (
+                                <PaymentElement />
+                            ) : (
+                                <p className="text-sm text-red-600 bg-red-50 p-3 rounded-lg">{L.mixedCurrency}</p>
+                            )
                         )}
                         {paymentMethod === 'sinpe' && (
                             <div className="bg-gray-50 p-4 rounded-lg text-center">
@@ -429,6 +560,6 @@ const CheckoutPage = ({ loc }) => {
             </form>
         </div>
     );
-}
+};
 
 export default CheckoutPage;
