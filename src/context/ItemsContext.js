@@ -33,8 +33,8 @@ export const ItemsProvider = ({ children }) => {
 
     const isFav = (id) => favorites.includes(id);
 
-    const placeBidOnItem = async (id, amount) => {
-        const updated = await itemsService.placeBid(id, amount);
+    const placeBidOnItem = async (id, amount, bidderId) => {
+        const updated = await itemsService.placeBid(id, amount, bidderId);
         setItems(prev => prev.map(i => (i.id === id ? updated : i)));
         return updated;
     };

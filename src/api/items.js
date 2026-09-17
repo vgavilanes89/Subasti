@@ -40,13 +40,19 @@ export const getMinBid = (item) => {
     return current + getBidIncrement(current, currency);
 };
 
-export const placeBid = async (id, amount) => {
+export const placeBid = async (id, amount, bidderId) => {
     const item = ITEMS.find(i => i.id === id);
     if (!item || item.saleType !== 'auc') {
         throw new Error('INVALID_AUCTION');
     }
     if (item.endAt < Date.now()) {
         throw new Error('AUCTION_ENDED');
+    }
+    if (bidderId && bidderId === item.sellerId) {
+        throw new Error('OWN_ITEM');
+    }
+    if (!Number.isFinite(amount)) {
+        throw new Error('INVALID_AMOUNT');
     }
     const minBid = getMinBid(item);
     if (amount < minBid) {
@@ -56,6 +62,7 @@ export const placeBid = async (id, amount) => {
         ...item,
         currentBid: amount,
         bids: (item.bids || 0) + 1,
+        highestBidderId: bidderId || item.highestBidderId || null,
     };
     ITEMS = ITEMS.map(i => (i.id === id ? updated : i));
     return updated;

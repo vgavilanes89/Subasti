@@ -32,6 +32,7 @@ const ItemViewPage = ({ loc }) => {
     const [chatOpen, setChatOpen] = useState(false);
     const [chatThreadId, setChatThreadId] = useState(null);
     const [chatLoading, setChatLoading] = useState(false);
+    const [bidding, setBidding] = useState(false);
 
     const minBid = useMemo(() => (item ? getMinBid(item) : 0), [item]);
 
@@ -104,7 +105,8 @@ const ItemViewPage = ({ loc }) => {
         loginToMessage: 'Log in to message the seller',
         ownItemMessage: 'You cannot message yourself about your own listing.',
         viewInProfile: 'View all messages in your profile',
-    } : { 
+        ownItemBuy: 'You cannot buy your own listing.',
+    } : {
         back: 'Atrás', 
         add: 'Agregar al carrito', 
         placeBid: 'Hacer Puja', 
@@ -147,14 +149,22 @@ const ItemViewPage = ({ loc }) => {
         loginToMessage: 'Inicia sesión para escribirle al vendedor',
         ownItemMessage: 'No puedes enviarte mensajes sobre tu propio artículo.',
         viewInProfile: 'Ver todos los mensajes en tu perfil',
+        ownItemBuy: 'No puedes comprar tu propio artículo.',
     };
 
     const currency = itemCurrency(item);
     const reserveMet = item.reservePrice ? item.currentBid >= item.reservePrice : true;
     const images = item.images && item.images.length > 0 ? item.images : [PLACEHOLDER_IMG];
 
+    const handleAddToCart = () => {
+        if(!user) { navigate('/login'); return; }
+        if (user.id === item.sellerId) { alert(L.ownItemBuy); return; }
+        addToCart(item.id, selectedQuantity);
+    };
+
     const handleBuyNow = () => {
         if(!user) { navigate('/login'); return; }
+        if (user.id === item.sellerId) { alert(L.ownItemBuy); return; }
         addToCart(item.id, selectedQuantity);
         navigate('/cart');
     };
@@ -196,6 +206,7 @@ const ItemViewPage = ({ loc }) => {
         || (chatThreadId ? { id: chatThreadId, itemTitle: item.title, messages: [], buyerId: user?.id, sellerId: item.sellerId } : null);
 
     const handlePlaceBid = async () => {
+        if (bidding) return;
         if (!user) {
             navigate('/login');
             return;
@@ -209,12 +220,15 @@ const ItemViewPage = ({ loc }) => {
             setBidError(`${L.bidTooLow} ${CRC(minBid, loc, currency)}`);
             return;
         }
+        setBidding(true);
         try {
-            await placeBid(item.id, amount);
+            await placeBid(item.id, amount, user.id);
             setBidError('');
             alert(L.bidSuccess);
         } catch {
             setBidError(`${L.bidTooLow} ${CRC(minBid, loc, currency)}`);
+        } finally {
+            setBidding(false);
         }
     };
 
@@ -286,7 +300,8 @@ const ItemViewPage = ({ loc }) => {
                                                 <button
                                                     type="button"
                                                     onClick={handlePlaceBid}
-                                                    className="w-full bg-indigo-500 text-white py-3 rounded-lg font-bold hover:bg-indigo-600 transition-colors"
+                                                    disabled={bidding}
+                                                    className="w-full bg-indigo-500 text-white py-3 rounded-lg font-bold hover:bg-indigo-600 transition-colors disabled:opacity-60"
                                                 >
                                                     {L.placeBid}
                                                 </button>
@@ -313,7 +328,7 @@ const ItemViewPage = ({ loc }) => {
                                         </div>
                                     )}
                                     <div className="mt-6 flex gap-4">
-                                        <button className="flex-1 bg-purple-100 text-purple-700 py-3 rounded-lg font-bold hover:bg-purple-200" onClick={() => addToCart(item.id, selectedQuantity)}>{L.add}</button>
+                                        <button className="flex-1 bg-purple-100 text-purple-700 py-3 rounded-lg font-bold hover:bg-purple-200" onClick={handleAddToCart}>{L.add}</button>
                                         <button className="flex-1 bg-purple-600 text-white py-3 rounded-lg font-bold hover:bg-purple-700" onClick={handleBuyNow}>{L.buyNow}</button>
                                     </div>
                                 </div>
