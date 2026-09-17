@@ -6,6 +6,7 @@ import ChatPanel from './ChatPanel';
 import * as ordersApi from '../api/orders';
 import { buyerStatusLabel, orderStatusClass } from '../data/escrow';
 import EscrowPanel from './EscrowPanel';
+import PayOrderModal from './PayOrderModal';
 
 const StatCard = ({ label, value, sub, accent }) => (
     <div className={`seller-stat-card ${accent ? `seller-stat-card--${accent}` : ''}`}>
@@ -26,7 +27,6 @@ const BuyerOrderCard = ({
     onSubmitClaim,
     onOpenItem,
     onMessageSeller,
-    paying,
     claiming,
 }) => {
     const [claimDraft, setClaimDraft] = useState('');
@@ -100,10 +100,9 @@ const BuyerOrderCard = ({
                     <button
                         type="button"
                         onClick={() => onPay(order.id)}
-                        disabled={paying === order.id}
                         className="seller-action-btn"
                     >
-                        {paying === order.id ? '…' : L.payNow}
+                        {L.payNow}
                     </button>
                 )}
                 {order.status === 'shipped' && (
@@ -195,8 +194,8 @@ const BuyerDashboard = ({
     const { buyerThreads, getOrCreateThread } = useMessages();
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [paying, setPaying] = useState(null);
     const [claiming, setClaiming] = useState(null);
+    const [payingOrder, setPayingOrder] = useState(null);
 
     const L = loc === 'en' ? {
         dashboard: 'Buying Dashboard',
@@ -320,6 +319,41 @@ const BuyerDashboard = ({
         return () => { cancelled = true; };
     }, [user.id]);
 
+    // Items/bids live only in the client (never persisted), so this is the
+    // only place that can notice "an auction I won just ended" and turn it
+    // into a real, payable order — done lazily on view since there's no
+    // backend job that could watch for it instead.
+    useEffect(() => {
+        if (!items.length) return;
+        const now = Date.now();
+        const won = items.filter(item =>
+            item.saleType === 'auc' &&
+            item.endAt < now &&
+            item.highestBidderId === user.id &&
+            (!item.reservePrice || item.currentBid >= item.reservePrice)
+        );
+        if (won.length === 0) return;
+
+        let cancelled = false;
+        Promise.all(won.map(item =>
+            fetch('/api/orders/settle-auction', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ itemId: item.id, amount: item.currentBid }),
+            }).then(res => (res.ok ? res.json() : null))
+        )).then(newOrders => {
+            if (cancelled) return;
+            const created = newOrders.filter(Boolean);
+            if (created.length === 0) return;
+            setOrders(prev => {
+                const byId = new Map(prev.map(o => [o.id, o]));
+                created.forEach(o => byId.set(o.id, o));
+                return [...byId.values()];
+            });
+        });
+        return () => { cancelled = true; };
+    }, [items, user.id]);
+
     const pendingPayment = useMemo(() => orders.filter(o => o.status === 'pending_payment'), [orders]);
     const inTransit = useMemo(() => orders.filter(o => o.status === 'shipped'), [orders]);
     const awaitingConfirmation = useMemo(() => orders.filter(o => o.status === 'awaiting_confirmation'), [orders]);
@@ -336,17 +370,15 @@ const BuyerDashboard = ({
 
     const hasUrgent = pendingPayment.length > 0 || awaitingConfirmation.length > 0 || inTransit.length > 0;
 
-    const handlePay = async (orderId) => {
-        setPaying(orderId);
-        try {
-            const updated = await ordersApi.payBuyerOrder(orderId);
-            setOrders(prev => prev.map(o => (o.id === orderId ? updated : o)));
-            alert(L.paySuccess);
-        } catch {
-            // ignore
-        } finally {
-            setPaying(null);
-        }
+    const handlePay = (orderId) => {
+        const order = orders.find(o => o.id === orderId);
+        if (order) setPayingOrder(order);
+    };
+
+    const handlePaid = (updatedOrder) => {
+        setOrders(prev => prev.map(o => (o.id === updatedOrder.id ? updatedOrder : o)));
+        setPayingOrder(null);
+        alert(L.paySuccess);
     };
 
     const handleConfirmReceived = async (orderId) => {
@@ -422,7 +454,6 @@ const BuyerDashboard = ({
                             onSubmitClaim={handleSubmitClaim}
                             onOpenItem={handleOpenItem}
                             onMessageSeller={handleMessageSeller}
-                            paying={paying}
                             claiming={claiming}
                         />
                     ))}
@@ -522,6 +553,15 @@ const BuyerDashboard = ({
                     L={L}
                 />
             </div>
+
+            {payingOrder && (
+                <PayOrderModal
+                    order={payingOrder}
+                    loc={loc}
+                    onClose={() => setPayingOrder(null)}
+                    onPaid={handlePaid}
+                />
+            )}
         </div>
     );
 };

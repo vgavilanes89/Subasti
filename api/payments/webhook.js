@@ -62,20 +62,38 @@ export default async function handler(req, res) {
   }
 
   if (event.type === 'payment_intent.succeeded') {
-    const paymentIntentId = event.data.object.id;
+    const paymentIntent = event.data.object;
+    const paymentIntentId = paymentIntent.id;
+    const existingOrderId = paymentIntent.metadata?.orderId;
     const sql = getSql();
 
-    // Idempotent: if orders already exist for this intent (a webhook retry,
-    // or Stripe redelivering), don't create them twice.
-    const existing = await sql`SELECT id FROM orders WHERE stripe_payment_intent_id = ${paymentIntentId} LIMIT 1`;
-    if (existing.length === 0) {
-      const pendingRows = await sql`SELECT * FROM pending_checkouts WHERE payment_intent_id = ${paymentIntentId}`;
-      const pending = pendingRows[0];
-      if (pending) {
-        await fulfillCheckout(sql, pending);
-        await sql`DELETE FROM pending_checkouts WHERE payment_intent_id = ${paymentIntentId}`;
-      } else {
-        console.error('No pending checkout found for succeeded PaymentIntent', paymentIntentId);
+    if (existingOrderId) {
+      // Paying off an existing pending_payment order (an auction win), not a
+      // new cart checkout. Guard on status so a webhook retry can't re-apply this.
+      const now = Date.now();
+      await sql`
+        UPDATE orders SET
+          status = ${ORDER_STATUS.ESCROW_HELD},
+          payment_method = 'card',
+          payment_due_at = NULL,
+          escrow_held_at = to_timestamp(${now} / 1000.0),
+          ship_by_at = to_timestamp(${now + ESCROW_WINDOW_MS} / 1000.0),
+          stripe_payment_intent_id = ${paymentIntentId}
+        WHERE id = ${existingOrderId} AND status = ${ORDER_STATUS.PENDING_PAYMENT}
+      `;
+    } else {
+      // Idempotent: if orders already exist for this intent (a webhook retry,
+      // or Stripe redelivering), don't create them twice.
+      const existing = await sql`SELECT id FROM orders WHERE stripe_payment_intent_id = ${paymentIntentId} LIMIT 1`;
+      if (existing.length === 0) {
+        const pendingRows = await sql`SELECT * FROM pending_checkouts WHERE payment_intent_id = ${paymentIntentId}`;
+        const pending = pendingRows[0];
+        if (pending) {
+          await fulfillCheckout(sql, pending);
+          await sql`DELETE FROM pending_checkouts WHERE payment_intent_id = ${paymentIntentId}`;
+        } else {
+          console.error('No pending checkout found for succeeded PaymentIntent', paymentIntentId);
+        }
       }
     }
   }
