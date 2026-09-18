@@ -197,6 +197,16 @@ const BuyerDashboard = ({
     const [claiming, setClaiming] = useState(null);
     const [payingOrder, setPayingOrder] = useState(null);
 
+    // Without this, a buyer with exactly one conversation (the common case
+    // for a first admin support message) sees a blank message panel: the
+    // thread switcher only appears once there's more than one thread, and
+    // nothing auto-selects the lone one otherwise.
+    useEffect(() => {
+        if (!activeThreadId && buyerThreads.length > 0) {
+            onSelectThread(buyerThreads[0].id);
+        }
+    }, [activeThreadId, buyerThreads, onSelectThread]);
+
     const L = loc === 'en' ? {
         dashboard: 'Buying Dashboard',
         pendingPayment: 'Awaiting payment',

@@ -1,38 +1,21 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CRC, itemCurrency, formatMoneyTotals } from '../components/Shared';
+import { useAuth } from '../context/AuthContext';
+import { useItems } from '../context/ItemsContext';
+import { useMessages } from '../context/MessagesContext';
+import ChatPanel from '../components/ChatPanel';
 
-const MessageUserModal = ({ user, onClose, onSend, L }) => {
-    const [message, setMessage] = useState('');
-    
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        onSend(user.id, message);
-    };
+const AdminPage = ({ loc }) => {
+    const navigate = useNavigate();
+    const { user, users: usersMap } = useAuth();
+    const { items, removeItem } = useItems();
+    const { threads, getOrCreateAdminThread } = useMessages();
 
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
-                <h3 className="text-lg font-bold mb-4">{L.sendMessageTo} {user.profileName} ({user.email})</h3>
-                <form onSubmit={handleSubmit}>
-                    <textarea 
-                        value={message}
-                        onChange={(e) => setMessage(e.target.value)}
-                        className="w-full p-2 border rounded-lg h-32"
-                        placeholder={`${L.message}...`}
-                        required
-                    />
-                    <div className="flex justify-end gap-4 mt-4">
-                        <button type="button" onClick={onClose} className="text-sm font-semibold text-gray-600 hover:underline">{L.cancel}</button>
-                        <button type="submit" className="bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-blue-700">{L.send}</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    );
-};
-
-const AdminPage = ({ loc, users, items, onSuspendUser, onRemoveItem, onSendMessageToUser }) => {
-    const [messagingUser, setMessagingUser] = useState(null);
+    const [allUsers, setAllUsers] = useState([]);
+    const [loadingUsers, setLoadingUsers] = useState(true);
+    const [actionError, setActionError] = useState('');
+    const [messagingThreadId, setMessagingThreadId] = useState(null);
 
     const L = loc === 'en' ? {
         title: 'Admin Dashboard',
@@ -43,6 +26,8 @@ const AdminPage = ({ loc, users, items, onSuspendUser, onRemoveItem, onSendMessa
         email: 'Email',
         actions: 'Actions',
         suspend: 'Suspend',
+        unsuspend: 'Unsuspend',
+        suspended: 'Suspended',
         message: 'Message',
         itemId: 'Item ID',
         itemTitle: 'Title',
@@ -54,9 +39,12 @@ const AdminPage = ({ loc, users, items, onSuspendUser, onRemoveItem, onSendMessa
         totalItems: 'Total Items',
         activeAuctions: 'Active Auctions',
         totalValue: 'Total Listing Value',
-        sendMessageTo: 'Send Message to',
-        send: 'Send',
-        cancel: 'Cancel',
+        messages: 'Messages',
+        loginRequired: 'Please log in',
+        loginButton: 'Log In',
+        notAuthorized: 'You are not authorized to view this page.',
+        goHome: 'Go Home',
+        actionFailed: 'That action failed. Please try again.',
     } : {
         title: 'Panel de Administración',
         userManagement: 'Gestión de Usuarios',
@@ -66,6 +54,8 @@ const AdminPage = ({ loc, users, items, onSuspendUser, onRemoveItem, onSendMessa
         email: 'Correo',
         actions: 'Acciones',
         suspend: 'Suspender',
+        unsuspend: 'Reactivar',
+        suspended: 'Suspendido',
         message: 'Mensaje',
         itemId: 'ID Artículo',
         itemTitle: 'Título',
@@ -77,14 +67,40 @@ const AdminPage = ({ loc, users, items, onSuspendUser, onRemoveItem, onSendMessa
         totalItems: 'Artículos Totales',
         activeAuctions: 'Subastas Activas',
         totalValue: 'Valor Total de Artículos',
-        sendMessageTo: 'Enviar Mensaje a',
-        send: 'Enviar',
-        cancel: 'Cancelar',
+        messages: 'Mensajes',
+        loginRequired: 'Por favor inicia sesión',
+        loginButton: 'Iniciar Sesión',
+        notAuthorized: 'No tienes autorización para ver esta página.',
+        goHome: 'Ir al Inicio',
+        actionFailed: 'La acción falló. Intenta de nuevo.',
     };
-    
+
+    const isAdmin = !!user?.isAdmin;
+
+    const loadUsers = useCallback(async () => {
+        if (!isAdmin) return;
+        setLoadingUsers(true);
+        try {
+            const res = await fetch('/api/admin/list-users');
+            if (res.ok) setAllUsers(await res.json());
+        } finally {
+            setLoadingUsers(false);
+        }
+    }, [isAdmin]);
+
+    useEffect(() => { loadUsers(); }, [loadUsers]);
+
+    // Includes every real user the admin can see, not just the ones this
+    // session happened to log in/sign up (which is all AuthContext's mock
+    // usersMap tracks) — needed so ChatPanel can resolve a target's name.
+    const chatUsers = useMemo(() => ({
+        ...usersMap,
+        ...Object.fromEntries(allUsers.map(u => [u.id, u])),
+    }), [usersMap, allUsers]);
+
     const stats = useMemo(() => {
         const now = new Date().getTime();
-        const regularUsers = Object.values(users).filter(u => !u.isAdmin);
+        const regularUsers = allUsers.filter(u => !u.isAdmin);
         const activeAuctions = items.filter(i => i.saleType === 'auc' && i.endAt > now);
         const totalsByCurrency = items.reduce((sums, item) => {
             const currency = itemCurrency(item);
@@ -98,12 +114,11 @@ const AdminPage = ({ loc, users, items, onSuspendUser, onRemoveItem, onSendMessa
             totalItems: items.length,
             activeAuctions: activeAuctions.length,
             totalValue: totalsByCurrency,
-        }
-    }, [users, items]);
-    
-    const allUsers = Object.values(users);
-    const allItems = items.map(item => ({...item, sellerName: users[item.sellerId]?.profileName || 'N/A' }));
-    
+        };
+    }, [allUsers, items]);
+
+    const allItems = items.map(item => ({ ...item, sellerName: usersMap[item.sellerId]?.profileName || 'N/A' }));
+
     const StatCard = ({ title, value }) => (
         <div className="bg-gray-50 p-4 rounded-lg border">
             <h4 className="text-sm text-gray-500 font-medium">{title}</h4>
@@ -111,24 +126,80 @@ const AdminPage = ({ loc, users, items, onSuspendUser, onRemoveItem, onSendMessa
         </div>
     );
 
-    const handleSendMessage = (userId, message) => {
-        onSendMessageToUser(userId, message);
-        setMessagingUser(null);
+    const handleToggleSuspend = async (targetUser) => {
+        setActionError('');
+        try {
+            const res = await fetch('/api/admin/suspend-user', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: targetUser.id, suspended: !targetUser.isSuspended }),
+            });
+            if (!res.ok) throw new Error('SUSPEND_FAILED');
+            const updated = await res.json();
+            setAllUsers(prev => prev.map(u => (u.id === updated.id ? updated : u)));
+        } catch {
+            setActionError(L.actionFailed);
+        }
     };
+
+    const handleOpenMessage = async (targetUser) => {
+        setActionError('');
+        try {
+            const thread = await getOrCreateAdminThread(targetUser.id);
+            setMessagingThreadId(thread.id);
+        } catch {
+            setActionError(L.actionFailed);
+        }
+    };
+
+    if (!user) {
+        return (
+            <div className="bg-white p-8 rounded-lg shadow-md border text-center">
+                <h2 className="text-2xl font-bold text-gray-800">{L.loginRequired}</h2>
+                <button onClick={() => navigate('/login')} className="mt-6 bg-purple-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-purple-700 transition-colors">
+                    {L.loginButton}
+                </button>
+            </div>
+        );
+    }
+
+    if (!isAdmin) {
+        return (
+            <div className="bg-white p-8 rounded-lg shadow-md border text-center">
+                <h2 className="text-2xl font-bold text-gray-800">{L.notAuthorized}</h2>
+                <button onClick={() => navigate('/')} className="mt-6 bg-purple-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-purple-700 transition-colors">
+                    {L.goHome}
+                </button>
+            </div>
+        );
+    }
 
     return (
         <>
-            {messagingUser && (
-                <MessageUserModal 
-                    user={messagingUser}
-                    onClose={() => setMessagingUser(null)}
-                    onSend={handleSendMessage}
-                    L={L}
-                />
+            {messagingThreadId && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setMessagingThreadId(null)}>
+                    <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-bold">{L.messages}</h3>
+                            <button type="button" onClick={() => setMessagingThreadId(null)} className="text-gray-400 hover:text-gray-600">×</button>
+                        </div>
+                        <ChatPanel
+                            loc={loc}
+                            user={user}
+                            users={chatUsers}
+                            threads={threads}
+                            role="seller"
+                            activeThreadId={messagingThreadId}
+                            onSelectThread={setMessagingThreadId}
+                        />
+                    </div>
+                </div>
             )}
             <div className="space-y-8">
                 <h1 className="text-3xl font-bold text-gray-800">{L.title}</h1>
-                
+
+                {actionError && <div className="p-3 bg-red-100 text-red-700 rounded-lg text-sm">{actionError}</div>}
+
                 {/* Statistics */}
                 <div className="bg-white p-6 rounded-lg shadow-md border">
                     <h2 className="text-2xl font-bold mb-4">{L.platformStats}</h2>
@@ -154,14 +225,24 @@ const AdminPage = ({ loc, users, items, onSuspendUser, onRemoveItem, onSendMessa
                                 </tr>
                             </thead>
                             <tbody>
-                                {allUsers.map(user => (
-                                    <tr key={user.id} className="bg-white border-b">
-                                        <td className="px-6 py-4">{user.accountNumber}</td>
-                                        <td className="px-6 py-4 font-medium text-gray-900">{user.profileName}</td>
-                                        <td className="px-6 py-4">{user.email}</td>
+                                {loadingUsers && (
+                                    <tr><td className="px-6 py-4" colSpan={4}>…</td></tr>
+                                )}
+                                {allUsers.map(u => (
+                                    <tr key={u.id} className="bg-white border-b">
+                                        <td className="px-6 py-4">{u.accountNumber}</td>
+                                        <td className="px-6 py-4 font-medium text-gray-900">
+                                            {u.profileName}
+                                            {u.isSuspended && (
+                                                <span className="ml-2 text-xs font-semibold text-red-600 uppercase">{L.suspended}</span>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4">{u.email}</td>
                                         <td className="px-6 py-4 space-x-4">
-                                            <button onClick={() => setMessagingUser(user)} className="font-medium text-blue-600 hover:underline" disabled={user.isAdmin}>{L.message}</button>
-                                            <button onClick={() => onSuspendUser(user.id)} className="font-medium text-red-600 hover:underline" disabled={user.isAdmin}>{L.suspend}</button>
+                                            <button onClick={() => handleOpenMessage(u)} className="font-medium text-blue-600 hover:underline" disabled={u.isAdmin}>{L.message}</button>
+                                            <button onClick={() => handleToggleSuspend(u)} className="font-medium text-red-600 hover:underline" disabled={u.isAdmin}>
+                                                {u.isSuspended ? L.unsuspend : L.suspend}
+                                            </button>
                                         </td>
                                     </tr>
                                 ))}
@@ -192,7 +273,7 @@ const AdminPage = ({ loc, users, items, onSuspendUser, onRemoveItem, onSendMessa
                                         <td className="px-6 py-4">{item.sellerName}</td>
                                         <td className="px-6 py-4">{CRC(item.price || item.currentBid, loc, itemCurrency(item))}</td>
                                         <td className="px-6 py-4">
-                                            <button onClick={() => onRemoveItem(item.id)} className="font-medium text-red-600 hover:underline">{L.remove}</button>
+                                            <button onClick={() => removeItem(item.id)} className="font-medium text-red-600 hover:underline">{L.remove}</button>
                                         </td>
                                     </tr>
                                 ))}

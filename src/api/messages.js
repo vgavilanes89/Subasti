@@ -122,6 +122,33 @@ export const getOrCreateThread = async ({ itemId, itemTitle, sellerId, buyerId }
     return withMeta(thread);
 };
 
+// Admin support threads reuse the same seller/buyer plumbing (sendMessage's
+// unread counting, ChatPanel's rendering) by putting the admin on the seller
+// side and the target user on the buyer side — with a fixed itemId so each
+// admin has exactly one ongoing thread per user, instead of a real item.
+const ADMIN_THREAD_ITEM_ID = 'admin_support';
+
+export const getOrCreateAdminThread = async (adminId, targetUserId) => {
+    await new Promise(r => setTimeout(r, 80));
+    let thread = THREADS.find(t =>
+        t.itemId === ADMIN_THREAD_ITEM_ID && t.sellerId === adminId && t.buyerId === targetUserId
+    );
+    if (!thread) {
+        thread = {
+            id: `thread_admin_${Date.now()}`,
+            sellerId: adminId,
+            buyerId: targetUserId,
+            itemId: ADMIN_THREAD_ITEM_ID,
+            itemTitle: 'Subasti Support',
+            unreadForSeller: 0,
+            unreadForBuyer: 0,
+            messages: [],
+        };
+        THREADS = [thread, ...THREADS];
+    }
+    return withMeta(thread);
+};
+
 export const sendMessage = async (threadId, fromUserId, text, users = {}) => {
     await new Promise(r => setTimeout(r, 100));
     const trimmed = text.trim();

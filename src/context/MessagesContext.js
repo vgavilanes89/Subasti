@@ -37,6 +37,17 @@ export const MessagesProvider = ({ children }) => {
         return thread;
     }, []);
 
+    const getOrCreateAdminThread = useCallback(async (targetUserId) => {
+        if (!user) throw new Error('NOT_LOGGED_IN');
+        const thread = await messagesApi.getOrCreateAdminThread(user.id, targetUserId);
+        setThreads(prev => {
+            const exists = prev.some(t => t.id === thread.id);
+            if (exists) return prev.map(t => (t.id === thread.id ? thread : t));
+            return [thread, ...prev].sort((a, b) => b.lastMessageAt - a.lastMessageAt);
+        });
+        return thread;
+    }, [user]);
+
     const sendMessage = useCallback(async (threadId, text) => {
         if (!user) throw new Error('NOT_LOGGED_IN');
         const { thread, emailEntry } = await messagesApi.sendMessage(threadId, user.id, text, users);
@@ -79,6 +90,7 @@ export const MessagesProvider = ({ children }) => {
             loading,
             reloadThreads,
             getOrCreateThread,
+            getOrCreateAdminThread,
             sendMessage,
             markRead,
             unreadSellerCount,

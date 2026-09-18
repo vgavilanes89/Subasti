@@ -9,9 +9,9 @@ const LoginPage = ({loc}) => {
     const { login } = useAuth();
     const navigate = useNavigate();
 
-    const L = loc === 'en' 
-        ? {title:'Log In', email:'Email', pass:'Password', submit:'Log In', switch:"Don't have an account?", link:'Sign up', error: 'Invalid credentials'}
-        : {title:'Iniciar Sesión', email:'Correo', pass:'Contraseña', submit:'Iniciar Sesión', switch:'¿No tienes una cuenta?', link:'Regístrate', error: 'Credenciales inválidas'};
+    const L = loc === 'en'
+        ? {title:'Log In', email:'Email', pass:'Password', submit:'Log In', switch:"Don't have an account?", link:'Sign up', error: 'Invalid credentials', suspended: 'This account has been suspended. Contact support for details.'}
+        : {title:'Iniciar Sesión', email:'Correo', pass:'Contraseña', submit:'Iniciar Sesión', switch:'¿No tienes una cuenta?', link:'Regístrate', error: 'Credenciales inválidas', suspended: 'Esta cuenta ha sido suspendida. Contacta a soporte para más detalles.'};
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -20,7 +20,7 @@ const LoginPage = ({loc}) => {
             await login(email, password);
             navigate('/');
         } catch (err) {
-            setError(L.error);
+            setError(err.message === 'ACCOUNT_SUSPENDED' ? L.suspended : L.error);
         }
     };
 

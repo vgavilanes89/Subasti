@@ -11,6 +11,7 @@ export function toPublicUser(row) {
     province: row.province,
     city: row.city,
     isAdmin: row.is_admin,
+    isSuspended: row.is_suspended,
     savedAddresses: [],
     savedPayments: [],
     reviews: [],

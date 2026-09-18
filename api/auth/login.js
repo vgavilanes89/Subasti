@@ -38,6 +38,10 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
+    if (row.is_suspended) {
+      return res.status(403).json({ error: 'ACCOUNT_SUSPENDED' });
+    }
+
     const user = toPublicUser(row);
     setSessionCookie(res, createSessionToken(user.id));
     return res.status(200).json(user);
