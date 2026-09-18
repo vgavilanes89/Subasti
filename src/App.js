@@ -37,8 +37,13 @@ function App() {
   const location = useLocation();
   const isHomePage = location.pathname === '/';
 
-  // Local state for language toggling (passed to Header and used in Footer)
-  const [loc, setLoc] = useState('es');
+  // Local state for language toggling (passed to Header and used in Footer).
+  // Defaults to the browser's language on first load; anything other than
+  // English falls back to Spanish, since that's this site's primary market.
+  const [loc, setLoc] = useState(() => {
+    const browserLang = navigator.language || navigator.languages?.[0] || '';
+    return browserLang.toLowerCase().startsWith('en') ? 'en' : 'es';
+  });
 
   // Static Categories definition
   const CATEGORIES = useMemo(() => ({

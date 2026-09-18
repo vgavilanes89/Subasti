@@ -11,6 +11,10 @@ import EscrowPanel from '../components/EscrowPanel';
 const getItemPrice = (item) =>
   item.saleType === 'auc' ? (item.currentBid ?? item.price ?? 0) : (item.price ?? 0);
 
+// Strips accents so "camara" matches "Cámara" — most users don't type them.
+const normalizeSearch = (text) =>
+  text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
 const sortItems = (list, sortKey, itemOrder, locale) => {
   const sorted = [...list];
   const localeTag = locale === 'en' ? 'en' : 'es';
@@ -128,8 +132,8 @@ const HomePage = ({ loc, categories }) => {
 
   // Apply search and category filters
   const filtered = activeItems.filter(i => {
-    const qq = (q ?? '').trim().toLowerCase();
-    const mq = !qq || (`${i.title} ${i.category} ${i.subCategory || ''}`).toLowerCase().includes(qq);
+    const qq = normalizeSearch((q ?? '').trim());
+    const mq = !qq || normalizeSearch(`${i.title} ${i.category} ${i.subCategory || ''}`).includes(qq);
     const mc = cat === '*' || i.category === cat;
     return mq && mc;
   });
