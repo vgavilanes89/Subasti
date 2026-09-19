@@ -9,6 +9,7 @@ import { normalizeSearch } from '../lib/search';
 import ChatPanel from '../components/ChatPanel';
 import AdminUserDetailModal from '../components/AdminUserDetailModal';
 import AdminItemEditModal from '../components/AdminItemEditModal';
+import AdminCreateUserModal from '../components/AdminCreateUserModal';
 
 const money = (amount, currency, loc) => CRC(amount, loc, currency);
 
@@ -94,6 +95,7 @@ const AdminPage = ({ loc }) => {
     const [userSort, setUserSort] = useState('newest');
     const [viewingUserId, setViewingUserId] = useState(null);
     const [editingItem, setEditingItem] = useState(null);
+    const [creatingUser, setCreatingUser] = useState(false);
     const [analyticsPeriod, setAnalyticsPeriod] = useState('30d');
     const [commissionRate, setCommissionRate] = useState(null);
     const [commissionInput, setCommissionInput] = useState('');
@@ -181,6 +183,7 @@ const AdminPage = ({ loc }) => {
         sortEmailAsc: 'Email: A→Z',
         noUsersMatch: 'No users match your search or filters.',
         viewProfile: 'View Profile',
+        addUser: 'Add User',
         period7d: 'Last 7 days', period30d: 'Last 30 days', period90d: 'Last 90 days', periodAll: 'All time',
         financialMetrics: 'Financial Metrics (Gross & Net Revenue)',
         gmv: 'Gross Merchandise Value (GMV)',
@@ -290,6 +293,7 @@ const AdminPage = ({ loc }) => {
         sortEmailAsc: 'Correo: A→Z',
         noUsersMatch: 'Ningún usuario coincide con tu búsqueda o filtros.',
         viewProfile: 'Ver Perfil',
+        addUser: 'Agregar Usuario',
         period7d: 'Últimos 7 días', period30d: 'Últimos 30 días', period90d: 'Últimos 90 días', periodAll: 'Todo el tiempo',
         financialMetrics: 'Métricas Financieras (Ingresos Brutos y Netos)',
         gmv: 'Valor Bruto de Mercancía (GMV)',
@@ -602,6 +606,13 @@ const AdminPage = ({ loc }) => {
                     onSaved={replaceItem}
                 />
             )}
+            {creatingUser && (
+                <AdminCreateUserModal
+                    loc={loc}
+                    onClose={() => setCreatingUser(false)}
+                    onCreated={(newUser) => setAllUsers(prev => [newUser, ...prev])}
+                />
+            )}
             <div className="space-y-6">
                 <h1 className="text-3xl font-bold text-gray-800">{L.title}</h1>
 
@@ -670,7 +681,12 @@ const AdminPage = ({ loc }) => {
 
                 {tab === 'users' && (
                     <div className="bg-white p-6 rounded-lg shadow-md border">
-                        <h2 className="text-2xl font-bold mb-4">{L.userManagement}</h2>
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-2xl font-bold">{L.userManagement}</h2>
+                            <button onClick={() => setCreatingUser(true)} className="bg-purple-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-purple-700 text-sm">
+                                {L.addUser}
+                            </button>
+                        </div>
                         <div className="flex flex-wrap gap-3 mb-4">
                             <input
                                 type="text"
