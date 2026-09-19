@@ -626,7 +626,7 @@ const AdminPage = ({ loc }) => {
                                         <tr key={item.id} className="bg-white border-b">
                                             <td className="px-6 py-4">{item.id}</td>
                                             <td className="px-6 py-4 font-medium text-gray-900">
-                                                <button onClick={() => navigate(`/item/${item.id}`)} className="text-purple-600 hover:underline text-left">{item.title}</button>
+                                                <a href={`/item/${item.id}`} target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:underline">{item.title}</a>
                                             </td>
                                             <td className="px-6 py-4">{item.sellerName}</td>
                                             <td className="px-6 py-4">{CRC(item.price || item.currentBid, loc, itemCurrency(item))}</td>
