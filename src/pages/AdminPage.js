@@ -8,6 +8,7 @@ import { buyerStatusLabel } from '../data/escrow';
 import { normalizeSearch } from '../lib/search';
 import ChatPanel from '../components/ChatPanel';
 import AdminUserDetailModal from '../components/AdminUserDetailModal';
+import AdminItemEditModal from '../components/AdminItemEditModal';
 
 const money = (amount, currency, loc) => CRC(amount, loc, currency);
 
@@ -66,7 +67,7 @@ const PayoutModal = ({ balance, loc, onClose, onSubmit, L }) => {
 const AdminPage = ({ loc }) => {
     const navigate = useNavigate();
     const { user, users: usersMap } = useAuth();
-    const { items, removeItem } = useItems();
+    const { items, removeItem, replaceItem } = useItems();
     const { threads, getOrCreateAdminThread } = useMessages();
 
     const [tab, setTab] = useState('overview');
@@ -86,6 +87,7 @@ const AdminPage = ({ loc }) => {
     const [userStatusFilter, setUserStatusFilter] = useState('all');
     const [userSort, setUserSort] = useState('newest');
     const [viewingUserId, setViewingUserId] = useState(null);
+    const [editingItem, setEditingItem] = useState(null);
 
     const L = loc === 'en' ? {
         title: 'Admin Dashboard',
@@ -110,6 +112,7 @@ const AdminPage = ({ loc }) => {
         seller: 'Seller',
         price: 'Price',
         remove: 'Remove',
+        editItem: 'Edit',
         platformStats: 'Platform Statistics',
         totalUsers: 'Total Users',
         totalItems: 'Total Items',
@@ -191,6 +194,7 @@ const AdminPage = ({ loc }) => {
         seller: 'Vendedor',
         price: 'Precio',
         remove: 'Eliminar',
+        editItem: 'Editar',
         platformStats: 'Estadísticas de la Plataforma',
         totalUsers: 'Usuarios Totales',
         totalItems: 'Artículos Totales',
@@ -497,6 +501,14 @@ const AdminPage = ({ loc }) => {
                     onUserUpdated={(updated) => setAllUsers(prev => prev.map(u => (u.id === updated.id ? updated : u)))}
                 />
             )}
+            {editingItem && (
+                <AdminItemEditModal
+                    item={editingItem}
+                    loc={loc}
+                    onClose={() => setEditingItem(null)}
+                    onSaved={replaceItem}
+                />
+            )}
             <div className="space-y-6">
                 <h1 className="text-3xl font-bold text-gray-800">{L.title}</h1>
 
@@ -630,7 +642,8 @@ const AdminPage = ({ loc }) => {
                                             </td>
                                             <td className="px-6 py-4">{item.sellerName}</td>
                                             <td className="px-6 py-4">{CRC(item.price || item.currentBid, loc, itemCurrency(item))}</td>
-                                            <td className="px-6 py-4">
+                                            <td className="px-6 py-4 space-x-4">
+                                                <button onClick={() => setEditingItem(item)} className="font-medium text-blue-600 hover:underline">{L.editItem}</button>
                                                 <button onClick={() => removeItem(item.id)} className="font-medium text-red-600 hover:underline">{L.remove}</button>
                                             </td>
                                         </tr>

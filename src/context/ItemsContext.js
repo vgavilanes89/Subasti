@@ -61,8 +61,14 @@ export const ItemsProvider = ({ children }) => {
         return updated;
     };
 
+    // For callers (e.g. the admin item editor) that already have the
+    // server's updated item and just need local state to reflect it.
+    const replaceItem = (updatedItem) => {
+        setItems(prev => prev.map(i => (i.id === updatedItem.id ? updatedItem : i)));
+    };
+
     return (
-        <ItemsContext.Provider value={{ items, addItem, removeItem, placeBid: placeBidOnItem, favorites, toggleFav, isFav }}>
+        <ItemsContext.Provider value={{ items, addItem, removeItem, replaceItem, placeBid: placeBidOnItem, favorites, toggleFav, isFav }}>
             {children}
         </ItemsContext.Provider>
     );
