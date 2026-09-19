@@ -34,6 +34,8 @@ export function toPublicOrder(row) {
     claimFiledAt: toMs(row.claim_filed_at),
     fundsReleasedAt: toMs(row.funds_released_at),
     cancelledAt: toMs(row.cancelled_at),
+    refundedAt: toMs(row.refunded_at),
+    resolvedBy: row.resolved_by,
   };
 }
 
