@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useItems } from '../context/ItemsContext';
 import { useMessages } from '../context/MessagesContext';
 import { buyerStatusLabel } from '../data/escrow';
+import { normalizeSearch } from '../lib/search';
 import ChatPanel from '../components/ChatPanel';
 
 const money = (amount, currency, loc) => CRC(amount, loc, currency);
@@ -80,6 +81,9 @@ const AdminPage = ({ loc }) => {
     const [messagingThreadId, setMessagingThreadId] = useState(null);
     const [payoutTarget, setPayoutTarget] = useState(null);
     const [resolvingClaim, setResolvingClaim] = useState(null);
+    const [userQuery, setUserQuery] = useState('');
+    const [userStatusFilter, setUserStatusFilter] = useState('all');
+    const [userSort, setUserSort] = useState('newest');
 
     const L = loc === 'en' ? {
         title: 'Admin Dashboard',
@@ -149,6 +153,18 @@ const AdminPage = ({ loc }) => {
         noPayouts: 'No payouts recorded yet.',
         paidBy: 'Recorded by',
         loading: 'Loading…',
+        phone: 'Phone',
+        location: 'Location',
+        searchUsers: 'Search by name, email, account #, or phone…',
+        allStatuses: 'All statuses',
+        activeOnly: 'Active only',
+        suspendedOnly: 'Suspended only',
+        sortNewest: 'Newest first',
+        sortOldest: 'Oldest first',
+        sortNameAsc: 'Name: A→Z',
+        sortNameDesc: 'Name: Z→A',
+        sortEmailAsc: 'Email: A→Z',
+        noUsersMatch: 'No users match your search or filters.',
     } : {
         title: 'Panel de Administración',
         tabOverview: 'Resumen',
@@ -217,6 +233,18 @@ const AdminPage = ({ loc }) => {
         noPayouts: 'Aún no se han registrado pagos.',
         paidBy: 'Registrado por',
         loading: 'Cargando…',
+        phone: 'Teléfono',
+        location: 'Ubicación',
+        searchUsers: 'Buscar por nombre, correo, N° de cuenta o teléfono…',
+        allStatuses: 'Todos los estados',
+        activeOnly: 'Solo activos',
+        suspendedOnly: 'Solo suspendidos',
+        sortNewest: 'Más recientes',
+        sortOldest: 'Más antiguos',
+        sortNameAsc: 'Nombre: A→Z',
+        sortNameDesc: 'Nombre: Z→A',
+        sortEmailAsc: 'Correo: A→Z',
+        noUsersMatch: 'Ningún usuario coincide con tu búsqueda o filtros.',
     };
 
     const isAdmin = !!user?.isAdmin;
@@ -296,6 +324,37 @@ const AdminPage = ({ loc }) => {
             totalValue: totalsByCurrency,
         };
     }, [allUsers, items]);
+
+    const visibleUsers = useMemo(() => {
+        const qq = normalizeSearch(userQuery.trim());
+        let list = allUsers.filter(u => {
+            const matchesQuery = !qq || normalizeSearch(
+                `${u.profileName} ${u.email} ${u.accountNumber} ${u.countryCode || ''} ${u.phone || ''}`
+            ).includes(qq);
+            const matchesStatus =
+                userStatusFilter === 'all' ||
+                (userStatusFilter === 'suspended' ? u.isSuspended : !u.isSuspended);
+            return matchesQuery && matchesStatus;
+        });
+
+        list = [...list].sort((a, b) => {
+            switch (userSort) {
+                case 'oldest':
+                    return (a.createdAt ?? 0) - (b.createdAt ?? 0);
+                case 'nameAsc':
+                    return a.profileName.localeCompare(b.profileName, loc === 'en' ? 'en' : 'es', { sensitivity: 'base' });
+                case 'nameDesc':
+                    return b.profileName.localeCompare(a.profileName, loc === 'en' ? 'en' : 'es', { sensitivity: 'base' });
+                case 'emailAsc':
+                    return a.email.localeCompare(b.email);
+                case 'newest':
+                default:
+                    return (b.createdAt ?? 0) - (a.createdAt ?? 0);
+            }
+        });
+
+        return list;
+    }, [allUsers, userQuery, userStatusFilter, userSort, loc]);
 
     // chatUsers (usersMap merged with the full real user list) so this
     // resolves correctly even for sellers who haven't logged in this session.
@@ -461,6 +520,35 @@ const AdminPage = ({ loc }) => {
                 {tab === 'users' && (
                     <div className="bg-white p-6 rounded-lg shadow-md border">
                         <h2 className="text-2xl font-bold mb-4">{L.userManagement}</h2>
+                        <div className="flex flex-wrap gap-3 mb-4">
+                            <input
+                                type="text"
+                                value={userQuery}
+                                onChange={(e) => setUserQuery(e.target.value)}
+                                placeholder={L.searchUsers}
+                                className="flex-1 min-w-[220px] border-gray-300 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 p-2.5 border text-sm"
+                            />
+                            <select
+                                value={userStatusFilter}
+                                onChange={(e) => setUserStatusFilter(e.target.value)}
+                                className="border-gray-300 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 p-2.5 border text-sm"
+                            >
+                                <option value="all">{L.allStatuses}</option>
+                                <option value="active">{L.activeOnly}</option>
+                                <option value="suspended">{L.suspendedOnly}</option>
+                            </select>
+                            <select
+                                value={userSort}
+                                onChange={(e) => setUserSort(e.target.value)}
+                                className="border-gray-300 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 p-2.5 border text-sm"
+                            >
+                                <option value="newest">{L.sortNewest}</option>
+                                <option value="oldest">{L.sortOldest}</option>
+                                <option value="nameAsc">{L.sortNameAsc}</option>
+                                <option value="nameDesc">{L.sortNameDesc}</option>
+                                <option value="emailAsc">{L.sortEmailAsc}</option>
+                            </select>
+                        </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm text-left text-gray-500">
                                 <thead className="text-xs text-gray-700 uppercase bg-gray-50">
@@ -468,14 +556,19 @@ const AdminPage = ({ loc }) => {
                                         <th scope="col" className="px-6 py-3">{L.accountNumber}</th>
                                         <th scope="col" className="px-6 py-3">{L.profileName}</th>
                                         <th scope="col" className="px-6 py-3">{L.email}</th>
+                                        <th scope="col" className="px-6 py-3">{L.phone}</th>
+                                        <th scope="col" className="px-6 py-3">{L.location}</th>
                                         <th scope="col" className="px-6 py-3">{L.actions}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {loadingUsers && (
-                                        <tr><td className="px-6 py-4" colSpan={4}>{L.loading}</td></tr>
+                                        <tr><td className="px-6 py-4" colSpan={6}>{L.loading}</td></tr>
                                     )}
-                                    {allUsers.map(u => (
+                                    {!loadingUsers && visibleUsers.length === 0 && (
+                                        <tr><td className="px-6 py-4" colSpan={6}>{L.noUsersMatch}</td></tr>
+                                    )}
+                                    {visibleUsers.map(u => (
                                         <tr key={u.id} className="bg-white border-b">
                                             <td className="px-6 py-4">{u.accountNumber}</td>
                                             <td className="px-6 py-4 font-medium text-gray-900">
@@ -485,6 +578,8 @@ const AdminPage = ({ loc }) => {
                                                 )}
                                             </td>
                                             <td className="px-6 py-4">{u.email}</td>
+                                            <td className="px-6 py-4">{u.countryCode} {u.phone}</td>
+                                            <td className="px-6 py-4">{[u.city, u.province].filter(Boolean).join(', ') || '—'}</td>
                                             <td className="px-6 py-4 space-x-4">
                                                 <button onClick={() => handleOpenMessage(u)} className="font-medium text-blue-600 hover:underline" disabled={u.isAdmin}>{L.message}</button>
                                                 <button onClick={() => handleToggleSuspend(u)} className="font-medium text-red-600 hover:underline" disabled={u.isAdmin}>

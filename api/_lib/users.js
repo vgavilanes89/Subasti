@@ -12,6 +12,7 @@ export function toPublicUser(row) {
     city: row.city,
     isAdmin: row.is_admin,
     isSuspended: row.is_suspended,
+    createdAt: row.created_at ? new Date(row.created_at).getTime() : null,
     savedAddresses: [],
     savedPayments: [],
     reviews: [],

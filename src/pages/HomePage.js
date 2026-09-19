@@ -6,14 +6,11 @@ import { useAuth } from '../context/AuthContext';
 import { useHomeFilters } from '../context/HomeFilterContext';
 import { PLACEHOLDER_IMG, CRC, CountdownTimer, itemCurrency } from '../components/Shared';
 import { tCategory, tSubCategory, formatCondition } from '../data/i18n';
+import { normalizeSearch } from '../lib/search';
 import EscrowPanel from '../components/EscrowPanel';
 
 const getItemPrice = (item) =>
   item.saleType === 'auc' ? (item.currentBid ?? item.price ?? 0) : (item.price ?? 0);
-
-// Strips accents so "camara" matches "Cámara" — most users don't type them.
-const normalizeSearch = (text) =>
-  text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 const sortItems = (list, sortKey, itemOrder, locale) => {
   const sorted = [...list];
