@@ -117,7 +117,9 @@ const AdminPage = ({ loc }) => {
         };
     }, [allUsers, items]);
 
-    const allItems = items.map(item => ({ ...item, sellerName: usersMap[item.sellerId]?.profileName || 'N/A' }));
+    // chatUsers (usersMap merged with the full real user list) so this
+    // resolves correctly even for sellers who haven't logged in this session.
+    const allItems = items.map(item => ({ ...item, sellerName: chatUsers[item.sellerId]?.profileName || 'N/A' }));
 
     const StatCard = ({ title, value }) => (
         <div className="bg-gray-50 p-4 rounded-lg border">

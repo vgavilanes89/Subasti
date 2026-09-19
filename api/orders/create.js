@@ -1,7 +1,7 @@
 import { getSql } from '../_lib/db.js';
 import { getUserIdFromRequest } from '../_lib/session.js';
 import { toPublicOrder, generateOrderId } from '../_lib/orders.js';
-import { fetchItemById } from '../../src/api/items.js';
+import { getItemById } from '../_lib/items.js';
 import { ESCROW_WINDOW_MS, ORDER_STATUS } from '../../src/data/escrow.js';
 
 export default async function handler(req, res) {
@@ -26,9 +26,10 @@ export default async function handler(req, res) {
 
   // Recompute everything from the server's own item data rather than trusting
   // whatever price/seller the client submitted at checkout.
+  const sql = getSql();
   const resolved = [];
   for (const cartItem of cart) {
-    const item = fetchItemById(cartItem.id);
+    const item = await getItemById(sql, cartItem.id);
     if (!item) {
       return res.status(400).json({ error: `Item ${cartItem.id} not found` });
     }
@@ -37,7 +38,6 @@ export default async function handler(req, res) {
   }
 
   const now = Date.now();
-  const sql = getSql();
   const inserted = [];
   for (const { item, qty } of resolved) {
     const unitPrice = item.buyNowPrice || item.price;

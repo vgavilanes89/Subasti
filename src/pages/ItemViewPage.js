@@ -17,12 +17,16 @@ const ItemViewPage = ({ loc }) => {
     const { items, isFav, toggleFav, placeBid } = useItems();
     const { addToCart } = useCart();
     // We access 'users' map here to look up seller details by ID
-    const { user, users } = useAuth();
+    const { user, users, ensureUserLoaded } = useAuth();
     const { getOrCreateThread, buyerThreads } = useMessages();
 
     // 2. Find specific data
     const item = items.find(i => i.id === id);
     const seller = item ? users[item.sellerId] : null;
+
+    useEffect(() => {
+        if (item && !users[item.sellerId]) ensureUserLoaded(item.sellerId);
+    }, [item, users, ensureUserLoaded]);
 
     // 3. Local State
     const [currentImageIndex, setCurrentImageIndex] = useState(0);

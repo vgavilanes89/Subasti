@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import * as authService from '../api/auth';
 
 const AuthContext = createContext();
@@ -74,6 +74,24 @@ export const AuthProvider = ({ children }) => {
         return newUser;
     };
 
+    // Item/seller-profile pages need to display sellers who haven't
+    // necessarily logged in during this session — usersMap only tracks
+    // demo accounts plus whoever has. This fetches a seller's public
+    // profile on demand and merges it in, so `users[sellerId]` resolves
+    // for any real account, not just ones already in the map.
+    const ensureUserLoaded = useCallback(async (id) => {
+        if (!id || usersMap[id]) return usersMap[id];
+        try {
+            const res = await fetch(`/api/users/get?id=${encodeURIComponent(id)}`);
+            if (!res.ok) return null;
+            const profile = await res.json();
+            setUsersMap(prev => (prev[id] ? prev : { ...prev, [id]: profile }));
+            return profile;
+        } catch {
+            return null;
+        }
+    }, [usersMap]);
+
     const updateProfile = (updatedData) => {
         setUser(updatedData);
         // In a real app, you would call an API update here
@@ -122,10 +140,11 @@ export const AuthProvider = ({ children }) => {
         <AuthContext.Provider value={{ 
             user, 
             users: usersMap, // Expose all users for read-only (like reviews)
-            login, 
-            logout, 
-            signup, 
+            login,
+            logout,
+            signup,
             updateProfile,
+            ensureUserLoaded,
             saveAddress,
             deleteAddress,
             savePayment,

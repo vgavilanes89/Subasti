@@ -1,7 +1,7 @@
 import { getSql } from '../_lib/db.js';
 import { getUserIdFromRequest } from '../_lib/session.js';
 import { getStripe, toStripeAmount } from '../_lib/stripe.js';
-import { fetchItemById } from '../../src/api/items.js';
+import { getItemById } from '../_lib/items.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -24,9 +24,10 @@ export default async function handler(req, res) {
 
   // Recompute everything from the server's own item data — never trust a
   // client-submitted price — same as the SINPE/mock checkout path.
+  const sql = getSql();
   const resolved = [];
   for (const cartItem of cart) {
-    const item = fetchItemById(cartItem.id);
+    const item = await getItemById(sql, cartItem.id);
     if (!item) {
       return res.status(400).json({ error: `Item ${cartItem.id} not found` });
     }
@@ -69,7 +70,6 @@ export default async function handler(req, res) {
     metadata: { buyerId: userId },
   });
 
-  const sql = getSql();
   await sql`
     INSERT INTO pending_checkouts (payment_intent_id, buyer_id, fulfillment, cart)
     VALUES (${intent.id}, ${userId}, ${fulfillment}, ${JSON.stringify(snapshot)})

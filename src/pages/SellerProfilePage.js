@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useItems } from '../context/ItemsContext';
@@ -8,10 +8,14 @@ import ProductCard from '../components/ProductCard';
 const SellerProfilePage = ({ loc }) => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { users } = useAuth();
+    const { users, ensureUserLoaded } = useAuth();
     const { items, isFav, toggleFav } = useItems();
-    
+
     const seller = users[id];
+
+    useEffect(() => {
+        if (id && !users[id]) ensureUserLoaded(id);
+    }, [id, users, ensureUserLoaded]);
     const L = loc === 'en' ? {
         title: "'s Profile",
         listings: "'s Listings",

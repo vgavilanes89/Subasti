@@ -18,6 +18,20 @@ export function toPublicUser(row) {
   };
 }
 
+// Unlike toPublicUser (returned only to the account's own owner via
+// login/me/signup), this is served to ANY visitor looking at a seller's item
+// or profile page — so it excludes cedula, email, phone and account number.
+export function toPublicProfile(row) {
+  return {
+    id: String(row.id),
+    profileName: row.profile_name,
+    city: row.city,
+    province: row.province,
+    isAdmin: row.is_admin,
+    reviews: [],
+  };
+}
+
 export function generateAccountNumber() {
   const digits = Math.floor(10000000 + Math.random() * 90000000);
   return `SUB-${digits}`;

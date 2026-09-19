@@ -349,7 +349,7 @@ const BuyerDashboard = ({
             fetch('/api/orders/settle-auction', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ itemId: item.id, amount: item.currentBid }),
+                body: JSON.stringify({ itemId: item.id }),
             }).then(res => (res.ok ? res.json() : null))
         )).then(newOrders => {
             if (cancelled) return;
