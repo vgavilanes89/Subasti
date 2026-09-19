@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useItems } from '../context/ItemsContext';
 import { useCart } from '../context/CartContext';
@@ -134,6 +134,27 @@ const HomePage = ({ loc, categories }) => {
     const mc = cat === '*' || i.category === cat;
     return mq && mc;
   });
+
+  // Search itself is instant client-side filtering above — this just logs
+  // the term for admin analytics (top/zero-result searches), debounced so
+  // it fires once after the user stops typing rather than per keystroke.
+  useEffect(() => {
+    const trimmed = (q ?? '').trim();
+    if (!trimmed) return;
+    const qq = normalizeSearch(trimmed);
+    const resultCount = activeItems.filter(i =>
+      normalizeSearch(`${i.title} ${i.category} ${i.subCategory || ''}`).includes(qq)
+    ).length;
+    const timer = setTimeout(() => {
+      fetch('/api/search/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: trimmed, resultCount }),
+      }).catch(() => {});
+    }, 600);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q]);
 
   // Apply sorting
   const showing = useMemo(

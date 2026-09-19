@@ -28,6 +28,17 @@ const ItemViewPage = ({ loc }) => {
         if (item && !users[item.sellerId]) ensureUserLoaded(item.sellerId);
     }, [item, users, ensureUserLoaded]);
 
+    // Fire-and-forget view log for admin conversion-rate analytics — not a
+    // dependency of anything on this page.
+    useEffect(() => {
+        if (!id) return;
+        fetch('/api/items/log-view', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ itemId: id }),
+        }).catch(() => {});
+    }, [id]);
+
     // 3. Local State
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [selectedQuantity, setSelectedQuantity] = useState(1);

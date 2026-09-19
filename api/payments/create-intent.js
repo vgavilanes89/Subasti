@@ -35,6 +35,12 @@ export default async function handler(req, res) {
     resolved.push({ item, qty });
   }
 
+  for (const { item, qty } of resolved) {
+    if (item.saleType === 'buy' && item.quantity < qty) {
+      return res.status(409).json({ error: 'OUT_OF_STOCK', itemId: item.id });
+    }
+  }
+
   const currencies = new Set(resolved.map(({ item }) => item.currency || 'CRC'));
   if (currencies.size > 1) {
     return res.status(400).json({ error: 'MIXED_CURRENCY_CART' });

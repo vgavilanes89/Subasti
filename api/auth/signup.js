@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import { randomUUID } from 'crypto';
 import { getSql } from '../_lib/db.js';
 import { createRateLimiter, getClientIp } from '../_lib/rateLimit.js';
 import { createSessionToken, setSessionCookie } from '../_lib/session.js';
@@ -45,6 +46,7 @@ export default async function handler(req, res) {
         `;
         const user = toPublicUser(rows[0]);
         setSessionCookie(res, createSessionToken(user.id));
+        await sql`INSERT INTO login_events (id, user_id) VALUES (${`login_${randomUUID()}`}, ${user.id})`;
         return res.status(201).json(user);
       } catch (err) {
         if (err.code === UNIQUE_VIOLATION) {

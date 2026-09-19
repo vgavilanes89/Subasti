@@ -12,6 +12,12 @@ import AdminItemEditModal from '../components/AdminItemEditModal';
 
 const money = (amount, currency, loc) => CRC(amount, loc, currency);
 
+const moneyList = (rows, loc) => {
+    const entries = (rows || []).filter((r) => r.amount > 0.005);
+    if (entries.length === 0) return '—';
+    return entries.map((r) => money(r.amount, r.currency, loc)).join(' + ');
+};
+
 const PayoutModal = ({ balance, loc, onClose, onSubmit, L }) => {
     const [amount, setAmount] = useState(String(balance.outstanding));
     const [note, setNote] = useState('');
@@ -88,6 +94,10 @@ const AdminPage = ({ loc }) => {
     const [userSort, setUserSort] = useState('newest');
     const [viewingUserId, setViewingUserId] = useState(null);
     const [editingItem, setEditingItem] = useState(null);
+    const [analyticsPeriod, setAnalyticsPeriod] = useState('30d');
+    const [commissionRate, setCommissionRate] = useState(null);
+    const [commissionInput, setCommissionInput] = useState('');
+    const [savingCommission, setSavingCommission] = useState(false);
 
     const L = loc === 'en' ? {
         title: 'Admin Dashboard',
@@ -171,6 +181,33 @@ const AdminPage = ({ loc }) => {
         sortEmailAsc: 'Email: A→Z',
         noUsersMatch: 'No users match your search or filters.',
         viewProfile: 'View Profile',
+        period7d: 'Last 7 days', period30d: 'Last 30 days', period90d: 'Last 90 days', periodAll: 'All time',
+        financialMetrics: 'Financial Metrics (Gross & Net Revenue)',
+        gmv: 'Gross Merchandise Value (GMV)',
+        platformRevenue: 'Platform Revenue (Take Rate)',
+        aov: 'Average Order Value (AOV)',
+        payoutsTotal: 'Payouts to Vendors',
+        refundsTotal: 'Refunds Processed',
+        commissionRateLabel: 'Commission / Take Rate (%)',
+        saveRate: 'Save', savingRate: 'Saving…',
+        invalidCommission: 'Enter a rate between 0 and 100.',
+        userGrowth: 'Buyer & Seller (User) Growth',
+        activeUsers: 'Active Users (DAU / MAU)',
+        newVsReturning: 'New vs. Returning Buyers',
+        vendorGrowth: 'Vendor Growth',
+        buyerSellerRatio: 'Buyer-to-Seller Ratio',
+        newBuyersLabel: 'New Buyers', returningBuyersLabel: 'Returning Buyers',
+        newSellersLabel: 'New Sellers', activeSellersLabel: 'Active Sellers', churnedSellersLabel: 'Churned Sellers', totalSellersLabel: 'Total Sellers',
+        liquidityOps: 'Marketplace Liquidity & Operations',
+        conversionRateLabel: 'Conversion Rate',
+        listingStats: 'Listing & Inventory Stats',
+        disputeStats: 'Dispute Rate',
+        searchStats: 'Search & Discovery',
+        totalListingsLabel: 'Total Listings', activeListingsLabel2: 'Active Listings', outOfStockLabel: 'Out of Stock',
+        disputedOrdersLabel: 'Disputed Orders', totalOrdersLabel: 'Total Orders',
+        topSearchesLabel: 'Top Searches', topZeroResultLabel: 'Top Zero-Result Searches',
+        views: 'Item Views', conversions: 'Conversions',
+        noSearches: 'No searches logged yet.',
     } : {
         title: 'Panel de Administración',
         tabOverview: 'Resumen',
@@ -253,6 +290,33 @@ const AdminPage = ({ loc }) => {
         sortEmailAsc: 'Correo: A→Z',
         noUsersMatch: 'Ningún usuario coincide con tu búsqueda o filtros.',
         viewProfile: 'Ver Perfil',
+        period7d: 'Últimos 7 días', period30d: 'Últimos 30 días', period90d: 'Últimos 90 días', periodAll: 'Todo el tiempo',
+        financialMetrics: 'Métricas Financieras (Ingresos Brutos y Netos)',
+        gmv: 'Valor Bruto de Mercancía (GMV)',
+        platformRevenue: 'Ingresos de la Plataforma (Comisión)',
+        aov: 'Valor Promedio de Pedido (AOV)',
+        payoutsTotal: 'Pagos a Vendedores',
+        refundsTotal: 'Reembolsos Procesados',
+        commissionRateLabel: 'Tasa de Comisión (%)',
+        saveRate: 'Guardar', savingRate: 'Guardando…',
+        invalidCommission: 'Ingresa una tasa entre 0 y 100.',
+        userGrowth: 'Crecimiento de Usuarios (Compradores y Vendedores)',
+        activeUsers: 'Usuarios Activos (DAU / MAU)',
+        newVsReturning: 'Compradores Nuevos vs. Recurrentes',
+        vendorGrowth: 'Crecimiento de Vendedores',
+        buyerSellerRatio: 'Proporción Comprador-Vendedor',
+        newBuyersLabel: 'Compradores Nuevos', returningBuyersLabel: 'Compradores Recurrentes',
+        newSellersLabel: 'Vendedores Nuevos', activeSellersLabel: 'Vendedores Activos', churnedSellersLabel: 'Vendedores Inactivos', totalSellersLabel: 'Vendedores Totales',
+        liquidityOps: 'Liquidez y Operaciones del Mercado',
+        conversionRateLabel: 'Tasa de Conversión',
+        listingStats: 'Estadísticas de Inventario',
+        disputeStats: 'Tasa de Disputas',
+        searchStats: 'Búsqueda y Descubrimiento',
+        totalListingsLabel: 'Publicaciones Totales', activeListingsLabel2: 'Publicaciones Activas', outOfStockLabel: 'Agotados',
+        disputedOrdersLabel: 'Pedidos en Disputa', totalOrdersLabel: 'Pedidos Totales',
+        topSearchesLabel: 'Búsquedas Más Frecuentes', topZeroResultLabel: 'Búsquedas Sin Resultados',
+        views: 'Vistas de Artículos', conversions: 'Conversiones',
+        noSearches: 'Aún no se han registrado búsquedas.',
     };
 
     const isAdmin = !!user?.isAdmin;
@@ -283,12 +347,17 @@ const AdminPage = ({ loc }) => {
         if (!isAdmin) return;
         setLoadingAnalytics(true);
         try {
-            const res = await fetch('/api/admin/analytics');
-            if (res.ok) setAnalytics(await res.json());
+            const res = await fetch(`/api/admin/analytics?period=${analyticsPeriod}`);
+            if (res.ok) {
+                const body = await res.json();
+                setAnalytics(body);
+                setCommissionRate(body.financial.commissionRate);
+                setCommissionInput(String(body.financial.commissionRate));
+            }
         } finally {
             setLoadingAnalytics(false);
         }
-    }, [isAdmin]);
+    }, [isAdmin, analyticsPeriod]);
 
     const loadPayouts = useCallback(async () => {
         if (!isAdmin) return;
@@ -432,6 +501,30 @@ const AdminPage = ({ loc }) => {
         await loadPayouts();
     };
 
+    const handleSaveCommission = async () => {
+        const rate = Number(commissionInput);
+        if (!Number.isFinite(rate) || rate < 0 || rate > 100) {
+            setActionError(L.invalidCommission);
+            return;
+        }
+        setSavingCommission(true);
+        setActionError('');
+        try {
+            const res = await fetch('/api/admin/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ commissionRate: rate }),
+            });
+            if (!res.ok) throw new Error('SETTINGS_FAILED');
+            setCommissionRate(rate);
+            await loadAnalytics();
+        } catch {
+            setActionError(L.actionFailed);
+        } finally {
+            setSavingCommission(false);
+        }
+    };
+
     if (!user) {
         return (
             <div className="bg-white p-8 rounded-lg shadow-md border text-center">
@@ -530,14 +623,48 @@ const AdminPage = ({ loc }) => {
                 </div>
 
                 {tab === 'overview' && (
-                    <div className="bg-white p-6 rounded-lg shadow-md border">
-                        <h2 className="text-2xl font-bold mb-4">{L.platformStats}</h2>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <StatCard title={L.totalUsers} value={stats.totalUsers} />
-                            <StatCard title={L.totalItems} value={stats.totalItems} />
-                            <StatCard title={L.activeAuctions} value={stats.activeAuctions} />
-                            <StatCard title={L.totalValue} value={formatMoneyTotals(stats.totalValue, loc) || '—'} />
+                    <div className="space-y-6">
+                        <div className="bg-white p-6 rounded-lg shadow-md border">
+                            <h2 className="text-2xl font-bold mb-4">{L.platformStats}</h2>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <StatCard title={L.totalUsers} value={stats.totalUsers} />
+                                <StatCard title={L.totalItems} value={stats.totalItems} />
+                                <StatCard title={L.activeAuctions} value={stats.activeAuctions} />
+                                <StatCard title={L.totalValue} value={formatMoneyTotals(stats.totalValue, loc) || '—'} />
+                            </div>
                         </div>
+
+                        {analytics && (
+                            <>
+                                <div className="bg-white p-6 rounded-lg shadow-md border">
+                                    <h2 className="text-lg font-bold mb-4">{L.financialMetrics}</h2>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        <StatCard title={L.gmv} value={moneyList(analytics.financial.gmvByCurrency, loc)} />
+                                        <StatCard title={L.platformRevenue} value={moneyList(analytics.financial.platformRevenueByCurrency, loc)} />
+                                        <StatCard title={L.aov} value={moneyList(analytics.financial.aovByCurrency, loc)} />
+                                        <StatCard title={L.payoutsTotal} value={moneyList(analytics.financial.payoutsByCurrency, loc)} />
+                                    </div>
+                                </div>
+                                <div className="bg-white p-6 rounded-lg shadow-md border">
+                                    <h2 className="text-lg font-bold mb-4">{L.userGrowth}</h2>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        <StatCard title={L.activeUsers} value={`${analytics.growth.dau} / ${analytics.growth.mau}`} />
+                                        <StatCard title={L.newVsReturning} value={`${analytics.growth.newBuyers} / ${analytics.growth.returningBuyers}`} />
+                                        <StatCard title={L.vendorGrowth} value={analytics.growth.totalSellers} />
+                                        <StatCard title={L.buyerSellerRatio} value={analytics.growth.buyerToSellerRatio !== null ? `${analytics.growth.buyerToSellerRatio.toFixed(1)} : 1` : '—'} />
+                                    </div>
+                                </div>
+                                <div className="bg-white p-6 rounded-lg shadow-md border">
+                                    <h2 className="text-lg font-bold mb-4">{L.liquidityOps}</h2>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        <StatCard title={L.conversionRateLabel} value={`${analytics.liquidity.conversionRate.toFixed(1)}%`} />
+                                        <StatCard title={L.activeListingsLabel2} value={analytics.liquidity.activeListings} />
+                                        <StatCard title={L.outOfStockLabel} value={analytics.liquidity.outOfStock} />
+                                        <StatCard title={L.disputeStats} value={`${analytics.liquidity.disputeRate.toFixed(1)}%`} />
+                                    </div>
+                                </div>
+                            </>
+                        )}
                     </div>
                 )}
 
@@ -719,27 +846,50 @@ const AdminPage = ({ loc }) => {
 
                 {tab === 'analytics' && (
                     <div className="space-y-6">
+                        <div className="flex justify-end">
+                            <select
+                                value={analyticsPeriod}
+                                onChange={(e) => setAnalyticsPeriod(e.target.value)}
+                                className="border-gray-300 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 p-2.5 border text-sm"
+                            >
+                                <option value="7d">{L.period7d}</option>
+                                <option value="30d">{L.period30d}</option>
+                                <option value="90d">{L.period90d}</option>
+                                <option value="all">{L.periodAll}</option>
+                            </select>
+                        </div>
+
                         {loadingAnalytics && <div className="bg-white p-6 rounded-lg shadow-md border">{L.loading}</div>}
                         {analytics && (
                             <>
+                                {/* Financial Metrics */}
                                 <div className="bg-white p-6 rounded-lg shadow-md border">
-                                    <h2 className="text-2xl font-bold mb-4">{L.revenueSummary}</h2>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                        {analytics.revenueByCurrency.map(r => (
-                                            <StatCard key={r.currency} title={`${r.currency} (${r.orders} ${L.orderCount.toLowerCase()})`} value={money(r.revenue, r.currency, loc)} />
-                                        ))}
-                                        {analytics.revenueByCurrency.length === 0 && <p className="text-gray-500 col-span-full">—</p>}
+                                    <h2 className="text-2xl font-bold mb-4">{L.financialMetrics}</h2>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                                        <StatCard title={L.gmv} value={moneyList(analytics.financial.gmvByCurrency, loc)} />
+                                        <StatCard title={L.platformRevenue} value={moneyList(analytics.financial.platformRevenueByCurrency, loc)} />
+                                        <StatCard title={L.aov} value={moneyList(analytics.financial.aovByCurrency, loc)} />
+                                        <StatCard title={L.payoutsTotal} value={moneyList(analytics.financial.payoutsByCurrency, loc)} />
+                                        <StatCard title={L.refundsTotal} value={moneyList(analytics.financial.refundsByCurrency, loc)} />
                                     </div>
-                                    {analytics.refundedByCurrency.length > 0 && (
-                                        <div className="mt-4 pt-4 border-t">
-                                            <h3 className="text-sm font-semibold text-gray-500 mb-2">{L.refundedSummary}</h3>
-                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                                {analytics.refundedByCurrency.map(r => (
-                                                    <StatCard key={r.currency} title={`${r.currency} (${r.orders} ${L.orderCount.toLowerCase()})`} value={money(r.revenue, r.currency, loc)} />
-                                                ))}
-                                            </div>
+                                    <div className="pt-4 border-t flex items-end gap-3">
+                                        <div>
+                                            <label className="text-xs font-semibold text-gray-500 block mb-1">{L.commissionRateLabel}</label>
+                                            <input
+                                                type="number" min="0" max="100" step="0.1"
+                                                value={commissionInput}
+                                                onChange={(e) => setCommissionInput(e.target.value)}
+                                                className="w-32 p-2 border rounded-lg text-sm"
+                                            />
                                         </div>
-                                    )}
+                                        <button
+                                            onClick={handleSaveCommission}
+                                            disabled={savingCommission || Number(commissionInput) === commissionRate}
+                                            className="bg-purple-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-purple-700 disabled:opacity-60 text-sm"
+                                        >
+                                            {savingCommission ? L.savingRate : L.saveRate}
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div className="bg-white p-6 rounded-lg shadow-md border">
@@ -799,6 +949,68 @@ const AdminPage = ({ loc }) => {
                                             {analytics.topItems.length === 0 && <tr><td className="py-2 text-gray-400">—</td></tr>}
                                         </tbody>
                                     </table>
+                                </div>
+
+                                {/* Buyer & Seller (User) Growth */}
+                                <div className="bg-white p-6 rounded-lg shadow-md border">
+                                    <h2 className="text-2xl font-bold mb-4">{L.userGrowth}</h2>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        <StatCard title={`DAU / MAU`} value={`${analytics.growth.dau} / ${analytics.growth.mau}`} />
+                                        <StatCard title={L.newBuyersLabel} value={analytics.growth.newBuyers} />
+                                        <StatCard title={L.returningBuyersLabel} value={analytics.growth.returningBuyers} />
+                                        <StatCard title={L.buyerSellerRatio} value={analytics.growth.buyerToSellerRatio !== null ? `${analytics.growth.buyerToSellerRatio.toFixed(1)} : 1` : '—'} />
+                                        <StatCard title={L.newSellersLabel} value={analytics.growth.newSellers} />
+                                        <StatCard title={L.activeSellersLabel} value={analytics.growth.activeSellers} />
+                                        <StatCard title={L.churnedSellersLabel} value={analytics.growth.churnedSellers} />
+                                        <StatCard title={L.totalSellersLabel} value={analytics.growth.totalSellers} />
+                                    </div>
+                                </div>
+
+                                {/* Marketplace Liquidity & Operations */}
+                                <div className="bg-white p-6 rounded-lg shadow-md border">
+                                    <h2 className="text-2xl font-bold mb-4">{L.liquidityOps}</h2>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                                        <StatCard title={L.conversionRateLabel} value={`${analytics.liquidity.conversionRate.toFixed(1)}%`} />
+                                        <StatCard title={L.views} value={analytics.liquidity.views} />
+                                        <StatCard title={L.conversions} value={analytics.liquidity.conversions} />
+                                        <StatCard title={L.disputeStats} value={`${analytics.liquidity.disputeRate.toFixed(1)}%`} />
+                                        <StatCard title={L.totalListingsLabel} value={analytics.liquidity.totalListings} />
+                                        <StatCard title={L.activeListingsLabel2} value={analytics.liquidity.activeListings} />
+                                        <StatCard title={L.outOfStockLabel} value={analytics.liquidity.outOfStock} />
+                                        <StatCard title={L.disputedOrdersLabel} value={`${analytics.liquidity.disputedOrders} / ${analytics.liquidity.totalOrdersInPeriod}`} />
+                                    </div>
+                                    <div className="grid md:grid-cols-2 gap-6 pt-4 border-t">
+                                        <div>
+                                            <h3 className="text-sm font-semibold text-gray-500 mb-2">{L.topSearchesLabel}</h3>
+                                            {analytics.liquidity.topSearches.length === 0 ? <p className="text-sm text-gray-400">{L.noSearches}</p> : (
+                                                <table className="w-full text-sm text-left text-gray-500">
+                                                    <tbody>
+                                                        {analytics.liquidity.topSearches.map((s, i) => (
+                                                            <tr key={i} className="border-b">
+                                                                <td className="py-1">{s.term}</td>
+                                                                <td className="py-1 text-right text-gray-400">{s.count}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <h3 className="text-sm font-semibold text-gray-500 mb-2">{L.topZeroResultLabel}</h3>
+                                            {analytics.liquidity.topZeroResultSearches.length === 0 ? <p className="text-sm text-gray-400">{L.noSearches}</p> : (
+                                                <table className="w-full text-sm text-left text-gray-500">
+                                                    <tbody>
+                                                        {analytics.liquidity.topZeroResultSearches.map((s, i) => (
+                                                            <tr key={i} className="border-b">
+                                                                <td className="py-1">{s.term}</td>
+                                                                <td className="py-1 text-right text-gray-400">{s.count}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
                             </>
                         )}

@@ -40,6 +40,12 @@ async function fulfillCheckout(sql, pending) {
         to_timestamp(${now} / 1000.0), to_timestamp(${now} / 1000.0), to_timestamp(${shipByAt} / 1000.0)
       )
     `;
+    // Payment already succeeded, so this always fulfills — floor at 0 rather
+    // than reject, since stock was already checked (best-effort) before the
+    // charge in create-intent.js.
+    if (typeof line.qty === 'number') {
+      await sql`UPDATE items SET quantity = GREATEST(0, quantity - ${line.qty}) WHERE id = ${line.id} AND sale_type = 'buy'`;
+    }
   }
 }
 

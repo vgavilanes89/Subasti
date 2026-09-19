@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import { randomUUID } from 'crypto';
 import { getSql } from '../_lib/db.js';
 import { createRateLimiter, getClientIp } from '../_lib/rateLimit.js';
 import { createSessionToken, setSessionCookie } from '../_lib/session.js';
@@ -44,6 +45,7 @@ export default async function handler(req, res) {
 
     const user = toPublicUser(row);
     setSessionCookie(res, createSessionToken(user.id));
+    await sql`INSERT INTO login_events (id, user_id) VALUES (${`login_${randomUUID()}`}, ${user.id})`;
     return res.status(200).json(user);
   } catch {
     return res.status(500).json({ error: 'Could not log in' });

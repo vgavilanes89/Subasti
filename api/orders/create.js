@@ -37,6 +37,25 @@ export default async function handler(req, res) {
     resolved.push({ item, qty });
   }
 
+  // Reserve stock before charging/committing any order — guarded UPDATE so a
+  // race between two concurrent buyers can't both succeed off the same units.
+  // If a later line in a multi-item cart is out of stock, put back what this
+  // request already reserved rather than leaving stock short with no order.
+  const reserved = [];
+  for (const { item, qty } of resolved) {
+    if (item.saleType !== 'buy') continue;
+    const decremented = await sql`
+      UPDATE items SET quantity = quantity - ${qty} WHERE id = ${item.id} AND quantity >= ${qty} RETURNING id
+    `;
+    if (!decremented[0]) {
+      for (const r of reserved) {
+        await sql`UPDATE items SET quantity = quantity + ${r.qty} WHERE id = ${r.item.id}`;
+      }
+      return res.status(409).json({ error: 'OUT_OF_STOCK', itemId: item.id });
+    }
+    reserved.push({ item, qty });
+  }
+
   const now = Date.now();
   const inserted = [];
   for (const { item, qty } of resolved) {
