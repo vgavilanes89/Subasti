@@ -625,7 +625,9 @@ const AdminPage = ({ loc }) => {
                                     {allItems.map(item => (
                                         <tr key={item.id} className="bg-white border-b">
                                             <td className="px-6 py-4">{item.id}</td>
-                                            <td className="px-6 py-4 font-medium text-gray-900">{item.title}</td>
+                                            <td className="px-6 py-4 font-medium text-gray-900">
+                                                <button onClick={() => navigate(`/item/${item.id}`)} className="text-purple-600 hover:underline text-left">{item.title}</button>
+                                            </td>
                                             <td className="px-6 py-4">{item.sellerName}</td>
                                             <td className="px-6 py-4">{CRC(item.price || item.currentBid, loc, itemCurrency(item))}</td>
                                             <td className="px-6 py-4">

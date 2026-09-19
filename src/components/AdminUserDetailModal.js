@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CRC } from './Shared';
 
 const money = (amount, currency, loc) => CRC(amount, loc, currency);
@@ -9,12 +10,19 @@ const moneysByCurrency = (byCurrency, loc) => {
     return entries.map(([currency, v]) => money(v, currency, loc)).join(' + ');
 };
 
+const ItemLink = ({ id, title, onNavigate }) => (
+    <button type="button" onClick={() => onNavigate(id)} className="text-purple-600 hover:underline text-left">
+        {title}
+    </button>
+);
+
 const EMPTY_FORM = {
     realName: '', profileName: '', email: '', cedula: '',
     countryCode: '', phone: '', province: '', city: '',
 };
 
 const AdminUserDetailModal = ({ userId, loc, onClose, onUserUpdated }) => {
+    const navigate = useNavigate();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -79,6 +87,11 @@ const AdminUserDetailModal = ({ userId, loc, onClose, onUserUpdated }) => {
     }, [userId, loc]);
 
     useEffect(() => { load(); }, [load]);
+
+    const goToItem = (itemId) => {
+        onClose();
+        navigate(`/item/${itemId}`);
+    };
 
     const handleSave = async (e) => {
         e.preventDefault();
@@ -196,7 +209,7 @@ const AdminUserDetailModal = ({ userId, loc, onClose, onUserUpdated }) => {
                                     <tbody>
                                         {data.buyerOrders.map(o => (
                                             <tr key={o.id} className="border-b">
-                                                <td className="py-2">{o.itemTitle}</td>
+                                                <td className="py-2"><ItemLink id={o.itemId} title={o.itemTitle} onNavigate={goToItem} /></td>
                                                 <td className="py-2 text-gray-400">{L.with} {o.counterpartyName}</td>
                                                 <td className="py-2">{o.status}</td>
                                                 <td className="py-2 text-right">{money(o.amount + (o.shippingCost || 0), o.currency, loc)}</td>
@@ -214,7 +227,7 @@ const AdminUserDetailModal = ({ userId, loc, onClose, onUserUpdated }) => {
                                     <tbody>
                                         {data.sellerOrders.map(o => (
                                             <tr key={o.id} className="border-b">
-                                                <td className="py-2">{o.itemTitle}</td>
+                                                <td className="py-2"><ItemLink id={o.itemId} title={o.itemTitle} onNavigate={goToItem} /></td>
                                                 <td className="py-2 text-gray-400">{L.with} {o.counterpartyName}</td>
                                                 <td className="py-2">{o.status}</td>
                                                 <td className="py-2 text-right">{money(o.amount + (o.shippingCost || 0), o.currency, loc)}</td>
@@ -232,7 +245,7 @@ const AdminUserDetailModal = ({ userId, loc, onClose, onUserUpdated }) => {
                                     <tbody>
                                         {data.listedItems.map(i => (
                                             <tr key={i.id} className="border-b">
-                                                <td className="py-2">{i.title}</td>
+                                                <td className="py-2"><ItemLink id={i.id} title={i.title} onNavigate={goToItem} /></td>
                                                 <td className="py-2 text-gray-400">{i.saleType === 'auc' ? 'Auction' : 'Buy Now'}</td>
                                                 <td className="py-2 text-right">{money(i.saleType === 'auc' ? (i.currentBid ?? i.price) : i.price, i.currency, loc)}</td>
                                             </tr>
@@ -249,7 +262,7 @@ const AdminUserDetailModal = ({ userId, loc, onClose, onUserUpdated }) => {
                                     <tbody>
                                         {data.bids.map(b => (
                                             <tr key={b.id} className="border-b">
-                                                <td className="py-2">{b.itemTitle}</td>
+                                                <td className="py-2"><ItemLink id={b.itemId} title={b.itemTitle} onNavigate={goToItem} /></td>
                                                 <td className="py-2 text-right">{money(b.amount, b.currency, loc)}</td>
                                                 <td className="py-2 text-gray-400">{new Date(b.placedAt).toLocaleDateString()}</td>
                                                 <td className="py-2 text-right">
@@ -271,7 +284,7 @@ const AdminUserDetailModal = ({ userId, loc, onClose, onUserUpdated }) => {
                                     <tbody>
                                         {data.favorites.map(f => (
                                             <tr key={f.itemId} className="border-b">
-                                                <td className="py-2">{f.itemTitle}</td>
+                                                <td className="py-2"><ItemLink id={f.itemId} title={f.itemTitle} onNavigate={goToItem} /></td>
                                                 <td className="py-2 text-right">
                                                     {money(f.saleType === 'auc' ? (f.currentBid ?? f.price) : f.price, f.currency, loc)}
                                                 </td>
