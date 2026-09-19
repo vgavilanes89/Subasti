@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { getSql } from '../_lib/db.js';
 import { getUserIdFromRequest } from '../_lib/session.js';
 import { toPublicItem } from '../_lib/items.js';
@@ -52,5 +53,11 @@ export default async function handler(req, res) {
   if (!updated[0]) {
     return res.status(409).json({ error: 'BID_RACE_LOST' });
   }
+
+  await sql`
+    INSERT INTO bid_history (id, item_id, bidder_id, amount)
+    VALUES (${`bid_${randomUUID()}`}, ${itemId}, ${userId}, ${amount})
+  `;
+
   return res.status(200).json(toPublicItem(updated[0]));
 }

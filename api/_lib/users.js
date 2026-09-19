@@ -56,15 +56,23 @@ export function parseSignupInput(body) {
   };
 }
 
-export function validateSignupInput(fields) {
+// Shared by signup (plus a password check) and admin profile edits (no
+// password — that's a separate, more sensitive action with its own flow).
+export function validateProfileFields(fields) {
   if (!/^\d{9,12}$/.test(fields.cedula)) return 'Invalid cédula format';
   if (!fields.realName || fields.realName.length > 200) return 'Invalid full name';
   if (!PROFILE_NAME_REGEX.test(fields.profileName)) return 'Invalid profile name';
   if (!EMAIL_REGEX.test(fields.email) || fields.email.length > 200) return 'Invalid email';
-  if (fields.password.length < 8 || fields.password.length > 200) return 'Password must be at least 8 characters';
   if (!/^\+\d{1,4}$/.test(fields.countryCode)) return 'Invalid country code';
   if (!fields.phone || fields.phone.length > 30) return 'Invalid phone number';
   if (!fields.province || fields.province.length > 100) return 'Invalid province';
   if (!fields.city || fields.city.length > 100) return 'Invalid city';
+  return null;
+}
+
+export function validateSignupInput(fields) {
+  const profileError = validateProfileFields(fields);
+  if (profileError) return profileError;
+  if (fields.password.length < 8 || fields.password.length > 200) return 'Password must be at least 8 characters';
   return null;
 }

@@ -7,6 +7,7 @@ import { useMessages } from '../context/MessagesContext';
 import { buyerStatusLabel } from '../data/escrow';
 import { normalizeSearch } from '../lib/search';
 import ChatPanel from '../components/ChatPanel';
+import AdminUserDetailModal from '../components/AdminUserDetailModal';
 
 const money = (amount, currency, loc) => CRC(amount, loc, currency);
 
@@ -84,6 +85,7 @@ const AdminPage = ({ loc }) => {
     const [userQuery, setUserQuery] = useState('');
     const [userStatusFilter, setUserStatusFilter] = useState('all');
     const [userSort, setUserSort] = useState('newest');
+    const [viewingUserId, setViewingUserId] = useState(null);
 
     const L = loc === 'en' ? {
         title: 'Admin Dashboard',
@@ -165,6 +167,7 @@ const AdminPage = ({ loc }) => {
         sortNameDesc: 'Name: Z→A',
         sortEmailAsc: 'Email: A→Z',
         noUsersMatch: 'No users match your search or filters.',
+        viewProfile: 'View Profile',
     } : {
         title: 'Panel de Administración',
         tabOverview: 'Resumen',
@@ -245,6 +248,7 @@ const AdminPage = ({ loc }) => {
         sortNameDesc: 'Nombre: Z→A',
         sortEmailAsc: 'Correo: A→Z',
         noUsersMatch: 'Ningún usuario coincide con tu búsqueda o filtros.',
+        viewProfile: 'Ver Perfil',
     };
 
     const isAdmin = !!user?.isAdmin;
@@ -485,6 +489,14 @@ const AdminPage = ({ loc }) => {
                     onSubmit={handleRecordPayout}
                 />
             )}
+            {viewingUserId && (
+                <AdminUserDetailModal
+                    userId={viewingUserId}
+                    loc={loc}
+                    onClose={() => setViewingUserId(null)}
+                    onUserUpdated={(updated) => setAllUsers(prev => prev.map(u => (u.id === updated.id ? updated : u)))}
+                />
+            )}
             <div className="space-y-6">
                 <h1 className="text-3xl font-bold text-gray-800">{L.title}</h1>
 
@@ -581,6 +593,7 @@ const AdminPage = ({ loc }) => {
                                             <td className="px-6 py-4">{u.countryCode} {u.phone}</td>
                                             <td className="px-6 py-4">{[u.city, u.province].filter(Boolean).join(', ') || '—'}</td>
                                             <td className="px-6 py-4 space-x-4">
+                                                <button onClick={() => setViewingUserId(u.id)} className="font-medium text-purple-600 hover:underline">{L.viewProfile}</button>
                                                 <button onClick={() => handleOpenMessage(u)} className="font-medium text-blue-600 hover:underline" disabled={u.isAdmin}>{L.message}</button>
                                                 <button onClick={() => handleToggleSuspend(u)} className="font-medium text-red-600 hover:underline" disabled={u.isAdmin}>
                                                     {u.isSuspended ? L.unsuspend : L.suspend}
