@@ -76,9 +76,9 @@ const CartPage = ({ loc }) => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-md border space-y-4">
                     {cartWithDetails.map(item => (
-                        <div key={item.id} className="flex items-center gap-4 border-b pb-4 last:border-b-0">
+                        <div key={item.id} className="flex flex-wrap items-center gap-4 border-b pb-4 last:border-b-0">
                             <img src={item.image || PLACEHOLDER_IMG} alt={item.title} className="w-24 h-24 object-cover rounded-lg" />
-                            <div className="flex-grow">
+                            <div className="flex-1 min-w-[140px]">
                                 <h3 className="font-semibold text-lg">{item.title}</h3>
                                 <p className="text-sm text-gray-500">{tCategory(item.category, loc)}</p>
                                 <button onClick={() => removeFromCart(item.id)} className="text-red-500 text-sm font-semibold hover:underline mt-1">{L.remove}</button>
@@ -88,7 +88,7 @@ const CartPage = ({ loc }) => {
                                 <input type="number" value={item.qty} onChange={(e) => updateQuantity(item.id, parseInt(e.target.value, 10))} className="w-12 text-center border rounded-md" />
                                 <button onClick={() => updateQuantity(item.id, item.qty + 1)} className="w-8 h-8 border rounded-md">+</button>
                             </div>
-                            <div className="text-right w-24">
+                            <div className="text-right w-24 ml-auto">
                                 <p className="font-bold">{CRC((item.buyNowPrice || item.price) * item.qty, loc, itemCurrency(item))}</p>
                                 {item.qty > 1 && <p className="text-sm text-gray-500">{CRC(item.buyNowPrice || item.price, loc, itemCurrency(item))} {L.each}</p>}
                             </div>

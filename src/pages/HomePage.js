@@ -84,7 +84,8 @@ const HomePage = ({ loc, categories }) => {
     mostBids: 'Most bids',
     auctionsFirst: 'Auctions first',
     buyFirst: 'Buy now first',
-  } : { 
+    outOfStock: 'Out of stock',
+  } : {
     newest: 'Más recientes', 
     pAsc: 'Precio: menor→mayor', 
     pDesc: 'Precio: mayor→menor', 
@@ -107,6 +108,7 @@ const HomePage = ({ loc, categories }) => {
     mostBids: 'Más ofertas',
     auctionsFirst: 'Subastas primero',
     buyFirst: 'Compra primero',
+    outOfStock: 'Agotado',
   };
 
   const allCats = useMemo(() => ['*', ...Object.keys(categories)], [categories]);
@@ -249,6 +251,8 @@ const HomePage = ({ loc, categories }) => {
               </button>
             )}
           </div>
+        ) : it.quantity <= 0 ? (
+          <p className="text-center text-sm font-semibold text-red-600 py-2">{L.outOfStock}</p>
         ) : (
           <div className="flex items-center gap-2">
             <button className="w-full bg-purple-100 text-purple-700 py-2 rounded-lg font-semibold hover:bg-purple-200 transition-colors" onClick={(e) => handleAddToCart(e, it.id)}>

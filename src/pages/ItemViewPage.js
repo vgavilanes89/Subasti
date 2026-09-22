@@ -121,6 +121,7 @@ const ItemViewPage = ({ loc }) => {
         ownItemMessage: 'You cannot message yourself about your own listing.',
         viewInProfile: 'View all messages in your profile',
         ownItemBuy: 'You cannot buy your own listing.',
+        outOfStock: 'Out of stock',
     } : {
         back: 'Atrás', 
         add: 'Agregar al carrito', 
@@ -165,6 +166,7 @@ const ItemViewPage = ({ loc }) => {
         ownItemMessage: 'No puedes enviarte mensajes sobre tu propio artículo.',
         viewInProfile: 'Ver todos los mensajes en tu perfil',
         ownItemBuy: 'No puedes comprar tu propio artículo.',
+        outOfStock: 'Agotado',
     };
 
     const currency = itemCurrency(item);
@@ -342,10 +344,14 @@ const ItemViewPage = ({ loc }) => {
                                             <button onClick={() => setSelectedQuantity(q => Math.min(item.quantity, q + 1))} className="w-10 h-10 border rounded-md font-bold">+</button>
                                         </div>
                                     )}
-                                    <div className="mt-6 flex gap-4">
-                                        <button className="flex-1 bg-purple-100 text-purple-700 py-3 rounded-lg font-bold hover:bg-purple-200" onClick={handleAddToCart}>{L.add}</button>
-                                        <button className="flex-1 bg-purple-600 text-white py-3 rounded-lg font-bold hover:bg-purple-700" onClick={handleBuyNow}>{L.buyNow}</button>
-                                    </div>
+                                    {item.quantity <= 0 ? (
+                                        <p className="mt-6 text-red-600 font-bold">{L.outOfStock}</p>
+                                    ) : (
+                                        <div className="mt-6 flex gap-4">
+                                            <button className="flex-1 bg-purple-100 text-purple-700 py-3 rounded-lg font-bold hover:bg-purple-200" onClick={handleAddToCart}>{L.add}</button>
+                                            <button className="flex-1 bg-purple-600 text-white py-3 rounded-lg font-bold hover:bg-purple-700" onClick={handleBuyNow}>{L.buyNow}</button>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>

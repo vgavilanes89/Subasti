@@ -12,6 +12,7 @@ const Header = ({ loc, setLoc }) => {
     const navigate = useNavigate();
     const location = useLocation();
     const [menuOpen, setMenuOpen] = useState(false);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     const handleLogout = () => {
         logout();
@@ -68,8 +69,8 @@ const Header = ({ loc, setLoc }) => {
                             {loc === 'en' ? 'Sell' : 'Vender'}
                         </Link>
 
-                        {/* User Menu / Login Buttons */}
-                        {user ? (
+                        {/* User Menu (logged in) */}
+                        {user && (
                             <div className="relative">
                                 <button onClick={() => setMenuOpen(o => !o)} className="capitalize text-gray-600 hover:text-purple-600">
                                     {loc === 'en' ? 'Hi' : 'Hola'}, {user.profileName.split(' ')[0]}
@@ -85,7 +86,10 @@ const Header = ({ loc, setLoc }) => {
                                     </div>
                                 )}
                             </div>
-                        ) : (
+                        )}
+
+                        {/* Login/Signup (logged out) — desktop only; mobile gets them via the hamburger menu below */}
+                        {!user && (
                             <div className="hidden md:flex items-center space-x-2">
                                 <Link to="/login" className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-purple-600 rounded-md">
                                     {loc === 'en' ? 'Log in' : 'Iniciar sesión'}
@@ -95,9 +99,54 @@ const Header = ({ loc, setLoc }) => {
                                 </Link>
                             </div>
                         )}
+
+                        {/* Mobile menu toggle — covers Sell (always hidden on mobile above)
+                            and Log in/Sign up (hidden on mobile when logged out above), so
+                            neither is ever completely unreachable on a phone. */}
+                        <button
+                            type="button"
+                            onClick={() => setMobileMenuOpen(o => !o)}
+                            className="md:hidden p-2 text-gray-600 hover:text-purple-600"
+                            aria-label={loc === 'en' ? 'Menu' : 'Menú'}
+                            aria-expanded={mobileMenuOpen}
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                {mobileMenuOpen ? <path d="M18 6 6 18M6 6l12 12" /> : <><line x1="4" y1="6" x2="20" y2="6" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="18" x2="20" y2="18" /></>}
+                            </svg>
+                        </button>
                     </div>
                 </div>
             </div>
+
+            {mobileMenuOpen && (
+                <div className="md:hidden border-t border-[#e5e0d6] bg-white px-4 py-3 space-y-1">
+                    <Link
+                        to={user ? "/sell" : "/login"}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="block bg-indigo-500 text-white text-center px-4 py-2 rounded-lg font-semibold hover:bg-indigo-600 transition-colors"
+                    >
+                        {loc === 'en' ? 'Sell' : 'Vender'}
+                    </Link>
+                    {!user && (
+                        <>
+                            <Link
+                                to="/login"
+                                onClick={() => setMobileMenuOpen(false)}
+                                className="block px-3 py-2 text-sm font-medium text-gray-600 hover:text-purple-600 rounded-md"
+                            >
+                                {loc === 'en' ? 'Log in' : 'Iniciar sesión'}
+                            </Link>
+                            <Link
+                                to="/signup"
+                                onClick={() => setMobileMenuOpen(false)}
+                                className="block bg-purple-600 text-white text-center px-4 py-2 rounded-lg font-semibold hover:bg-purple-700 transition-colors"
+                            >
+                                {loc === 'en' ? 'Sign up' : 'Crear cuenta'}
+                            </Link>
+                        </>
+                    )}
+                </div>
+            )}
         </header>
     );
 };

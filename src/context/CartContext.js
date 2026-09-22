@@ -13,6 +13,7 @@ export const CartProvider = ({ children }) => {
         const item = items.find(i => i.id === id);
         if(!item) return;
         const maxQty = item.quantity ?? Infinity;
+        if (maxQty <= 0) return;
 
         setCart(currentCart => {
             const existing = currentCart.find(x => x.id === id);
