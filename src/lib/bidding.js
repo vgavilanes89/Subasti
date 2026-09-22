@@ -2,6 +2,12 @@
 // client (src/api/items.js) and serverless functions (api/items/bid.js)
 // without pulling in either side's I/O.
 
+// Anti-snipe / soft close: a bid landing inside this window before the
+// scheduled end pushes the deadline out by this much, so a last-second bid
+// can't win purely by leaving no time for a counter-bid.
+export const ANTI_SNIPE_WINDOW_MS = 60 * 1000;
+export const ANTI_SNIPE_EXTENSION_MS = 2 * 60 * 1000;
+
 export const getBidIncrement = (currentBid, currency = 'CRC') => {
     if (currency === 'USD') {
         // currentBid * 5 (not * 0.05 * 100) avoids floating-point drift that

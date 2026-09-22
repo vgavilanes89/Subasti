@@ -113,6 +113,7 @@ const ItemViewPage = ({ loc }) => {
         yourBid: 'Your bid amount',
         bidTooLow: 'Your bid must be at least',
         bidSuccess: 'Bid placed successfully!',
+        bidExtended: 'This auction was extended by 2 minutes because it was about to end.',
         ownItem: 'You cannot bid on your own listing.',
         bidCount: 'Total bids',
         messageSeller: 'Message seller',
@@ -158,6 +159,7 @@ const ItemViewPage = ({ loc }) => {
         yourBid: 'Monto de tu puja',
         bidTooLow: 'Tu puja debe ser al menos',
         bidSuccess: '¡Puja realizada con éxito!',
+        bidExtended: 'Esta subasta se extendió 2 minutos porque estaba a punto de terminar.',
         ownItem: 'No puedes pujar en tu propio artículo.',
         bidCount: 'Ofertas totales',
         messageSeller: 'Enviar mensaje al vendedor',
@@ -239,9 +241,10 @@ const ItemViewPage = ({ loc }) => {
         }
         setBidding(true);
         try {
-            await placeBid(item.id, amount, user.id);
+            const prevEndAt = item.endAt;
+            const updated = await placeBid(item.id, amount, user.id);
             setBidError('');
-            alert(L.bidSuccess);
+            alert(updated.endAt > prevEndAt ? `${L.bidSuccess} ${L.bidExtended}` : L.bidSuccess);
         } catch {
             setBidError(`${L.bidTooLow} ${CRC(minBid, loc, currency)}`);
         } finally {

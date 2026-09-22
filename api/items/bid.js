@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto';
 import { getSql } from '../_lib/db.js';
 import { getUserIdFromRequest } from '../_lib/session.js';
 import { toPublicItem } from '../_lib/items.js';
-import { getBidIncrement } from '../../src/lib/bidding.js';
+import { getBidIncrement, ANTI_SNIPE_WINDOW_MS, ANTI_SNIPE_EXTENSION_MS } from '../../src/lib/bidding.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -42,11 +42,19 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'BID_TOO_LOW' });
   }
 
+  // Anti-snipe / soft close: a bid inside the last minute pushes the end
+  // time out by two minutes, so a last-second bid can't win purely by
+  // leaving no time for a counter-bid.
+  const previousEndAtMs = row.end_at ? new Date(row.end_at).getTime() : null;
+  const newEndAt = previousEndAtMs !== null && previousEndAtMs - Date.now() <= ANTI_SNIPE_WINDOW_MS
+    ? new Date(previousEndAtMs + ANTI_SNIPE_EXTENSION_MS)
+    : row.end_at;
+
   // Compare-and-swap against the exact row we validated against — if another
   // bid landed in between, this affects 0 rows instead of silently
   // overwriting a bid that raced past our validation.
   const updated = await sql`
-    UPDATE items SET current_bid = ${amount}, bids = bids + 1, highest_bidder_id = ${userId}
+    UPDATE items SET current_bid = ${amount}, bids = bids + 1, highest_bidder_id = ${userId}, end_at = ${newEndAt}
     WHERE id = ${itemId} AND current_bid IS NOT DISTINCT FROM ${previousBid}
     RETURNING *
   `;
