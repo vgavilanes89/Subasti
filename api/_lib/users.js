@@ -39,7 +39,7 @@ export function generateAccountNumber() {
 }
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PROFILE_NAME_REGEX = /^[a-zA-Z0-9]{3,30}$/;
+export const PROFILE_NAME_REGEX = /^[a-zA-Z0-9]{3,30}$/;
 
 // Trims/normalizes raw signup fields into the shape stored in the DB.
 export function parseSignupInput(body) {

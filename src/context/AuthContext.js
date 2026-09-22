@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import * as authService from '../api/auth';
+import * as accountApi from '../api/account';
 
 const AuthContext = createContext();
 
@@ -92,9 +93,11 @@ export const AuthProvider = ({ children }) => {
         }
     }, [usersMap]);
 
-    const updateProfile = (updatedData) => {
-        setUser(updatedData);
-        // In a real app, you would call an API update here
+    const updateProfile = async ({ profileName, phone }) => {
+        const updatedUser = await accountApi.updateProfile({ profileName, phone });
+        setUser(updatedUser);
+        setUsersMap(prev => ({ ...prev, [updatedUser.id]: updatedUser }));
+        return updatedUser;
     };
 
     // Address & Payment handlers (Moved from App.js)

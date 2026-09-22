@@ -96,6 +96,38 @@ export const CountdownTimer = ({ targetDate, loc }) => {
     );
 };
 
+// Shared across BuyerDashboard and ProfilePage's overview — a compact grid
+// of item thumbnails (favorites, recently viewed, etc.).
+export const ProfilePageItemList = ({ list, emptyMsg, onOpen, onToggleFav, isFav, loc, L }) => (
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+        {list.length ? list.map(it => (
+            <div key={it.id} className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 group relative">
+                <img src={it.image || PLACEHOLDER_IMG} onClick={() => onOpen(it.id)} alt={it.title} className="w-full h-24 sm:h-32 object-cover rounded-t-lg cursor-pointer" />
+                {onToggleFav && isFav && (
+                    <button onClick={(e) => { e.stopPropagation(); onToggleFav(it.id); }} className="absolute top-1 right-1 bg-white/70 backdrop-blur-sm p-1 rounded-full text-gray-600 hover:text-red-500 hover:bg-white transition-all" title={isFav(it.id) ? L.favRemove : L.favAdd}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill={isFav(it.id) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={isFav(it.id) ? 'text-red-500' : ''}>
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                        </svg>
+                    </button>
+                )}
+                <div className="p-2">
+                    <button type="button" onClick={() => onOpen(it.id)} className="text-sm font-semibold text-gray-800 hover:text-purple-700 text-left line-clamp-2">{it.title}</button>
+                </div>
+            </div>
+        )) : <p className="col-span-full text-sm text-gray-500">{emptyMsg}</p>}
+    </div>
+);
+
+// Same visual language as the stat cards elsewhere in the buyer/seller
+// dashboards (.seller-stat-card), for the profile overview's stat grid.
+export const StatCard = ({ label, value, sub, accent }) => (
+    <div className={`seller-stat-card ${accent ? `seller-stat-card--${accent}` : ''}`}>
+        <p className="seller-stat-label">{label}</p>
+        <p className="seller-stat-value">{value}</p>
+        {sub && <p className="seller-stat-sub">{sub}</p>}
+    </div>
+);
+
 export const StarRating = ({ rating }) => {
     const totalStars = 5;
     const fullStars = Math.floor(rating);

@@ -7,6 +7,7 @@ import {
     itemCurrency,
     calculateAverageRating,
     CountdownTimer,
+    StatCard,
 } from './Shared';
 import { saleTypeBadge } from '../data/i18n';
 import * as sellerApi from '../api/seller';
@@ -31,14 +32,6 @@ const listingStatus = (item, loc) => {
     }
     return { label: loc === 'en' ? 'Active listing' : 'Publicación activa', cls: 'seller-badge seller-badge--ok' };
 };
-
-const StatCard = ({ label, value, sub, accent }) => (
-    <div className={`seller-stat-card ${accent ? `seller-stat-card--${accent}` : ''}`}>
-        <p className="seller-stat-label">{label}</p>
-        <p className="seller-stat-value">{value}</p>
-        {sub && <p className="seller-stat-sub">{sub}</p>}
-    </div>
-);
 
 const SellerDashboard = ({ user, users, items, loc }) => {
     const navigate = useNavigate();
