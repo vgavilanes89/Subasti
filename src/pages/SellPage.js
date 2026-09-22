@@ -49,6 +49,7 @@ const SellPage = ({ loc, categories }) => {
         currency: 'CRC',
     });
     const [isDragging, setIsDragging] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
     const fileInputRef = React.useRef(null);
 
     const L = loc === 'en' ? {
@@ -87,10 +88,14 @@ const SellPage = ({ loc, categories }) => {
         imageDesc: 'Drag & drop images here, or click to select files. (Max 5)',
         addImage: 'Add Image',
         publish: 'Publish Item',
+        publishing: 'Publishing…',
         errorMsg: 'Please add at least one image to publish your item.',
         titleLengthError: 'Title must be at least 10 characters long.',
         descLengthError: 'Description must be at least 15 words long.',
         buyNowPriceError: 'Buy Now price must be at least 15% higher than the starting bid.',
+        imageProcessError: "One or more images couldn't be processed and were skipped.",
+        publishError: 'Could not publish your item. Please try again.',
+        imagesTooLarge: 'Your images are too large even after compression. Try removing one or using smaller photos.',
         wordCount: 'words',
         shippingOptions: 'Shipping Options',
         shippingDesc: 'Select how the buyer can receive your item.',
@@ -137,10 +142,14 @@ const SellPage = ({ loc, categories }) => {
         imageDesc: 'Arrastra y suelta imágenes aquí, o haz clic para seleccionar archivos. (Máx 5)',
         addImage: 'Agregar Imagen',
         publish: 'Publicar Artículo',
+        publishing: 'Publicando…',
         errorMsg: 'Por favor, agrega al menos una imagen para publicar tu artículo.',
         titleLengthError: 'El título debe tener al menos 10 caracteres.',
         descLengthError: 'La descripción debe tener al menos 15 palabras.',
         buyNowPriceError: 'El precio de Compra Inmediata debe ser al menos 15% más alto que la oferta inicial.',
+        imageProcessError: 'Una o más imágenes no se pudieron procesar y fueron omitidas.',
+        publishError: 'No se pudo publicar tu artículo. Intenta de nuevo.',
+        imagesTooLarge: 'Tus imágenes son demasiado grandes incluso después de comprimirlas. Intenta quitar una o usar fotos más pequeñas.',
         wordCount: 'palabras',
         shippingOptions: 'Opciones de Envío',
         shippingDesc: 'Selecciona cómo el comprador puede recibir tu artículo.',
@@ -183,22 +192,46 @@ const SellPage = ({ loc, categories }) => {
         });
     };
 
-    const processFiles = (files) => {
+    // Real phone photos are routinely 3-10MB — 5 of those as base64 JSON
+    // comfortably exceeds Vercel's ~4.5MB serverless request body limit, so
+    // publishing would fail outright. Downscaling + re-encoding to JPEG here
+    // keeps each image small enough in practice, since these are stored
+    // directly as data URLs (no object storage / CDN behind this yet).
+    const MAX_DIMENSION = 1600;
+    const JPEG_QUALITY = 0.82;
+
+    const compressImage = (file) => new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            const scale = Math.min(1, MAX_DIMENSION / Math.max(img.width, img.height));
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.round(img.width * scale);
+            canvas.height = Math.round(img.height * scale);
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            URL.revokeObjectURL(img.src);
+            resolve(canvas.toDataURL('image/jpeg', JPEG_QUALITY));
+        };
+        img.onerror = () => {
+            URL.revokeObjectURL(img.src);
+            reject(new Error('IMAGE_DECODE_FAILED'));
+        };
+        img.src = URL.createObjectURL(file);
+    });
+
+    const processFiles = async (files) => {
         if (!files) return;
-        const newImages = [];
-        for (let i = 0; i < files.length; i++) {
-            if (formData.images.length + newImages.length >= 5) break;
-            const file = files[i];
-            if (file.type.startsWith('image/')) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    newImages.push(e.target.result);
-                    if (i === files.length - 1 || formData.images.length + newImages.length === 5) {
-                        setFormData(prev => ({...prev, images: [...prev.images, ...newImages]}));
-                    }
-                };
-                reader.readAsDataURL(file);
-            }
+        const remaining = Math.max(0, 5 - formData.images.length);
+        const candidates = [...files].filter((f) => f.type.startsWith('image/')).slice(0, remaining);
+        if (candidates.length === 0) return;
+
+        const results = await Promise.allSettled(candidates.map(compressImage));
+        const newImages = results.filter((r) => r.status === 'fulfilled').map((r) => r.value);
+        if (newImages.length > 0) {
+            setFormData(prev => ({ ...prev, images: [...prev.images, ...newImages] }));
+        }
+        if (newImages.length < candidates.length) {
+            alert(L.imageProcessError);
         }
     };
     
@@ -226,8 +259,9 @@ const SellPage = ({ loc, categories }) => {
         setFormData(prev => ({...prev, images: prev.images.filter((_, i) => i !== index) }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        if (submitting) return;
         // Validation checks
         if (formData.title.trim().length < 10) {
             alert(L.titleLengthError);
@@ -271,8 +305,20 @@ const SellPage = ({ loc, categories }) => {
                 endAt: new Date().getTime() + parseInt(formData.auctionDuration, 10) * 24 * 60 * 60 * 1000
             })
         };
-        addItem(newItem);
-        navigate('/'); // Redirect to home after publishing
+        setSubmitting(true);
+        try {
+            await addItem(newItem);
+            navigate('/'); // Redirect to home after publishing
+        } catch (err) {
+            const knownErrors = {
+                TOO_MANY_IMAGES: L.errorMsg,
+                IMAGES_TOO_LARGE: L.imagesTooLarge,
+                IMAGES_REQUIRED: L.errorMsg,
+            };
+            alert(knownErrors[err.message] || L.publishError);
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     if (!user) {
@@ -492,7 +538,7 @@ const SellPage = ({ loc, categories }) => {
                         </div>
                     </FormSection>
                     
-                    <button type="submit" className="w-full bg-purple-600 text-white py-4 mt-6 rounded-lg font-semibold text-lg hover:bg-purple-700 transition-colors">{L.publish}</button>
+                    <button type="submit" disabled={submitting} className="w-full bg-purple-600 text-white py-4 mt-6 rounded-lg font-semibold text-lg hover:bg-purple-700 transition-colors disabled:opacity-60">{submitting ? L.publishing : L.publish}</button>
                 </form>
             </div>
         </div>

@@ -3,6 +3,12 @@ import { getUserIdFromRequest } from '../_lib/session.js';
 import { toPublicItem, generateItemId } from '../_lib/items.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const MAX_IMAGES = 5;
+// Images are stored inline as data URLs, no object storage behind this — and
+// Vercel's serverless functions hard-reject request bodies over ~4.5MB
+// (platform limit, not configurable) with an opaque, non-JSON 413. Capping
+// well under that gives a clear, actionable error instead.
+const MAX_TOTAL_IMAGE_CHARS = 4 * 1024 * 1024;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -38,6 +44,10 @@ export default async function handler(req, res) {
   if (!category) return res.status(400).json({ error: 'INVALID_CATEGORY' });
   if (!Number.isFinite(price) || price <= 0) return res.status(400).json({ error: 'INVALID_PRICE' });
   if (images.length === 0) return res.status(400).json({ error: 'IMAGES_REQUIRED' });
+  if (images.length > MAX_IMAGES) return res.status(400).json({ error: 'TOO_MANY_IMAGES' });
+  if (images.reduce((sum, img) => sum + img.length, 0) > MAX_TOTAL_IMAGE_CHARS) {
+    return res.status(400).json({ error: 'IMAGES_TOO_LARGE' });
+  }
 
   let quantity = 1;
   let buyNowPrice = null;
