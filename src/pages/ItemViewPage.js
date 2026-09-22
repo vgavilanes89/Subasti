@@ -5,7 +5,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { PLACEHOLDER_IMG, CRC, CountdownTimer, StarRating, calculateAverageRating, useCountdown, itemCurrency } from '../components/Shared';
 import { tCategory, tSubCategory, formatCondition } from '../data/i18n';
-import { getMinBid } from '../api/items';
+import { getMinBid, fetchItem } from '../api/items';
 import { useMessages } from '../context/MessagesContext';
 import ChatPanel from '../components/ChatPanel';
 import EscrowPanel from '../components/EscrowPanel';
@@ -14,7 +14,7 @@ const ItemViewPage = ({ loc }) => {
     // 1. Get ID from URL and tools from Context
     const { id } = useParams();
     const navigate = useNavigate();
-    const { items, isFav, toggleFav, placeBid } = useItems();
+    const { items, isFav, toggleFav, placeBid, replaceItem } = useItems();
     const { addToCart } = useCart();
     // We access 'users' map here to look up seller details by ID
     const { user, users, ensureUserLoaded } = useAuth();
@@ -48,15 +48,44 @@ const ItemViewPage = ({ loc }) => {
     const [chatThreadId, setChatThreadId] = useState(null);
     const [chatLoading, setChatLoading] = useState(false);
     const [bidding, setBidding] = useState(false);
+    // Tracks whether the bidder has typed their own amount, so a live poll
+    // picking up someone else's bid doesn't silently overwrite what they're
+    // about to submit — only the suggested minimum auto-fills the field.
+    const [bidAmountTouched, setBidAmountTouched] = useState(false);
 
     const minBid = useMemo(() => (item ? getMinBid(item) : 0), [item]);
 
     useEffect(() => {
-        if (minBid > 0) setBidAmount(String(minBid));
-    }, [minBid]);
+        if (minBid > 0 && !bidAmountTouched) setBidAmount(String(minBid));
+    }, [minBid, bidAmountTouched]);
 
     const targetDate = item ? item.endAt : Date.now();
     const { isFinished } = useCountdown(targetDate);
+
+    // Live sync: poll this auction while it's still running so the
+    // countdown, current bid, and bid count stay current for everyone
+    // watching the page, not just whoever just bid.
+    useEffect(() => {
+        if (!item || item.saleType !== 'auc' || isFinished) return;
+        const itemId = item.id;
+        const poll = async () => {
+            if (document.hidden) return;
+            try {
+                const updated = await fetchItem(itemId);
+                replaceItem(updated);
+            } catch {
+                // Transient network/poll failure — next tick will retry.
+            }
+        };
+        const interval = setInterval(poll, 5000);
+        // Catch up immediately on return from a backgrounded tab instead of
+        // waiting out the rest of the interval on stale data.
+        document.addEventListener('visibilitychange', poll);
+        return () => {
+            clearInterval(interval);
+            document.removeEventListener('visibilitychange', poll);
+        };
+    }, [item?.id, item?.saleType, isFinished, replaceItem]);
     const averageRating = useMemo(
         () => calculateAverageRating(seller ? seller.reviews : []),
         [seller]
@@ -244,6 +273,7 @@ const ItemViewPage = ({ loc }) => {
             const prevEndAt = item.endAt;
             const updated = await placeBid(item.id, amount, user.id);
             setBidError('');
+            setBidAmountTouched(false);
             alert(updated.endAt > prevEndAt ? `${L.bidSuccess} ${L.bidExtended}` : L.bidSuccess);
         } catch {
             setBidError(`${L.bidTooLow} ${CRC(minBid, loc, currency)}`);
@@ -310,7 +340,7 @@ const ItemViewPage = ({ loc }) => {
                                                 <input
                                                     type="number"
                                                     value={bidAmount}
-                                                    onChange={(e) => { setBidAmount(e.target.value); setBidError(''); }}
+                                                    onChange={(e) => { setBidAmount(e.target.value); setBidAmountTouched(true); setBidError(''); }}
                                                     min={minBid}
                                                     step={currency === 'USD' ? '0.01' : '1000'}
                                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"

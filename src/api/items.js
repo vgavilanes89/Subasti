@@ -15,6 +15,12 @@ export const fetchItems = async () => {
     return res.json();
 };
 
+export const fetchItem = async (id) => {
+    const res = await fetch(`/api/items/get?id=${encodeURIComponent(id)}`);
+    if (!res.ok) throw new Error('Could not load item');
+    return res.json();
+};
+
 export const createItem = async (item) => {
     const res = await fetch('/api/items/create', {
         method: 'POST',

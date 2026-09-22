@@ -3,6 +3,7 @@ import { getSql } from '../_lib/db.js';
 import { getUserIdFromRequest } from '../_lib/session.js';
 import { toPublicItem } from '../_lib/items.js';
 import { getBidIncrement, ANTI_SNIPE_WINDOW_MS, ANTI_SNIPE_EXTENSION_MS } from '../../src/lib/bidding.js';
+import { notifyOutbid } from '../_lib/notify.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -66,6 +67,18 @@ export default async function handler(req, res) {
     INSERT INTO bid_history (id, item_id, bidder_id, amount)
     VALUES (${`bid_${randomUUID()}`}, ${itemId}, ${userId}, ${amount})
   `;
+
+  // Whoever was highest before this bid just got outbid — tell them.
+  // Awaited (not fire-and-forget) since the function may freeze right after
+  // the response is sent, but never let a notification failure fail the bid.
+  const previousBidderId = row.highest_bidder_id;
+  if (previousBidderId && previousBidderId !== userId) {
+    try {
+      await notifyOutbid({ sql, previousBidderId, item: updated[0] });
+    } catch (err) {
+      console.error('Outbid notification failed for item', itemId, err.message);
+    }
+  }
 
   return res.status(200).json(toPublicItem(updated[0]));
 }
