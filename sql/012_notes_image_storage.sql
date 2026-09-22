@@ -1,0 +1,15 @@
+-- No schema change — this is a note, not a migration to run.
+--
+-- Item images moved from inline base64 (stored directly in items.image /
+-- items.images) to real Vercel Blob storage: those columns now hold plain
+-- https:// URLs instead. Existing rows are unaffected either way (both old
+-- placehold.co demo URLs and old base64 values still render fine as image
+-- src), so no backfill was needed — only new listings created after this
+-- change use Blob storage.
+--
+-- Infra provisioned for this: a public Vercel Blob store ("subasti-images"),
+-- connected to the project with both OIDC and a static BLOB_READ_WRITE_TOKEN
+-- (the client-upload token flow in api/upload/image-token.js currently
+-- requires the static token; OIDC alone isn't enough for that specific
+-- call). Run once per environment if reconnecting elsewhere:
+--   vercel storage connect subasti-images --add-rw-token --yes

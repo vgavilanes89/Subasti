@@ -4,11 +4,12 @@ import { toPublicItem, generateItemId } from '../_lib/items.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MAX_IMAGES = 5;
-// Images are stored inline as data URLs, no object storage behind this — and
-// Vercel's serverless functions hard-reject request bodies over ~4.5MB
-// (platform limit, not configurable) with an opaque, non-JSON 413. Capping
-// well under that gives a clear, actionable error instead.
-const MAX_TOTAL_IMAGE_CHARS = 4 * 1024 * 1024;
+// Images are uploaded to Blob storage client-side (see src/api/upload.js)
+// before this endpoint ever sees them, so it should only receive short
+// URLs — never raw base64. A 2048-char cap is generous for any real URL
+// and rejects anyone bypassing that upload flow.
+const MAX_IMAGE_URL_CHARS = 2048;
+const IMAGE_URL_PATTERN = /^https?:\/\//i;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -35,7 +36,9 @@ export default async function handler(req, res) {
     : null;
   const currency = body.currency === 'USD' ? 'USD' : 'CRC';
   const price = Number(body.price);
-  const images = Array.isArray(body.images) ? body.images.filter((u) => typeof u === 'string') : [];
+  const images = Array.isArray(body.images)
+    ? body.images.filter((u) => typeof u === 'string' && u.length <= MAX_IMAGE_URL_CHARS && IMAGE_URL_PATTERN.test(u))
+    : [];
   const shippingShip = Boolean(body.shippingShip);
   const shippingLocal = Boolean(body.shippingLocal);
   const shippingCost = shippingShip ? Number(body.shippingCost) || 0 : 0;
@@ -45,9 +48,6 @@ export default async function handler(req, res) {
   if (!Number.isFinite(price) || price <= 0) return res.status(400).json({ error: 'INVALID_PRICE' });
   if (images.length === 0) return res.status(400).json({ error: 'IMAGES_REQUIRED' });
   if (images.length > MAX_IMAGES) return res.status(400).json({ error: 'TOO_MANY_IMAGES' });
-  if (images.reduce((sum, img) => sum + img.length, 0) > MAX_TOTAL_IMAGE_CHARS) {
-    return res.status(400).json({ error: 'IMAGES_TOO_LARGE' });
-  }
 
   let quantity = 1;
   let buyNowPrice = null;

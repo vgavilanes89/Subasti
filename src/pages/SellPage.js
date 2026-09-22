@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useItems } from '../context/ItemsContext';
 import { tCategory, tSubCategory } from '../data/i18n';
+import { uploadImage } from '../api/upload';
 
 // Reusable Form Components
 const FormSection = ({ title, children }) => (
@@ -50,6 +51,7 @@ const SellPage = ({ loc, categories }) => {
     });
     const [isDragging, setIsDragging] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [uploadingImages, setUploadingImages] = useState(false);
     const fileInputRef = React.useRef(null);
 
     const L = loc === 'en' ? {
@@ -86,6 +88,7 @@ const SellPage = ({ loc, categories }) => {
         endsOn: 'Ends on',
         images: 'Images',
         imageDesc: 'Drag & drop images here, or click to select files. (Max 5)',
+        uploadingImages: 'Uploading images…',
         addImage: 'Add Image',
         publish: 'Publish Item',
         publishing: 'Publishing…',
@@ -95,7 +98,6 @@ const SellPage = ({ loc, categories }) => {
         buyNowPriceError: 'Buy Now price must be at least 15% higher than the starting bid.',
         imageProcessError: "One or more images couldn't be processed and were skipped.",
         publishError: 'Could not publish your item. Please try again.',
-        imagesTooLarge: 'Your images are too large even after compression. Try removing one or using smaller photos.',
         wordCount: 'words',
         shippingOptions: 'Shipping Options',
         shippingDesc: 'Select how the buyer can receive your item.',
@@ -140,6 +142,7 @@ const SellPage = ({ loc, categories }) => {
         endsOn: 'Termina el',
         images: 'Imágenes',
         imageDesc: 'Arrastra y suelta imágenes aquí, o haz clic para seleccionar archivos. (Máx 5)',
+        uploadingImages: 'Subiendo imágenes…',
         addImage: 'Agregar Imagen',
         publish: 'Publicar Artículo',
         publishing: 'Publicando…',
@@ -149,7 +152,6 @@ const SellPage = ({ loc, categories }) => {
         buyNowPriceError: 'El precio de Compra Inmediata debe ser al menos 15% más alto que la oferta inicial.',
         imageProcessError: 'Una o más imágenes no se pudieron procesar y fueron omitidas.',
         publishError: 'No se pudo publicar tu artículo. Intenta de nuevo.',
-        imagesTooLarge: 'Tus imágenes son demasiado grandes incluso después de comprimirlas. Intenta quitar una o usar fotos más pequeñas.',
         wordCount: 'palabras',
         shippingOptions: 'Opciones de Envío',
         shippingDesc: 'Selecciona cómo el comprador puede recibir tu artículo.',
@@ -192,11 +194,11 @@ const SellPage = ({ loc, categories }) => {
         });
     };
 
-    // Real phone photos are routinely 3-10MB — 5 of those as base64 JSON
-    // comfortably exceeds Vercel's ~4.5MB serverless request body limit, so
-    // publishing would fail outright. Downscaling + re-encoding to JPEG here
-    // keeps each image small enough in practice, since these are stored
-    // directly as data URLs (no object storage / CDN behind this yet).
+    // Real phone photos are routinely 3-10MB. Downscaling + re-encoding to
+    // JPEG here keeps uploads fast and storage lean; the compressed file
+    // then goes straight to Blob storage from the browser (see
+    // src/api/upload.js), never through our own serverless function — so
+    // there's no request-body size limit to worry about on publish.
     const MAX_DIMENSION = 1600;
     const JPEG_QUALITY = 0.82;
 
@@ -210,7 +212,10 @@ const SellPage = ({ loc, categories }) => {
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
             URL.revokeObjectURL(img.src);
-            resolve(canvas.toDataURL('image/jpeg', JPEG_QUALITY));
+            canvas.toBlob((blob) => {
+                if (!blob) { reject(new Error('IMAGE_ENCODE_FAILED')); return; }
+                resolve(new File([blob], 'photo.jpg', { type: 'image/jpeg' }));
+            }, 'image/jpeg', JPEG_QUALITY);
         };
         img.onerror = () => {
             URL.revokeObjectURL(img.src);
@@ -225,13 +230,20 @@ const SellPage = ({ loc, categories }) => {
         const candidates = [...files].filter((f) => f.type.startsWith('image/')).slice(0, remaining);
         if (candidates.length === 0) return;
 
-        const results = await Promise.allSettled(candidates.map(compressImage));
-        const newImages = results.filter((r) => r.status === 'fulfilled').map((r) => r.value);
-        if (newImages.length > 0) {
-            setFormData(prev => ({ ...prev, images: [...prev.images, ...newImages] }));
-        }
-        if (newImages.length < candidates.length) {
-            alert(L.imageProcessError);
+        setUploadingImages(true);
+        try {
+            const compressed = await Promise.allSettled(candidates.map(compressImage));
+            const compressedFiles = compressed.filter((r) => r.status === 'fulfilled').map((r) => r.value);
+            const uploaded = await Promise.allSettled(compressedFiles.map(uploadImage));
+            const newUrls = uploaded.filter((r) => r.status === 'fulfilled').map((r) => r.value);
+            if (newUrls.length > 0) {
+                setFormData(prev => ({ ...prev, images: [...prev.images, ...newUrls] }));
+            }
+            if (newUrls.length < candidates.length) {
+                alert(L.imageProcessError);
+            }
+        } finally {
+            setUploadingImages(false);
         }
     };
     
@@ -261,7 +273,7 @@ const SellPage = ({ loc, categories }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (submitting) return;
+        if (submitting || uploadingImages) return;
         // Validation checks
         if (formData.title.trim().length < 10) {
             alert(L.titleLengthError);
@@ -312,7 +324,6 @@ const SellPage = ({ loc, categories }) => {
         } catch (err) {
             const knownErrors = {
                 TOO_MANY_IMAGES: L.errorMsg,
-                IMAGES_TOO_LARGE: L.imagesTooLarge,
                 IMAGES_REQUIRED: L.errorMsg,
             };
             alert(knownErrors[err.message] || L.publishError);
@@ -526,7 +537,7 @@ const SellPage = ({ loc, categories }) => {
                                 onChange={handleFileSelect}
                             />
                             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 mb-2"><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/><line x1="16" x2="22" y1="5" y2="5"/><line x1="19" x2="19" y1="2" y2="8"/><path d="m9 12 2.221 2.221a2 2 0 0 0 2.828 0L17 11"/></svg>
-                            <p className="text-sm text-gray-500">{L.imageDesc}</p>
+                            <p className="text-sm text-gray-500">{uploadingImages ? L.uploadingImages : L.imageDesc}</p>
                         </div>
                         <div className="mt-4 grid grid-cols-3 sm:grid-cols-5 gap-4">
                             {formData.images.map((img, index) => (
@@ -538,7 +549,7 @@ const SellPage = ({ loc, categories }) => {
                         </div>
                     </FormSection>
                     
-                    <button type="submit" disabled={submitting} className="w-full bg-purple-600 text-white py-4 mt-6 rounded-lg font-semibold text-lg hover:bg-purple-700 transition-colors disabled:opacity-60">{submitting ? L.publishing : L.publish}</button>
+                    <button type="submit" disabled={submitting || uploadingImages} className="w-full bg-purple-600 text-white py-4 mt-6 rounded-lg font-semibold text-lg hover:bg-purple-700 transition-colors disabled:opacity-60">{submitting ? L.publishing : (uploadingImages ? L.uploadingImages : L.publish)}</button>
                 </form>
             </div>
         </div>
