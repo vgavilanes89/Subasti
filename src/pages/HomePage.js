@@ -8,6 +8,7 @@ import { PLACEHOLDER_IMG, CRC, CountdownTimer, itemCurrency } from '../component
 import { tCategory, tSubCategory, formatCondition } from '../data/i18n';
 import { normalizeSearch } from '../lib/search';
 import EscrowPanel from '../components/EscrowPanel';
+import CategoryTree from '../components/CategoryTree';
 
 const getItemPrice = (item) =>
   item.saleType === 'auc' ? (item.currentBid ?? item.price ?? 0) : (item.price ?? 0);
@@ -58,7 +59,7 @@ const HomePage = ({ loc, categories }) => {
   
   // Use React Router for navigation
   const navigate = useNavigate();
-  const { q, setQ, cat, setCat, sort, setSort } = useHomeFilters();
+  const { q, setQ, cat, setCat, subCat, sort, setSort } = useHomeFilters();
 
   // Localization strings
   const L = loc === 'en' ? { 
@@ -134,7 +135,8 @@ const HomePage = ({ loc, categories }) => {
     const qq = normalizeSearch((q ?? '').trim());
     const mq = !qq || normalizeSearch(`${i.title} ${i.category} ${i.subCategory || ''}`).includes(qq);
     const mc = cat === '*' || i.category === cat;
-    return mq && mc;
+    const msc = subCat === '*' || i.subCategory === subCat;
+    return mq && mc && msc;
   });
 
   // Search itself is instant client-side filtering above — this just logs
@@ -270,6 +272,11 @@ const HomePage = ({ loc, categories }) => {
   return (
     <div className="space-y-6">
       <EscrowPanel loc={loc} />
+      <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6 items-start">
+        <aside className="hidden lg:block">
+          <CategoryTree categories={categories} loc={loc} />
+        </aside>
+        <div className="space-y-6 min-w-0">
       {/* Filter Bar */}
       <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
         <div className="home-filter-bar">
@@ -327,6 +334,8 @@ const HomePage = ({ loc, categories }) => {
             <p>{L.adjustFilters}</p>
           </div>
         )}
+      </div>
+        </div>
       </div>
     </div>
   );
