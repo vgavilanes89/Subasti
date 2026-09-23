@@ -23,11 +23,13 @@ const WelcomeBanner = ({ loc }) => {
 
     const L = loc === 'en' ? {
         welcomeBack: 'Welcome back',
+        welcomeGeneric: 'Welcome to Subasti',
         generic: 'Buy and Sell Your Items Now!',
         subGeneric: 'Join the largest online marketplace in Costa Rica.',
         subPersonal: 'Great deals and live auctions are waiting for you.',
     } : {
         welcomeBack: 'Bienvenido/a de vuelta',
+        welcomeGeneric: 'Bienvenido a Subasti',
         generic: '¡Compra y Vende Tus Artículos Ahora!',
         subGeneric: 'Únete al mercado en línea más grande de Costa Rica.',
         subPersonal: 'Grandes ofertas y subastas en vivo te están esperando.',
@@ -44,6 +46,7 @@ const WelcomeBanner = ({ loc }) => {
                 ))}
             </div>
             <div className="container mx-auto py-8 px-4 text-center welcome-banner-content">
+                {!name && <p className="text-sm font-semibold uppercase tracking-wide text-indigo-100">{L.welcomeGeneric}</p>}
                 <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">{title}</h2>
                 <p className="mt-2 text-lg text-indigo-100">{subtitle}</p>
             </div>
