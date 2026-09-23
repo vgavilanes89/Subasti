@@ -10,6 +10,7 @@ import { MessagesProvider } from './context/MessagesContext';
 
 // 2. Import Layout Components
 import Header from './components/Header';
+import WelcomeBanner from './components/WelcomeBanner';
 
 // 3. Import Pages
 import HomePage from './pages/HomePage';
@@ -89,10 +90,6 @@ function App() {
     rights: 'Todos los derechos reservados.',
   };
 
-  const bannerL = loc === 'en'
-    ? { text: 'Buy and Sell Your Items Now!', sub: 'Join the largest online marketplace in Costa Rica.' }
-    : { text: '¡Compra y Vende Tus Artículos Ahora!', sub: 'Únete al mercado en línea más grande de Costa Rica.' };
-
   return (
     <AuthProvider>
       <MessagesProvider>
@@ -104,14 +101,7 @@ function App() {
             {/* Persistent Header */}
             <Header loc={loc} setLoc={setLoc} />
 
-            {isHomePage && (
-              <div className="bg-gradient-to-r from-purple-700 via-purple-600 to-indigo-500 text-white">
-                <div className="container mx-auto py-8 px-4 text-center">
-                  <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">{bannerL.text}</h2>
-                  <p className="mt-2 text-lg text-indigo-100">{bannerL.sub}</p>
-                </div>
-              </div>
-            )}
+            {isHomePage && <WelcomeBanner loc={loc} />}
 
             {/* Main Content Area with Routing */}
             <main className="container mx-auto p-4 sm:p-6 lg:p-8 flex-grow">
