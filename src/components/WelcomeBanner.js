@@ -46,8 +46,8 @@ const WelcomeBanner = ({ loc }) => {
                 ))}
             </div>
             <div className="container mx-auto py-8 px-4 text-center welcome-banner-content">
-                {!name && <p className="text-sm font-semibold uppercase tracking-wide text-indigo-100">{L.welcomeGeneric}</p>}
-                <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">{title}</h2>
+                {!name && <p className="text-3xl font-black tracking-tight sm:text-5xl md:text-6xl">{L.welcomeGeneric}</p>}
+                <h2 className={name ? 'text-3xl font-extrabold tracking-tight sm:text-4xl' : 'mt-2 text-xl font-bold tracking-tight sm:text-2xl'}>{title}</h2>
                 <p className="mt-2 text-lg text-indigo-100">{subtitle}</p>
             </div>
         </div>
