@@ -50,8 +50,8 @@ function App() {
   const CATEGORIES = useMemo(() => ({
     'Electrónicos': ['Celulares', 'Computadoras', 'Tablets', 'Cámaras', 'Televisores', 'Audio y Video', 'Videojuegos', 'Accesorios Tech', 'Otro'],
     'Hogar': ['Muebles', 'Electrodomésticos', 'Cocina', 'Decoración', 'Jardinería', 'Herramientas', 'Limpieza', 'Otro'],
-    'Deportes': ['Ciclismo', 'Fitness', 'Deportes de Equipo', 'Acuáticos', 'Camping', 'Otro'],
-    'Moda': ['Ropa de Mujer', 'Ropa de Hombre', 'Ropa Infantil', 'Calzado', 'Accesorios', 'Bolsos', 'Joyería', 'Otro'],
+    'Deportes': ['Ciclismo', 'Fitness', 'Deportes de Equipo', 'Acuáticos', 'Pesca', 'Camping', 'Otro'],
+    'Moda': ['Ropa de Mujer', 'Ropa de Hombre', 'Ropa Infantil', 'Calzado', 'Accesorios', 'Bolsos', 'Joyería', 'Relojes', 'Otro'],
     'Salud y Belleza': ['Cuidado Personal', 'Maquillaje', 'Perfumes', 'Suplementos', 'Otro'],
     'Juguetes y Bebés': ['Juguetes', 'Bebés', 'Juegos de Mesa', 'Otro'],
     'Mascotas': ['Alimentos para Mascotas', 'Accesorios para Mascotas', 'Higiene Animal', 'Otro'],
@@ -62,7 +62,7 @@ function App() {
     'Oficina y Escuela': ['Útiles Escolares', 'Muebles de Oficina', 'Impresión', 'Otro'],
     'Jardín y Exterior': ['Plantas', 'Parrillas', 'Muebles de Exterior', 'Otro'],
     'Alimentos': ['Gourmet', 'Bebidas', 'Orgánicos', 'Otro'],
-    'Vehículos': ['Repuestos y Accesorios', 'Motos y ATV', 'Llantas y Rines', 'Audio para Carro', 'Otro'],
+    'Vehículos': ['Autos', 'Camiones', 'Repuestos y Accesorios', 'Motos y ATV', 'Llantas y Rines', 'Audio para Carro', 'Otro'],
   }), []);
 
   // Localization for Layout elements
