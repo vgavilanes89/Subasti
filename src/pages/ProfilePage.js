@@ -49,6 +49,8 @@ const ProfilePage = ({ loc }) => {
         email: 'Email',
         phone: 'Phone',
         location: 'Location',
+        returnPolicy: 'Return Policy',
+        returnPolicyHint: 'Shown to buyers on your listings. Leave blank to show no return policy.',
         edit: 'Edit',
         save: 'Save Changes',
         saving: 'Saving…',
@@ -86,6 +88,8 @@ const ProfilePage = ({ loc }) => {
         email: 'Correo',
         phone: 'Teléfono',
         location: 'Ubicación',
+        returnPolicy: 'Política de Devoluciones',
+        returnPolicyHint: 'Se muestra a los compradores en tus artículos. Déjalo en blanco para no mostrar ninguna política.',
         edit: 'Editar',
         save: 'Guardar Cambios',
         saving: 'Guardando…',
@@ -196,7 +200,7 @@ const ProfilePage = ({ loc }) => {
         setSaving(true);
         setSaveError('');
         try {
-            await updateProfile({ profileName: formData.profileName, phone: formData.phone });
+            await updateProfile({ profileName: formData.profileName, phone: formData.phone, returnPolicy: formData.returnPolicy });
             setIsEditing(false);
         } catch (err) {
             setSaveError(err.message || L.saveFailed);
@@ -281,6 +285,11 @@ const ProfilePage = ({ loc }) => {
                                 <div>
                                     <label className="text-sm font-bold text-gray-700 block mb-1">{L.location}</label>
                                     <input type="text" name="location" value={`${formData.city}, ${formData.province}`} disabled className="w-full p-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed" />
+                                </div>
+                                <div>
+                                    <label className="text-sm font-bold text-gray-700 block mb-1">{L.returnPolicy}</label>
+                                    <textarea name="returnPolicy" value={formData.returnPolicy || ''} onChange={handleChange} rows={3} maxLength={1000} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" />
+                                    <p className="text-xs text-gray-500 mt-1">{L.returnPolicyHint}</p>
                                 </div>
                                 {saveError && <p className="text-sm text-red-500">{saveError}</p>}
                                 <div className="flex items-center gap-4 pt-2">

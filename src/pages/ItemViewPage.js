@@ -152,6 +152,9 @@ const ItemViewPage = ({ loc }) => {
         viewInProfile: 'View all messages in your profile',
         ownItemBuy: 'You cannot buy your own listing.',
         outOfStock: 'Out of stock',
+        itemNumber: 'Item Number',
+        returnPolicy: 'Return Policy',
+        noReturnPolicy: 'This seller has not specified a return policy.',
     } : {
         back: 'Atrás', 
         add: 'Agregar al carrito', 
@@ -198,6 +201,9 @@ const ItemViewPage = ({ loc }) => {
         viewInProfile: 'Ver todos los mensajes en tu perfil',
         ownItemBuy: 'No puedes comprar tu propio artículo.',
         outOfStock: 'Agotado',
+        itemNumber: 'Número de Artículo',
+        returnPolicy: 'Política de Devoluciones',
+        noReturnPolicy: 'Este vendedor no ha especificado una política de devoluciones.',
     };
 
     const currency = itemCurrency(item);
@@ -389,42 +395,49 @@ const ItemViewPage = ({ loc }) => {
                             )}
                         </div>
                     </div>
+
+                    {/* Seller Details — directly under the bid/buy box */}
+                    {seller && (
+                            <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 mt-4">
+                                <p className="flex items-center gap-2 flex-wrap">
+                                    <b>{L.soldBy}:</b>
+                                    <button onClick={() => handleSellerClick(seller.id)} className="text-purple-600 hover:underline font-semibold">{seller.profileName}</button>
+                                    {averageRating > 0 && (
+                                        <span className="inline-flex items-center">
+                                            <StarRating rating={averageRating} />
+                                            <span className="text-xs text-gray-500 ml-1">({seller.reviews.length})</span>
+                                        </span>
+                                    )}
+                                </p>
+                                {user?.id !== item.sellerId && (
+                                    <button
+                                        type="button"
+                                        onClick={handleMessageSeller}
+                                        disabled={chatLoading}
+                                        className="item-message-seller-btn mt-3"
+                                    >
+                                        {chatLoading ? '…' : L.messageSeller}
+                                    </button>
+                                )}
+                                <div className="border-t mt-4 pt-4">
+                                    <h4 className="font-bold text-sm text-gray-700 mb-1">{L.returnPolicy}</h4>
+                                    <p className="text-sm text-gray-600">{seller.returnPolicy || L.noReturnPolicy}</p>
+                                </div>
+                            </div>
+                        )}
                 </div>
             </div>
 
             {/* Details Section */}
-            <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 text-sm">
-                <h3 className="font-bold text-lg mb-2">{L.details}</h3>
-                <p><b>{L.sale}:</b> <span className="capitalize">{item.saleType==='auc'?L.auc:L.buy}</span></p>
-                <p><b>{L.condition}:</b> <span>{formatCondition(item.condition, loc, item.conditionDetail)}</span></p>
-                {item.saleType === 'buy' && item.quantity > 1 && <p><b>{L.quantity}:</b> {item.quantity}</p>}
-                {seller && (
-                    <div className="space-y-3">
-                        <p className="flex items-center gap-2 flex-wrap">
-                            <b>{L.soldBy}:</b>
-                            <button onClick={() => handleSellerClick(seller.id)} className="text-purple-600 hover:underline font-semibold">{seller.profileName}</button>
-                            {averageRating > 0 && (
-                                <span className="inline-flex items-center">
-                                    <StarRating rating={averageRating} />
-                                    <span className="text-xs text-gray-500 ml-1">({seller.reviews.length})</span>
-                                </span>
-                            )}
-                        </p>
-                        {user?.id !== item.sellerId && (
-                            <button
-                                type="button"
-                                onClick={handleMessageSeller}
-                                disabled={chatLoading}
-                                className="item-message-seller-btn"
-                            >
-                                {chatLoading ? '…' : L.messageSeller}
-                            </button>
-                        )}
-                    </div>
-                )}
-                <p className="mt-2 text-gray-600">{item.description || L.noDescription}</p>
+            <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 text-base">
+                <h3 className="font-bold text-xl mb-3">{L.details}</h3>
+                <p className="mb-1"><b>{L.itemNumber}:</b> <span>{item.itemNumber}</span></p>
+                <p className="mb-1"><b>{L.sale}:</b> <span className="capitalize">{item.saleType==='auc'?L.auc:L.buy}</span></p>
+                <p className="mb-1"><b>{L.condition}:</b> <span>{formatCondition(item.condition, loc, item.conditionDetail)}</span></p>
+                {item.saleType === 'buy' && item.quantity > 1 && <p className="mb-1"><b>{L.quantity}:</b> {item.quantity}</p>}
+                <p className="mt-3 text-gray-600">{item.description || L.noDescription}</p>
                 <div className="border-t mt-4 pt-4">
-                    <h4 className="font-bold text-md mb-2">{L.shipping}</h4>
+                    <h4 className="font-bold text-lg mb-2">{L.shipping}</h4>
                     <ul className="list-disc list-inside text-gray-600">
                         {item.shippingShip && <li>{L.ship} {item.shippingCost > 0 ? `(${CRC(item.shippingCost, loc, currency)})` : ''}</li>}
                         {item.shippingLocal && <li>{L.localPickup}</li>}

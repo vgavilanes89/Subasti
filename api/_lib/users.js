@@ -12,6 +12,7 @@ export function toPublicUser(row) {
     city: row.city,
     isAdmin: row.is_admin,
     isSuspended: row.is_suspended,
+    returnPolicy: row.return_policy,
     createdAt: row.created_at ? new Date(row.created_at).getTime() : null,
     savedAddresses: [],
     savedPayments: [],
@@ -22,6 +23,7 @@ export function toPublicUser(row) {
 // Unlike toPublicUser (returned only to the account's own owner via
 // login/me/signup), this is served to ANY visitor looking at a seller's item
 // or profile page — so it excludes cedula, email, phone and account number.
+// returnPolicy is included on purpose: it's meant for buyers to read.
 export function toPublicProfile(row) {
   return {
     id: String(row.id),
@@ -29,6 +31,7 @@ export function toPublicProfile(row) {
     city: row.city,
     province: row.province,
     isAdmin: row.is_admin,
+    returnPolicy: row.return_policy,
     reviews: [],
   };
 }

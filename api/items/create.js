@@ -1,6 +1,9 @@
 import { getSql } from '../_lib/db.js';
 import { getUserIdFromRequest } from '../_lib/session.js';
-import { toPublicItem, generateItemId } from '../_lib/items.js';
+import { toPublicItem, generateItemId, generateItemNumber } from '../_lib/items.js';
+
+const UNIQUE_VIOLATION = '23505';
+const MAX_ITEM_NUMBER_ATTEMPTS = 5;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MAX_IMAGES = 5;
@@ -75,19 +78,33 @@ export default async function handler(req, res) {
 
   const sql = getSql();
   const id = generateItemId();
-  const rows = await sql`
-    INSERT INTO items (
-      id, title, description, category, sub_category, currency, price, image, images,
-      sale_type, condition, condition_detail, seller_id, quantity,
-      shipping_ship, shipping_local, shipping_cost, buy_now_price,
-      current_bid, bids, reserve_price, end_at
-    ) VALUES (
-      ${id}, ${title}, ${description}, ${category}, ${subCategory}, ${currency}, ${price}, ${images[0]}, ${JSON.stringify(images)},
-      ${saleType}, ${condition}, ${conditionDetail}, ${userId}, ${quantity},
-      ${shippingShip}, ${shippingLocal}, ${shippingCost}, ${buyNowPrice},
-      ${currentBid}, ${bids}, ${reservePrice}, ${endAt}
-    )
-    RETURNING *
-  `;
-  return res.status(201).json(toPublicItem(rows[0]));
+
+  let attempt = 0;
+  while (attempt < MAX_ITEM_NUMBER_ATTEMPTS) {
+    attempt += 1;
+    const itemNumber = generateItemNumber();
+    try {
+      const rows = await sql`
+        INSERT INTO items (
+          id, item_number, title, description, category, sub_category, currency, price, image, images,
+          sale_type, condition, condition_detail, seller_id, quantity,
+          shipping_ship, shipping_local, shipping_cost, buy_now_price,
+          current_bid, bids, reserve_price, end_at
+        ) VALUES (
+          ${id}, ${itemNumber}, ${title}, ${description}, ${category}, ${subCategory}, ${currency}, ${price}, ${images[0]}, ${JSON.stringify(images)},
+          ${saleType}, ${condition}, ${conditionDetail}, ${userId}, ${quantity},
+          ${shippingShip}, ${shippingLocal}, ${shippingCost}, ${buyNowPrice},
+          ${currentBid}, ${bids}, ${reservePrice}, ${endAt}
+        )
+        RETURNING *
+      `;
+      return res.status(201).json(toPublicItem(rows[0]));
+    } catch (err) {
+      if (err.code === UNIQUE_VIOLATION && (err.constraint || '').includes('item_number')) {
+        continue; // collision on the random item number — retry with a new one
+      }
+      throw err;
+    }
+  }
+  return res.status(500).json({ error: 'Could not generate a unique item number' });
 }

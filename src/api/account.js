@@ -7,11 +7,11 @@ async function parseErrorMessage(res, fallback) {
     }
 }
 
-export const updateProfile = async ({ profileName, phone }) => {
+export const updateProfile = async ({ profileName, phone, returnPolicy }) => {
     const res = await fetch('/api/account/update-profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ profileName, phone }),
+        body: JSON.stringify({ profileName, phone, returnPolicy }),
     });
     if (!res.ok) throw new Error(await parseErrorMessage(res, 'Could not update profile'));
     return res.json();

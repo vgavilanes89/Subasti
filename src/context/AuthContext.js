@@ -93,8 +93,8 @@ export const AuthProvider = ({ children }) => {
         }
     }, [usersMap]);
 
-    const updateProfile = async ({ profileName, phone }) => {
-        const updatedUser = await accountApi.updateProfile({ profileName, phone });
+    const updateProfile = async ({ profileName, phone, returnPolicy }) => {
+        const updatedUser = await accountApi.updateProfile({ profileName, phone, returnPolicy });
         setUser(updatedUser);
         setUsersMap(prev => ({ ...prev, [updatedUser.id]: updatedUser }));
         return updatedUser;

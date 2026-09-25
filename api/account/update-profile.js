@@ -5,9 +5,10 @@ import { toPublicUser, PROFILE_NAME_REGEX } from '../_lib/users.js';
 const UNIQUE_VIOLATION = '23505';
 
 // Self-service — limited to the same fields the account tab's edit form
-// exposes (profile name, phone). Email/cédula/real name/location changes
-// aren't offered there today, so this endpoint doesn't accept them either;
-// widening it later means updating both sides together.
+// exposes (profile name, phone, return policy). Email/cédula/real
+// name/location changes aren't offered there today, so this endpoint
+// doesn't accept them either; widening it later means updating both sides
+// together.
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -22,6 +23,7 @@ export default async function handler(req, res) {
   const body = typeof req.body === 'object' && req.body ? req.body : {};
   const profileName = typeof body.profileName === 'string' ? body.profileName.trim() : '';
   const phone = typeof body.phone === 'string' ? body.phone.trim() : '';
+  const returnPolicy = typeof body.returnPolicy === 'string' ? body.returnPolicy.trim().slice(0, 1000) : '';
 
   if (!PROFILE_NAME_REGEX.test(profileName)) {
     return res.status(400).json({ error: 'Invalid profile name' });
@@ -33,7 +35,7 @@ export default async function handler(req, res) {
   try {
     const sql = getSql();
     const rows = await sql`
-      UPDATE users SET profile_name = ${profileName}, phone = ${phone}
+      UPDATE users SET profile_name = ${profileName}, phone = ${phone}, return_policy = ${returnPolicy || null}
       WHERE id = ${userId}
       RETURNING *
     `;
