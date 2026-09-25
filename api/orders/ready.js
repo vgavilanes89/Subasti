@@ -2,6 +2,7 @@ import { getSql } from '../_lib/db.js';
 import { getUserIdFromRequest } from '../_lib/session.js';
 import { toPublicOrder, getOrderById } from '../_lib/orders.js';
 import { ORDER_STATUS } from '../../src/data/escrow.js';
+import { createNotification, getUserContact } from '../_lib/notify.js';
 
 // Seller-side action; see ship.js for why ownership isn't enforced yet.
 export default async function handler(req, res) {
@@ -40,5 +41,20 @@ export default async function handler(req, res) {
     WHERE id = ${order.id}
     RETURNING *
   `;
+
+  const buyer = await getUserContact(sql, order.buyer_id);
+  if (buyer) {
+    await createNotification({
+      sql,
+      userId: order.buyer_id,
+      type: 'order_status',
+      title: `Tu pedido "${order.item_title}" está listo para recoger`,
+      body: `El vendedor lo tiene listo: ${timeframe}`,
+      link: '/profile?tab=buying',
+      email: buyer.email,
+      name: buyer.name,
+    }).catch((err) => console.error('Ready notification failed:', err.message));
+  }
+
   return res.status(200).json(toPublicOrder(rows[0]));
 }

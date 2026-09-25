@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useHomeFilters } from '../context/HomeFilterContext';
+import NotificationBell from './NotificationBell';
 import logoImage from '../images/subasti-logo.png';
 
 const Header = ({ loc, setLoc }) => {
@@ -58,9 +59,12 @@ const Header = ({ loc, setLoc }) => {
                             </Link>
                         )}
 
+                        {/* Notifications */}
+                        {user && <NotificationBell loc={loc} />}
+
                         {/* Cart */}
                         <Link to="/cart" className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-purple-600 rounded-md">
-                            {loc === 'en' ? 'Cart' : 'Carrito'} 
+                            {loc === 'en' ? 'Cart' : 'Carrito'}
                             {cartCount > 0 && <span className="ml-1 bg-purple-500 text-white text-xs font-bold rounded-full px-2 py-1">{cartCount}</span>}
                         </Link>
 

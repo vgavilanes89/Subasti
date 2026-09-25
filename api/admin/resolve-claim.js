@@ -3,6 +3,7 @@ import { getRequestingAdmin } from '../_lib/admin.js';
 import { getOrderById, toPublicOrder } from '../_lib/orders.js';
 import { getStripe } from '../_lib/stripe.js';
 import { ORDER_STATUS } from '../../src/data/escrow.js';
+import { createNotification, getUserContact, formatMoney } from '../_lib/notify.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -49,6 +50,34 @@ export default async function handler(req, res) {
       WHERE id = ${order.id}
       RETURNING *
     `;
+
+    const buyer = await getUserContact(sql, order.buyer_id);
+    if (buyer) {
+      await createNotification({
+        sql,
+        userId: order.buyer_id,
+        type: 'order_status',
+        title: `Tu reclamo sobre "${order.item_title}" fue aprobado`,
+        body: `Se te reembolsaron ${formatMoney(order.amount, order.currency)}.`,
+        link: '/profile?tab=buying',
+        email: buyer.email,
+        name: buyer.name,
+      }).catch((err) => console.error('Claim-approve notification failed:', err.message));
+    }
+    const sellerNotified = await getUserContact(sql, order.seller_id);
+    if (sellerNotified) {
+      await createNotification({
+        sql,
+        userId: order.seller_id,
+        type: 'order_status',
+        title: `Reclamo aprobado sobre "${order.item_title}"`,
+        body: 'Subasti aprobó el reclamo del comprador y reembolsó el pago.',
+        link: '/profile?tab=selling',
+        email: sellerNotified.email,
+        name: sellerNotified.name,
+      }).catch((err) => console.error('Claim-approve seller notification failed:', err.message));
+    }
+
     return res.status(200).json(toPublicOrder(rows[0]));
   }
 
@@ -60,5 +89,32 @@ export default async function handler(req, res) {
     WHERE id = ${order.id}
     RETURNING *
   `;
+
+  const sellerOnDeny = await getUserContact(sql, order.seller_id);
+  if (sellerOnDeny) {
+    await createNotification({
+      sql,
+      userId: order.seller_id,
+      type: 'order_status',
+      title: `Reclamo denegado sobre "${order.item_title}"`,
+      body: `Subasti denegó el reclamo del comprador. Se liberaron ${formatMoney(order.amount, order.currency)} a tu favor.`,
+      link: '/profile?tab=selling',
+      email: sellerOnDeny.email,
+      name: sellerOnDeny.name,
+    }).catch((err) => console.error('Claim-deny notification failed:', err.message));
+  }
+  const buyerOnDeny = await getUserContact(sql, order.buyer_id);
+  if (buyerOnDeny) {
+    await createNotification({
+      sql,
+      userId: order.buyer_id,
+      type: 'order_status',
+      title: `Tu reclamo sobre "${order.item_title}" fue denegado`,
+      body: 'Subasti revisó tu reclamo y decidió liberar los fondos al vendedor.',
+      link: '/profile?tab=buying',
+      email: buyerOnDeny.email,
+      name: buyerOnDeny.name,
+    }).catch((err) => console.error('Claim-deny buyer notification failed:', err.message));
+  }
   return res.status(200).json(toPublicOrder(rows[0]));
 }

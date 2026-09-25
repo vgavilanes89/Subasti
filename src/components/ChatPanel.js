@@ -16,12 +16,18 @@ const ChatPanel = ({
     activeThreadId,
     onSelectThread,
     compact = false,
-    userEmail,
 }) => {
-    const { sendMessage, markRead, lastEmailNotice, clearEmailNotice } = useMessages();
+    const { sendMessage, markRead } = useMessages();
     const [messageDraft, setMessageDraft] = useState('');
     const [sending, setSending] = useState(false);
     const chatEndRef = useRef(null);
+
+    // 'mixed' (the unified Messages tab) shows both buyer and seller threads
+    // together, so the buyer/seller perspective is derived per-thread from
+    // who's on which side, instead of a single role fixed for the whole list.
+    const roleFor = (thread) => (role === 'mixed'
+        ? (thread.sellerId === user.id ? 'seller' : 'buyer')
+        : role);
 
     const L = loc === 'en' ? {
         you: 'You',
@@ -29,14 +35,10 @@ const ChatPanel = ({
         send: 'Send',
         noThreads: role === 'buyer'
             ? 'No conversations yet. Message a seller from any item page.'
-            : 'No conversations yet. Buyers can message you from your listings.',
-        emailSync: 'Messages sync with your email',
-        emailOnFile: 'on file',
-        emailNotify: 'You and the other party receive email when messages are sent.',
-        replyViaEmail: 'You can also reply by email — replies to',
-        replyViaEmail2: 'appear in this chat.',
-        viaEmail: 'Sent via email',
-        emailSent: 'Email notification sent to',
+            : role === 'seller'
+                ? 'No conversations yet. Buyers can message you from your listings.'
+                : 'No conversations yet.',
+        emailNotify: "You'll get an email whenever someone sends you a new message.",
         withSeller: 'with seller',
         about: 'About',
     } : {
@@ -45,14 +47,10 @@ const ChatPanel = ({
         send: 'Enviar',
         noThreads: role === 'buyer'
             ? 'Aún no hay conversaciones. Escríbele a un vendedor desde la página del artículo.'
-            : 'Aún no hay conversaciones. Los compradores pueden escribirte desde tus publicaciones.',
-        emailSync: 'Los mensajes se sincronizan con tu correo',
-        emailOnFile: 'registrado',
-        emailNotify: 'Tú y la otra parte reciben correo cuando se envían mensajes.',
-        replyViaEmail: 'También puedes responder por correo — las respuestas a',
-        replyViaEmail2: 'aparecen en este chat.',
-        viaEmail: 'Enviado por correo',
-        emailSent: 'Notificación enviada por correo a',
+            : role === 'seller'
+                ? 'Aún no hay conversaciones. Los compradores pueden escribirte desde tus publicaciones.'
+                : 'Aún no hay conversaciones.',
+        emailNotify: 'Recibirás un correo cada vez que alguien te envíe un mensaje nuevo.',
         withSeller: 'con el vendedor',
         about: 'Sobre',
     };
@@ -60,15 +58,16 @@ const ChatPanel = ({
     const activeThread = threads.find(t => t.id === activeThreadId);
 
     const threadLabel = (thread) => {
-        if (role === 'seller') return displayName(thread.buyerId, users, loc, 'buyer');
+        if (roleFor(thread) === 'seller') return displayName(thread.buyerId, users, loc, 'buyer');
         return displayName(thread.sellerId, users, loc, 'seller');
     };
 
     const unreadCount = (thread) =>
-        role === 'seller' ? (thread.unreadForSeller || 0) : (thread.unreadForBuyer || 0);
+        roleFor(thread) === 'seller' ? (thread.unreadForSeller || 0) : (thread.unreadForBuyer || 0);
 
     useEffect(() => {
-        if (activeThreadId) markRead(activeThreadId, role);
+        if (activeThreadId && activeThread) markRead(activeThreadId, roleFor(activeThread));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeThreadId, activeThread?.messages?.length, role, markRead]);
 
     useEffect(() => {
@@ -95,14 +94,6 @@ const ChatPanel = ({
 
     return (
         <div className={`seller-chat-wrap ${compact ? 'seller-chat-wrap--compact' : ''}`}>
-            {lastEmailNotice && (
-                <div className="chat-email-toast" role="status">
-                    <span>
-                        {L.emailSent} <strong>{lastEmailNotice.toEmail}</strong>
-                    </span>
-                    <button type="button" onClick={clearEmailNotice} aria-label="Dismiss">×</button>
-                </div>
-            )}
         <div className={`seller-chat ${compact ? 'seller-chat--compact' : ''}`}>
             {!compact && threads.length > 1 && (
                 <div className="seller-chat-threads">
@@ -126,19 +117,15 @@ const ChatPanel = ({
                 <div className="seller-chat-panel">
                     <div className="seller-chat-header">
                         <strong>
-                            {role === 'buyer'
+                            {roleFor(activeThread) === 'buyer'
                                 ? `${L.withSeller} ${threadLabel(activeThread)}`
                                 : threadLabel(activeThread)}
                         </strong>
                         <span className="text-sm text-gray-500">{L.about}: {activeThread.itemTitle}</span>
-                        {userEmail && (
-                            <p className="chat-email-notice">
-                                <span className="chat-email-notice-icon" aria-hidden>✉</span>
-                                {L.emailSync} (<strong>{userEmail}</strong> {L.emailOnFile}). {L.emailNotify}
-                                {' '}{L.replyViaEmail}{' '}
-                                <strong>messages@subasti.com</strong> {L.replyViaEmail2}
-                            </p>
-                        )}
+                        <p className="chat-email-notice">
+                            <span className="chat-email-notice-icon" aria-hidden>✉</span>
+                            {L.emailNotify}
+                        </p>
                     </div>
                     <div className="seller-chat-messages">
                         {activeThread.messages.map(msg => {
@@ -149,8 +136,7 @@ const ChatPanel = ({
                                     className={`seller-chat-bubble ${isMe ? 'seller-chat-bubble--me' : 'seller-chat-bubble--them'}`}
                                 >
                                     <p className="seller-chat-meta">
-                                        {isMe ? L.you : displayName(msg.from, users, loc, role === 'seller' ? 'buyer' : 'seller')}
-                                        {msg.viaEmail && <span className="chat-via-email"> · {L.viaEmail}</span>}
+                                        {isMe ? L.you : displayName(msg.from, users, loc, roleFor(activeThread) === 'seller' ? 'buyer' : 'seller')}
                                     </p>
                                     <p>{msg.text}</p>
                                 </div>

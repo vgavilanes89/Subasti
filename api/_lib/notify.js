@@ -5,6 +5,8 @@
 // Both no-op (return { skipped: true }) when their env vars aren't set yet,
 // so bidding keeps working before/while these are provisioned.
 
+import { randomUUID } from 'crypto';
+
 const RESEND_API_URL = 'https://api.resend.com/emails';
 
 export async function sendEmail({ to, subject, html }) {
@@ -57,7 +59,7 @@ export function toE164(countryCode, phone) {
   return `+${cc}${digits}`;
 }
 
-function formatMoney(amount, currency) {
+export function formatMoney(amount, currency) {
   try {
     return new Intl.NumberFormat('es-CR', {
       style: 'currency',
@@ -70,10 +72,45 @@ function formatMoney(amount, currency) {
   }
 }
 
-function escapeHtml(str) {
+export function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, (c) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
   }[c]));
+}
+
+export async function getUserContact(sql, userId) {
+  const rows = await sql`SELECT email, real_name, profile_name FROM users WHERE id = ${userId}`;
+  const row = rows[0];
+  if (!row) return null;
+  return { email: row.email, name: row.real_name || row.profile_name };
+}
+
+// Generic in-app notification (bell icon + profile Messages tab). Always
+// writes the row; only sends an email when the caller passes `email` —
+// callers that already sent their own email (e.g. notifyOutbid below)
+// should omit it rather than double-send.
+export async function createNotification({ sql, userId, type, title, body, link, email, name }) {
+  const id = `notif_${randomUUID()}`;
+  await sql`
+    INSERT INTO notifications (id, user_id, type, title, body, link)
+    VALUES (${id}, ${userId}, ${type}, ${title}, ${body || null}, ${link || null})
+  `;
+  if (email) {
+    const appUrl = process.env.APP_URL || 'https://subasti.vercel.app';
+    const fullLink = link ? `${appUrl}${link}` : appUrl;
+    const html = `
+      <p>Hola ${escapeHtml(name || '')},</p>
+      <p>${escapeHtml(body || title)}</p>
+      <p><a href="${fullLink}">Ver en Subasti</a></p>
+      <p>— Subasti</p>
+    `;
+    try {
+      await sendEmail({ to: email, subject: title, html });
+    } catch (err) {
+      console.error('Notification email failed:', err.message);
+    }
+  }
+  return id;
 }
 
 // Notifies whoever was the highest bidder immediately before this new bid —
@@ -107,5 +144,15 @@ export async function notifyOutbid({ sql, previousBidderId, item }) {
   if (phoneE164) {
     tasks.push(sendSms({ to: phoneE164, body: smsBody }).catch((err) => console.error('Outbid SMS failed:', err.message)));
   }
+  // In-app record for the bell icon / Messages tab — no `email` passed here
+  // since the direct sendEmail above already covers it.
+  tasks.push(createNotification({
+    sql,
+    userId: previousBidderId,
+    type: 'outbid',
+    title: subject,
+    body: `La puja actual ahora es ${amount}.`,
+    link: `/item/${item.id}`,
+  }).catch((err) => console.error('Outbid notification row failed:', err.message)));
   await Promise.allSettled(tasks);
 }

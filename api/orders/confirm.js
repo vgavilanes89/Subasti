@@ -2,6 +2,7 @@ import { getSql } from '../_lib/db.js';
 import { getUserIdFromRequest } from '../_lib/session.js';
 import { toPublicOrder, getOrderById } from '../_lib/orders.js';
 import { ESCROW_WINDOW_MS, ORDER_STATUS } from '../../src/data/escrow.js';
+import { createNotification, getUserContact } from '../_lib/notify.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -35,5 +36,20 @@ export default async function handler(req, res) {
     WHERE id = ${order.id}
     RETURNING *
   `;
+
+  const seller = await getUserContact(sql, order.seller_id);
+  if (seller) {
+    await createNotification({
+      sql,
+      userId: order.seller_id,
+      type: 'order_status',
+      title: `El comprador confirmó la recepción de "${order.item_title}"`,
+      body: 'Los fondos se liberarán automáticamente en 48 horas si no hay reclamo.',
+      link: '/profile?tab=selling',
+      email: seller.email,
+      name: seller.name,
+    }).catch((err) => console.error('Confirm notification failed:', err.message));
+  }
+
   return res.status(200).json(toPublicOrder(rows[0]));
 }

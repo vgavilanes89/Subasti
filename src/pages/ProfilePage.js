@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useItems } from '../context/ItemsContext';
 import { useMessages } from '../context/MessagesContext';
+import { useNotifications } from '../context/NotificationsContext';
 import SellerDashboard from '../components/SellerDashboard';
 import BuyerDashboard from '../components/BuyerDashboard';
+import ChatPanel from '../components/ChatPanel';
 import { fetchBuyerOrders, fetchSellerOrders } from '../api/orders';
 import { fetchRecentlyViewed } from '../api/account';
 import { PLACEHOLDER_IMG, CRC, formatMoneyTotals, StatCard, ProfilePageItemList } from '../components/Shared';
@@ -23,13 +25,15 @@ const sumByCurrency = (orders) => orders.reduce((sums, o) => {
 const isActiveListing = (item) => item.saleType !== 'auc' || !item.endAt || item.endAt > Date.now();
 
 const ProfilePage = ({ loc }) => {
-    const { user, users, updateProfile } = useAuth();
+    const { user, users, updateProfile, ensureUserLoaded } = useAuth();
     const { items, favorites, isFav, toggleFav } = useItems();
-    const { unreadBuyerCount } = useMessages();
+    const { threads, unreadBuyerCount, unreadSellerCount } = useMessages();
+    const { notifications, unreadCount: unreadNotificationCount, markRead: markNotificationRead, markAllRead: markAllNotificationsRead } = useNotifications();
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'account');
     const [buyerThreadId, setBuyerThreadId] = useState(searchParams.get('thread') || null);
+    const [messagesThreadId, setMessagesThreadId] = useState(searchParams.get('thread') || null);
     const [buyerOrders, setBuyerOrders] = useState([]);
     const [sellerOrders, setSellerOrders] = useState([]);
     const [recentlyViewedIds, setRecentlyViewedIds] = useState([]);
@@ -43,6 +47,11 @@ const ProfilePage = ({ loc }) => {
         tabAccount: 'Overview',
         tabBuying: 'Buying',
         tabSelling: 'Selling',
+        tabMessages: 'Messages',
+        notifications: 'Notifications',
+        noNotifications: 'No notifications yet.',
+        markAllRead: 'Mark all read',
+        conversations: 'Conversations',
         profileName: 'Profile Name',
         accountNumber: 'Account Number',
         realName: 'Full Name',
@@ -82,6 +91,11 @@ const ProfilePage = ({ loc }) => {
         tabAccount: 'Resumen',
         tabBuying: 'Compras',
         tabSelling: 'Ventas',
+        tabMessages: 'Mensajes',
+        notifications: 'Notificaciones',
+        noNotifications: 'Aún no hay notificaciones.',
+        markAllRead: 'Marcar todas leídas',
+        conversations: 'Conversaciones',
         profileName: 'Nombre de Perfil',
         accountNumber: 'Número de Cuenta',
         realName: 'Nombre Completo',
@@ -122,8 +136,41 @@ const ProfilePage = ({ loc }) => {
         const tab = searchParams.get('tab');
         const thread = searchParams.get('thread');
         if (tab) setActiveTab(tab);
-        if (thread) setBuyerThreadId(thread);
+        if (thread) {
+            setBuyerThreadId(thread);
+            setMessagesThreadId(thread);
+        }
     }, [searchParams]);
+
+    // Without this, a user with exactly one conversation sees a blank panel:
+    // the thread switcher only appears once there's more than one thread,
+    // and nothing auto-selects the lone one otherwise (same fix as
+    // BuyerDashboard's own buyerThreads-only chat).
+    useEffect(() => {
+        if (!messagesThreadId && threads.length > 0) {
+            setMessagesThreadId(threads[0].id);
+        }
+    }, [messagesThreadId, threads]);
+
+    // The Messages tab mixes threads from both sides, so (unlike
+    // BuyerDashboard/SellerDashboard, which only ever need the other party
+    // on their one fixed side) it can hit a counterparty this session
+    // hasn't loaded a profile for yet — same reason ItemViewPage loads the
+    // seller before showing "Sold by". Tracked in a ref (not just the
+    // `!users[id]` check) because ensureUserLoaded/users both change
+    // identity on every load, which otherwise re-fires this effect faster
+    // than the in-flight requests resolve and re-requests the same id.
+    const requestedProfilesRef = useRef(new Set());
+    useEffect(() => {
+        if (!user) return;
+        const otherPartyIds = new Set(threads.map((t) => (t.sellerId === user.id ? t.buyerId : t.sellerId)));
+        for (const id of otherPartyIds) {
+            if (id && !users[id] && !requestedProfilesRef.current.has(id)) {
+                requestedProfilesRef.current.add(id);
+                ensureUserLoaded(id);
+            }
+        }
+    }, [threads, users, user, ensureUserLoaded]);
 
     useEffect(() => {
         if (!user) return;
@@ -176,7 +223,7 @@ const ProfilePage = ({ loc }) => {
         setActiveTab(tabId);
         const next = new URLSearchParams(searchParams);
         next.set('tab', tabId);
-        if (tabId !== 'buying') next.delete('thread');
+        if (tabId !== 'buying' && tabId !== 'messages') next.delete('thread');
         setSearchParams(next, { replace: true });
     };
 
@@ -184,6 +231,14 @@ const ProfilePage = ({ loc }) => {
         setBuyerThreadId(threadId);
         const next = new URLSearchParams(searchParams);
         next.set('tab', 'buying');
+        next.set('thread', threadId);
+        setSearchParams(next, { replace: true });
+    };
+
+    const handleMessagesThreadSelect = (threadId) => {
+        setMessagesThreadId(threadId);
+        const next = new URLSearchParams(searchParams);
+        next.set('tab', 'messages');
         next.set('thread', threadId);
         setSearchParams(next, { replace: true });
     };
@@ -221,11 +276,13 @@ const ProfilePage = ({ loc }) => {
     }
 
     const buyingBadge = unreadBuyerCount + buyerAlertCount;
+    const messagesBadge = unreadBuyerCount + unreadSellerCount + unreadNotificationCount;
 
     const tabs = [
         { id: 'account', label: L.tabAccount },
         { id: 'buying', label: L.tabBuying, badge: buyingBadge },
         { id: 'selling', label: L.tabSelling },
+        { id: 'messages', label: L.tabMessages, badge: messagesBadge },
     ];
 
     return (
@@ -405,6 +462,56 @@ const ProfilePage = ({ loc }) => {
             {activeTab === 'selling' && (
                 <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
                     <SellerDashboard user={user} users={users} items={items} loc={loc} />
+                </div>
+            )}
+
+            {activeTab === 'messages' && (
+                <div className="space-y-6">
+                    <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-bold text-gray-800">{L.notifications}</h3>
+                            {unreadNotificationCount > 0 && (
+                                <button type="button" onClick={markAllNotificationsRead} className="text-sm font-semibold text-purple-600 hover:underline">{L.markAllRead}</button>
+                            )}
+                        </div>
+                        {notifications.length === 0 ? (
+                            <p className="text-sm text-gray-500">{L.noNotifications}</p>
+                        ) : (
+                            <ul className="divide-y divide-gray-100 -mx-2">
+                                {notifications.map((notif) => (
+                                    <li key={notif.id}>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (!notif.read) markNotificationRead(notif.id);
+                                                if (notif.link) navigate(notif.link);
+                                            }}
+                                            className={`w-full text-left flex items-start gap-2 px-2 py-3 rounded-lg hover:bg-gray-50 transition-colors ${notif.read ? '' : 'bg-purple-50'}`}
+                                        >
+                                            {!notif.read && <span className="mt-1.5 w-2 h-2 rounded-full bg-purple-600 flex-shrink-0" />}
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-semibold text-gray-800">{notif.title}</p>
+                                                {notif.body && <p className="text-sm text-gray-500 mt-0.5">{notif.body}</p>}
+                                                <p className="text-xs text-gray-400 mt-1">{new Date(notif.createdAt).toLocaleString(loc === 'en' ? 'en-US' : 'es-CR')}</p>
+                                            </div>
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+                    <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                        <h3 className="text-lg font-bold text-gray-800 mb-4">{L.conversations}</h3>
+                        <ChatPanel
+                            loc={loc}
+                            user={user}
+                            users={users}
+                            threads={threads}
+                            role="mixed"
+                            activeThreadId={messagesThreadId}
+                            onSelectThread={handleMessagesThreadSelect}
+                        />
+                    </div>
                 </div>
             )}
         </div>

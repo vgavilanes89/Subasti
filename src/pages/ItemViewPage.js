@@ -453,7 +453,7 @@ const ItemViewPage = ({ loc }) => {
                         <div className="item-chat-box-actions">
                             <button
                                 type="button"
-                                onClick={() => navigate('/profile?tab=buying')}
+                                onClick={() => navigate('/profile?tab=messages')}
                                 className="text-sm text-purple-600 hover:underline"
                             >
                                 {L.viewInProfile}
