@@ -73,9 +73,12 @@ const Header = ({ loc, setLoc }) => {
                             {loc === 'en' ? 'Sell' : 'Vender'}
                         </Link>
 
-                        {/* User Menu (logged in) */}
+                        {/* User Menu (logged in) — desktop only; mobile gets Profile/Sign
+                            out via the hamburger menu below. A variable-length username
+                            plus the admin link/bell/cart already fills a mobile row, so
+                            this doesn't get a mobile fallback inline like Sell/Login do. */}
                         {user && (
-                            <div className="relative">
+                            <div className="relative hidden md:block">
                                 <button onClick={() => setMenuOpen(o => !o)} className="capitalize text-gray-600 hover:text-purple-600">
                                     {loc === 'en' ? 'Hi' : 'Hola'}, {user.profileName.split(' ')[0]}
                                 </button>
@@ -147,6 +150,24 @@ const Header = ({ loc, setLoc }) => {
                             >
                                 {loc === 'en' ? 'Sign up' : 'Crear cuenta'}
                             </Link>
+                        </>
+                    )}
+                    {user && (
+                        <>
+                            <Link
+                                to="/profile"
+                                onClick={() => setMobileMenuOpen(false)}
+                                className="block px-3 py-2 text-sm font-medium text-gray-600 hover:text-purple-600 rounded-md"
+                            >
+                                {loc === 'en' ? 'Profile' : 'Perfil'}
+                            </Link>
+                            <button
+                                type="button"
+                                onClick={() => { setMobileMenuOpen(false); handleLogout(); }}
+                                className="block w-full text-left px-3 py-2 text-sm font-medium text-gray-600 hover:text-purple-600 rounded-md"
+                            >
+                                {loc === 'en' ? 'Sign out' : 'Cerrar sesión'}
+                            </button>
                         </>
                     )}
                 </div>
