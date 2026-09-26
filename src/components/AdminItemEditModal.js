@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { getAttributeFields, fieldLabel } from '../data/categoryAttributes';
 
 const toDatetimeLocal = (ms) => {
     if (!ms) return '';
@@ -25,9 +26,19 @@ const AdminItemEditModal = ({ item, loc, onClose, onSaved }) => {
         buyNowPrice: item.buyNowPrice ?? '',
         reservePrice: item.reservePrice ?? '',
         endAt: toDatetimeLocal(item.endAt),
+        attributes: item.attributes || {},
     });
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
+
+    const attributeFields = useMemo(
+        () => getAttributeFields(form.category, form.subCategory),
+        [form.category, form.subCategory]
+    );
+
+    const setAttribute = (key, value) => {
+        setForm(prev => ({ ...prev, attributes: { ...prev.attributes, [key]: value } }));
+    };
 
     const L = loc === 'en' ? {
         title: 'Edit Item', save: 'Save Changes', saving: 'Saving…', cancel: 'Cancel',
@@ -51,7 +62,17 @@ const AdminItemEditModal = ({ item, loc, onClose, onSaved }) => {
 
     const set = (name) => (e) => {
         const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
-        setForm(prev => ({ ...prev, [name]: value }));
+        setForm(prev => {
+            const next = { ...prev, [name]: value };
+            // Attribute fields depend on category/sub-category (see
+            // src/data/categoryAttributes.js) — without this, changing an
+            // item's category leaves its old attributes in place, which
+            // then get shown to buyers as if they belonged to the new
+            // category (e.g. a guitar's "Fender" brand surviving a change
+            // to Footwear and displaying as the shoe's brand).
+            if (name === 'category' || name === 'subCategory') next.attributes = {};
+            return next;
+        });
     };
 
     const handleSubmit = async (e) => {
@@ -101,6 +122,36 @@ const AdminItemEditModal = ({ item, loc, onClose, onSaved }) => {
                             <input type="text" value={form.subCategory} onChange={set('subCategory')} className="w-full p-2 border rounded-lg text-sm" />
                         </div>
                     </div>
+
+                    {attributeFields.length > 0 && (
+                        <div className="grid grid-cols-2 gap-4">
+                            {attributeFields.map((field) => (
+                                <div key={field.key}>
+                                    <label className="text-xs font-semibold text-gray-500 block mb-1">{fieldLabel(field, loc)}</label>
+                                    {field.type === 'select' ? (
+                                        <select
+                                            value={form.attributes[field.key] || ''}
+                                            onChange={(e) => setAttribute(field.key, e.target.value)}
+                                            className="w-full p-2 border rounded-lg text-sm"
+                                        >
+                                            <option value="">{loc === 'en' ? 'Select…' : 'Selecciona…'}</option>
+                                            {field.options.map((o) => (
+                                                <option key={o.value} value={o.value}>{loc === 'en' ? o.en : o.es}</option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <input
+                                            type="text"
+                                            value={form.attributes[field.key] || ''}
+                                            onChange={(e) => setAttribute(field.key, e.target.value)}
+                                            className="w-full p-2 border rounded-lg text-sm"
+                                        />
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
                     <div className="grid grid-cols-3 gap-4">
                         <div>
                             <label className="text-xs font-semibold text-gray-500 block mb-1">{L.currency}</label>

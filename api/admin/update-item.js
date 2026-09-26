@@ -1,6 +1,6 @@
 import { getSql } from '../_lib/db.js';
 import { getRequestingAdmin } from '../_lib/admin.js';
-import { toPublicItem } from '../_lib/items.js';
+import { toPublicItem, sanitizeAttributes } from '../_lib/items.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -32,6 +32,7 @@ export default async function handler(req, res) {
   const shippingShip = Boolean(body.shippingShip);
   const shippingLocal = Boolean(body.shippingLocal);
   const shippingCost = shippingShip ? Number(body.shippingCost) || 0 : 0;
+  const attributes = sanitizeAttributes(body.attributes);
 
   if (!title || title.length < 10) return res.status(400).json({ error: 'INVALID_TITLE' });
   if (!category) return res.status(400).json({ error: 'INVALID_CATEGORY' });
@@ -66,7 +67,7 @@ export default async function handler(req, res) {
         title = ${title}, description = ${description}, category = ${category}, sub_category = ${subCategory},
         currency = ${currency}, price = ${price}, condition = ${condition}, condition_detail = ${conditionDetail},
         shipping_ship = ${shippingShip}, shipping_local = ${shippingLocal}, shipping_cost = ${shippingCost},
-        buy_now_price = ${buyNowPrice}, reserve_price = ${reservePrice}, end_at = ${endAt}
+        buy_now_price = ${buyNowPrice}, reserve_price = ${reservePrice}, end_at = ${endAt}, attributes = ${JSON.stringify(attributes)}
       WHERE id = ${id}
       RETURNING *
     `;
@@ -80,7 +81,7 @@ export default async function handler(req, res) {
         title = ${title}, description = ${description}, category = ${category}, sub_category = ${subCategory},
         currency = ${currency}, price = ${price}, condition = ${condition}, condition_detail = ${conditionDetail},
         quantity = ${quantity},
-        shipping_ship = ${shippingShip}, shipping_local = ${shippingLocal}, shipping_cost = ${shippingCost}
+        shipping_ship = ${shippingShip}, shipping_local = ${shippingLocal}, shipping_cost = ${shippingCost}, attributes = ${JSON.stringify(attributes)}
       WHERE id = ${id}
       RETURNING *
     `;
