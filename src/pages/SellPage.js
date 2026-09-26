@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useItems } from '../context/ItemsContext';
 import { tCategory, tSubCategory } from '../data/i18n';
+import { getAttributeFields, fieldLabel } from '../data/categoryAttributes';
 import { uploadImage } from '../api/upload';
 
 // Reusable Form Components
@@ -48,6 +49,7 @@ const SellPage = ({ loc, categories }) => {
         shippingLocal: false,
         shippingCost: '3000',
         currency: 'CRC',
+        attributes: {},
     });
     const [isDragging, setIsDragging] = useState(false);
     const [submitting, setSubmitting] = useState(false);
@@ -108,6 +110,7 @@ const SellPage = ({ loc, categories }) => {
         colones: 'Colones (₡ CRC)',
         dollars: 'US Dollars ($ USD)',
         pricingNote: 'All prices for this listing use the selected currency.',
+        itemDetails: 'Item Details',
     } : {
         title: 'Publica Tu Artículo',
         itemTitle: 'Título del Artículo',
@@ -162,6 +165,7 @@ const SellPage = ({ loc, categories }) => {
         colones: 'Colones (₡ CRC)',
         dollars: 'Dólares ($ USD)',
         pricingNote: 'Todos los precios de esta publicación usarán la moneda seleccionada.',
+        itemDetails: 'Detalles del Artículo',
     };
 
     const descriptionWordCount = useMemo(() => {
@@ -176,6 +180,15 @@ const SellPage = ({ loc, categories }) => {
         return now;
     }, [formData.saleType, formData.auctionDuration]);
 
+    const attributeFields = useMemo(
+        () => getAttributeFields(formData.category, formData.subCategory),
+        [formData.category, formData.subCategory]
+    );
+
+    const handleAttributeChange = (key, value) => {
+        setFormData(prev => ({ ...prev, attributes: { ...prev.attributes, [key]: value } }));
+    };
+
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
         setFormData(prev => {
@@ -186,6 +199,13 @@ const SellPage = ({ loc, categories }) => {
             if (name === 'category') {
                 const subCats = CATEGORIES[value];
                 newState.subCategory = subCats && subCats.length > 0 ? subCats[0] : '';
+                // Attribute fields depend on category/sub-category, so
+                // whatever was filled in for the old one (e.g. shoe size)
+                // shouldn't linger and get submitted under the new one.
+                newState.attributes = {};
+            }
+            if (name === 'subCategory') {
+                newState.attributes = {};
             }
             if (name === 'currency') {
                 newState.shippingCost = value === 'USD' ? '5' : '3000';
@@ -394,6 +414,37 @@ const SellPage = ({ loc, categories }) => {
                             </FormField>
                         </div>
                     </FormSection>
+
+                    {/* Category-specific details (brand/model/size/etc. — depends on the category+sub-category picked above) */}
+                    {attributeFields.length > 0 && (
+                        <FormSection title={L.itemDetails}>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {attributeFields.map((field) => (
+                                    <FormField key={field.key} label={fieldLabel(field, loc)}>
+                                        {field.type === 'select' ? (
+                                            <select
+                                                value={formData.attributes[field.key] || ''}
+                                                onChange={(e) => handleAttributeChange(field.key, e.target.value)}
+                                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500"
+                                            >
+                                                <option value="">{loc === 'en' ? 'Select…' : 'Selecciona…'}</option>
+                                                {field.options.map((o) => (
+                                                    <option key={o.value} value={o.value}>{loc === 'en' ? o.en : o.es}</option>
+                                                ))}
+                                            </select>
+                                        ) : (
+                                            <input
+                                                type="text"
+                                                value={formData.attributes[field.key] || ''}
+                                                onChange={(e) => handleAttributeChange(field.key, e.target.value)}
+                                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500"
+                                            />
+                                        )}
+                                    </FormField>
+                                ))}
+                            </div>
+                        </FormSection>
+                    )}
 
                     {/* Used Condition Details */}
                     {formData.condition === 'used' && (

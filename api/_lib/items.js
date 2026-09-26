@@ -32,7 +32,32 @@ export function toPublicItem(row) {
     reservePrice: toNum(row.reserve_price),
     endAt: toMs(row.end_at),
     highestBidderId: row.highest_bidder_id,
+    attributes: row.attributes || {},
   };
+}
+
+// Category-specific extra details (brand, model, size, etc. — see
+// src/data/categoryAttributes.js) are free-form per listing, but still
+// constrained here: plain string/number values only, capped in count and
+// length, so a client can't smuggle in huge blobs or nested objects.
+const MAX_ATTRIBUTES = 10;
+const MAX_ATTRIBUTE_KEY_LENGTH = 50;
+const MAX_ATTRIBUTE_VALUE_LENGTH = 200;
+
+export function sanitizeAttributes(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  const result = {};
+  let count = 0;
+  for (const [key, value] of Object.entries(raw)) {
+    if (count >= MAX_ATTRIBUTES) break;
+    if (typeof key !== 'string' || key.length === 0 || key.length > MAX_ATTRIBUTE_KEY_LENGTH) continue;
+    if (typeof value !== 'string' && typeof value !== 'number') continue;
+    const strValue = String(value).trim().slice(0, MAX_ATTRIBUTE_VALUE_LENGTH);
+    if (!strValue) continue;
+    result[key] = strValue;
+    count += 1;
+  }
+  return result;
 }
 
 export async function getItemById(sql, id) {

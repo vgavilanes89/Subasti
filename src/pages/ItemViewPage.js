@@ -5,6 +5,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { PLACEHOLDER_IMG, CRC, CountdownTimer, StarRating, calculateAverageRating, useCountdown, itemCurrency } from '../components/Shared';
 import { tCategory, tSubCategory, formatCondition } from '../data/i18n';
+import { getAttributeFields, fieldLabel, optionLabel } from '../data/categoryAttributes';
 import { getMinBid, fetchItem } from '../api/items';
 import { useMessages } from '../context/MessagesContext';
 import ChatPanel from '../components/ChatPanel';
@@ -90,7 +91,11 @@ const ItemViewPage = ({ loc }) => {
         () => calculateAverageRating(seller ? seller.reviews : []),
         [seller]
     );
-    
+    const attributeFields = useMemo(
+        () => (item ? getAttributeFields(item.category, item.subCategory) : []),
+        [item]
+    );
+
     // 5. Handle "Not Found" case AFTER hooks
     if (!item) {
         return (
@@ -435,6 +440,14 @@ const ItemViewPage = ({ loc }) => {
                 <p className="mb-1"><b>{L.sale}:</b> <span className="capitalize">{item.saleType==='auc'?L.auc:L.buy}</span></p>
                 <p className="mb-1"><b>{L.condition}:</b> <span>{formatCondition(item.condition, loc, item.conditionDetail)}</span></p>
                 {item.saleType === 'buy' && item.quantity > 1 && <p className="mb-1"><b>{L.quantity}:</b> {item.quantity}</p>}
+                {attributeFields.map((field) => {
+                    const value = item.attributes?.[field.key];
+                    if (!value) return null;
+                    const display = field.type === 'select' ? optionLabel(field, value, loc) : value;
+                    return (
+                        <p className="mb-1" key={field.key}><b>{fieldLabel(field, loc)}:</b> <span>{display}</span></p>
+                    );
+                })}
                 <p className="mt-3 text-gray-600">{item.description || L.noDescription}</p>
                 <div className="border-t mt-4 pt-4">
                     <h4 className="font-bold text-lg mb-2">{L.shipping}</h4>
