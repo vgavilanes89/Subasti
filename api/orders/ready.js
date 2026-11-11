@@ -4,7 +4,7 @@ import { toPublicOrder, getOrderById } from '../_lib/orders.js';
 import { ORDER_STATUS } from '../../src/data/escrow.js';
 import { createNotification, getUserContact } from '../_lib/notify.js';
 
-// Seller-side action; see ship.js for why ownership isn't enforced yet.
+// Seller-side action: only the order's own seller can mark it ready for pickup.
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -21,7 +21,7 @@ export default async function handler(req, res) {
 
   const sql = getSql();
   const order = await getOrderById(sql, orderId);
-  if (!order) {
+  if (!order || order.seller_id !== userId) {
     return res.status(404).json({ error: 'Order not found' });
   }
   if (order.status !== ORDER_STATUS.ESCROW_HELD) {
@@ -38,9 +38,13 @@ export default async function handler(req, res) {
       status = ${ORDER_STATUS.SHIPPED},
       shipping_timeframe = ${timeframe},
       shipped_at = to_timestamp(${Date.now()} / 1000.0)
-    WHERE id = ${order.id}
+    WHERE id = ${order.id} AND status = ${ORDER_STATUS.ESCROW_HELD}
     RETURNING *
   `;
+  // Guarded on status so a double click or two simultaneous requests can't both apply.
+  if (!rows[0]) {
+    return res.status(409).json({ error: 'FUNDS_NOT_SECURED' });
+  }
 
   const buyer = await getUserContact(sql, order.buyer_id);
   if (buyer) {

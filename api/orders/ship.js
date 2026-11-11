@@ -6,10 +6,7 @@ import { createNotification, getUserContact } from '../_lib/notify.js';
 
 const FIVE_DAYS_MS = 5 * 24 * 60 * 60 * 1000;
 
-// Seller-side action. Not yet gated to "you are this order's seller" — item
-// listings are still mock data (item.sellerId is a fixed string like 'user1'),
-// so no real account can match that check yet. Requiring login at least rules
-// out anonymous calls; ownership enforcement lands once items/sellers are real.
+// Seller-side action: only the order's own seller can mark it shipped.
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -26,7 +23,7 @@ export default async function handler(req, res) {
 
   const sql = getSql();
   const order = await getOrderById(sql, orderId);
-  if (!order) {
+  if (!order || order.seller_id !== userId) {
     return res.status(404).json({ error: 'Order not found' });
   }
   if (order.status !== ORDER_STATUS.ESCROW_HELD) {
@@ -47,9 +44,13 @@ export default async function handler(req, res) {
       shipping_timeframe = ${timeframe},
       shipped_at = to_timestamp(${shippedAt} / 1000.0),
       estimated_delivery = to_timestamp(${shippedAt + FIVE_DAYS_MS} / 1000.0)
-    WHERE id = ${order.id}
+    WHERE id = ${order.id} AND status = ${ORDER_STATUS.ESCROW_HELD}
     RETURNING *
   `;
+  // Guarded on status so a double click or two simultaneous requests can't both apply.
+  if (!rows[0]) {
+    return res.status(409).json({ error: 'FUNDS_NOT_SECURED' });
+  }
 
   const buyer = await getUserContact(sql, order.buyer_id);
   if (buyer) {
