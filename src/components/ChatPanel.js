@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useMessages } from '../context/MessagesContext';
+import { useEnsureUsers } from '../lib/useEnsureUsers';
 
 const displayName = (userId, users, loc, role) => {
     if (!userId) return role === 'seller' ? (loc === 'en' ? 'Seller' : 'Vendedor') : (loc === 'en' ? 'Buyer' : 'Comprador');
@@ -61,6 +62,8 @@ const ChatPanel = ({
         if (roleFor(thread) === 'seller') return displayName(thread.buyerId, users, loc, 'buyer');
         return displayName(thread.sellerId, users, loc, 'seller');
     };
+
+    useEnsureUsers(threads.map(t => (roleFor(t) === 'seller' ? t.buyerId : t.sellerId)));
 
     const unreadCount = (thread) =>
         roleFor(thread) === 'seller' ? (thread.unreadForSeller || 0) : (thread.unreadForBuyer || 0);

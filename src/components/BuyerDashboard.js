@@ -7,6 +7,7 @@ import * as ordersApi from '../api/orders';
 import { buyerStatusLabel, orderStatusClass } from '../data/escrow';
 import EscrowPanel from './EscrowPanel';
 import PayOrderModal from './PayOrderModal';
+import { useEnsureUsers } from '../lib/useEnsureUsers';
 
 const BuyerOrderCard = ({
     order,
@@ -168,6 +169,8 @@ const BuyerDashboard = ({
     const [loading, setLoading] = useState(true);
     const [claiming, setClaiming] = useState(null);
     const [payingOrder, setPayingOrder] = useState(null);
+
+    useEnsureUsers(orders.map(o => o.sellerId));
 
     // Without this, a buyer with exactly one conversation (the common case
     // for a first admin support message) sees a blank message panel: the

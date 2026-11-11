@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     PLACEHOLDER_IMG,
@@ -12,7 +12,7 @@ import {
 import { saleTypeBadge } from '../data/i18n';
 import * as sellerApi from '../api/seller';
 import { useMessages } from '../context/MessagesContext';
-import { useAuth } from '../context/AuthContext';
+import { useEnsureUsers } from '../lib/useEnsureUsers';
 import ChatPanel from './ChatPanel';
 import { sellerStatusLabel, orderStatusClass, canSellerShip, canSellerCancel } from '../data/escrow';
 import EscrowPanel from './EscrowPanel';
@@ -37,7 +37,6 @@ const listingStatus = (item, loc) => {
 const SellerDashboard = ({ user, users, items, loc }) => {
     const navigate = useNavigate();
     const { sellerThreads } = useMessages();
-    const { ensureUserLoaded } = useAuth();
     const [orders, setOrders] = useState([]);
     const [activeThreadId, setActiveThreadId] = useState(null);
     const [trackingDraft, setTrackingDraft] = useState({});
@@ -157,19 +156,7 @@ const SellerDashboard = ({ user, users, items, loc }) => {
         return () => { cancelled = true; };
     }, [user.id]);
 
-    // Buyer profiles of real accounts aren't in the users map until fetched,
-    // so without this every buyer shows as the generic "Buyer". Tracked in a
-    // ref because ensureUserLoaded changes identity on every load.
-    const requestedBuyersRef = useRef(new Set());
-    useEffect(() => {
-        for (const order of orders) {
-            const id = order.buyerId;
-            if (id && !id.startsWith('guest') && !users[id] && !requestedBuyersRef.current.has(id)) {
-                requestedBuyersRef.current.add(id);
-                ensureUserLoaded(id);
-            }
-        }
-    }, [orders, users, ensureUserLoaded]);
+    useEnsureUsers(orders.map(o => o.buyerId));
 
     useEffect(() => {
         if (sellerThreads.length && !activeThreadId) {
