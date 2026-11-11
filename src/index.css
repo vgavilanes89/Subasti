@@ -510,6 +510,22 @@ code {
   justify-content: flex-end;
 }
 
+/* On a phone the ship form's two inputs + button otherwise sit in one
+   unshrinkable row wider than the screen. */
+@media (max-width: 640px) {
+  .seller-order-actions {
+    max-width: 100%;
+    min-width: 0;
+  }
+  .seller-ship-form {
+    width: 100%;
+  }
+  .seller-ship-form .seller-input {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+}
+
 .seller-input {
   border: 1px solid #d1d5db;
   border-radius: 0.375rem;
