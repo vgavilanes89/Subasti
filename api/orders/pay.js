@@ -3,6 +3,8 @@ import { getUserIdFromRequest } from '../_lib/session.js';
 import { toPublicOrder, getOrderById } from '../_lib/orders.js';
 import { ESCROW_WINDOW_MS, ORDER_STATUS } from '../../src/data/escrow.js';
 import { createNotification, getUserContact } from '../_lib/notify.js';
+import { getItemById } from '../_lib/items.js';
+import { itemAcceptsMethod } from '../../src/data/paymentMethods.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -28,6 +30,13 @@ export default async function handler(req, res) {
   }
 
   const paymentMethod = typeof body.paymentMethod === 'string' ? body.paymentMethod : 'card';
+  // Only a way the seller accepts for this item. (A deleted item can't be
+  // checked, so it falls back to allowing payment rather than stranding the order.)
+  const orderItem = await getItemById(sql, order.item_id);
+  if (orderItem && !itemAcceptsMethod(orderItem, paymentMethod)) {
+    return res.status(409).json({ error: 'PAYMENT_METHOD_NOT_ACCEPTED' });
+  }
+
   const now = Date.now();
 
   const rows = await sql`

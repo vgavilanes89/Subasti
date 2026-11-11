@@ -9,6 +9,7 @@ import EscrowPanel from './EscrowPanel';
 import PayOrderModal from './PayOrderModal';
 import { useEnsureUsers } from '../lib/useEnsureUsers';
 import { useRefreshOnNotification } from '../lib/useRefreshOnNotification';
+import { acceptedMethods } from '../data/paymentMethods';
 
 const BuyerOrderCard = ({
     order,
@@ -557,6 +558,7 @@ const BuyerDashboard = ({
                 <PayOrderModal
                     order={payingOrder}
                     loc={loc}
+                    methods={acceptedMethods(items.find(i => i.id === payingOrder.itemId))}
                     onClose={() => setPayingOrder(null)}
                     onPaid={handlePaid}
                 />

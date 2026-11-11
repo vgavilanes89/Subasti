@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import { normalizePaymentMethods, acceptedMethods } from '../../src/data/paymentMethods.js';
 
 // The frontend does plain millisecond arithmetic on endAt (countdown timers,
 // `item.endAt < now` checks), so it must come back as an epoch-ms number,
@@ -33,6 +34,7 @@ export function toPublicItem(row) {
     endAt: toMs(row.end_at),
     highestBidderId: row.highest_bidder_id,
     attributes: row.attributes || {},
+    paymentMethods: acceptedMethods({ paymentMethods: row.payment_methods }),
   };
 }
 
@@ -58,6 +60,13 @@ export function sanitizeAttributes(raw) {
     count += 1;
   }
   return result;
+}
+
+// Returns the cleaned list, or null when nothing valid was chosen — callers
+// turn that into a 400 because a listing must accept at least one method.
+export function parsePaymentMethods(raw) {
+  const list = normalizePaymentMethods(raw);
+  return list.length > 0 ? list : null;
 }
 
 export async function getItemById(sql, id) {

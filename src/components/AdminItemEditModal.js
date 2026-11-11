@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { getAttributeFields, fieldLabel } from '../data/categoryAttributes';
+import { PAYMENT_METHODS, acceptedMethods, paymentMethodLabel } from '../data/paymentMethods';
 
 const toDatetimeLocal = (ms) => {
     if (!ms) return '';
@@ -27,6 +28,7 @@ const AdminItemEditModal = ({ item, loc, onClose, onSaved }) => {
         reservePrice: item.reservePrice ?? '',
         endAt: toDatetimeLocal(item.endAt),
         attributes: item.attributes || {},
+        paymentMethods: acceptedMethods(item),
     });
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
@@ -46,7 +48,7 @@ const AdminItemEditModal = ({ item, loc, onClose, onSaved }) => {
         currency: 'Currency', price: isAuction ? 'Starting Price' : 'Price', condition: 'Condition',
         conditionNew: 'New', conditionUsed: 'Used', conditionDetail: 'Condition Detail',
         quantity: 'Quantity', shippingShip: 'Available for shipping', shippingCost: 'Shipping Cost',
-        shippingLocal: 'Local pickup available', buyNowPrice: 'Buy Now Price (optional)',
+        shippingLocal: 'Local pickup available', paymentMethods: 'Accepted payment methods', paymentRequired: 'Select at least one payment method.', buyNowPrice: 'Buy Now Price (optional)',
         reservePrice: 'Reserve Price (optional)', endAt: 'Auction End Date/Time',
         saveFailed: 'Save failed. Please try again.',
     } : {
@@ -55,7 +57,7 @@ const AdminItemEditModal = ({ item, loc, onClose, onSaved }) => {
         currency: 'Moneda', price: isAuction ? 'Precio Inicial' : 'Precio', condition: 'Condición',
         conditionNew: 'Nuevo', conditionUsed: 'Usado', conditionDetail: 'Detalle de Condición',
         quantity: 'Cantidad', shippingShip: 'Disponible para envío', shippingCost: 'Costo de Envío',
-        shippingLocal: 'Recogida local disponible', buyNowPrice: 'Precio de Compra Inmediata (opcional)',
+        shippingLocal: 'Recogida local disponible', paymentMethods: 'Métodos de pago aceptados', paymentRequired: 'Selecciona al menos un método de pago.', buyNowPrice: 'Precio de Compra Inmediata (opcional)',
         reservePrice: 'Precio de Reserva (opcional)', endAt: 'Fecha/Hora de Fin de Subasta',
         saveFailed: 'Error al guardar. Intenta de nuevo.',
     };
@@ -77,6 +79,10 @@ const AdminItemEditModal = ({ item, loc, onClose, onSaved }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (form.paymentMethods.length === 0) {
+            setError(L.paymentRequired);
+            return;
+        }
         setSaving(true);
         setError('');
         try {
@@ -212,6 +218,26 @@ const AdminItemEditModal = ({ item, loc, onClose, onSaved }) => {
                             <input type="checkbox" checked={form.shippingLocal} onChange={set('shippingLocal')} />
                             {L.shippingLocal}
                         </label>
+                    </div>
+                    <div>
+                        <label className="text-xs font-semibold text-gray-500 block mb-1">{L.paymentMethods}</label>
+                        <div className="flex items-center gap-6">
+                            {PAYMENT_METHODS.map((method) => (
+                                <label key={method} className="flex items-center gap-2 text-sm text-gray-700">
+                                    <input
+                                        type="checkbox"
+                                        checked={form.paymentMethods.includes(method)}
+                                        onChange={() => setForm((f) => ({
+                                            ...f,
+                                            paymentMethods: f.paymentMethods.includes(method)
+                                                ? f.paymentMethods.filter((m) => m !== method)
+                                                : PAYMENT_METHODS.filter((m) => m === method || f.paymentMethods.includes(m)),
+                                        }))}
+                                    />
+                                    {paymentMethodLabel(method, loc)}
+                                </label>
+                            ))}
+                        </div>
                     </div>
                     {form.shippingShip && (
                         <div>

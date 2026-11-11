@@ -5,6 +5,7 @@ import { useItems } from '../context/ItemsContext';
 import { tCategory, tSubCategory } from '../data/i18n';
 import { getAttributeFields, fieldLabel } from '../data/categoryAttributes';
 import { uploadImage } from '../api/upload';
+import { PAYMENT_METHODS, paymentMethodLabel } from '../data/paymentMethods';
 
 // Reusable Form Components
 const FormSection = ({ title, children }) => (
@@ -50,6 +51,8 @@ const SellPage = ({ loc, categories }) => {
         shippingCost: '3000',
         currency: 'CRC',
         attributes: {},
+        // Which ways the buyer may pay; at least one must stay selected.
+        paymentMethods: [...PAYMENT_METHODS],
     });
     const [isDragging, setIsDragging] = useState(false);
     const [submitting, setSubmitting] = useState(false);
@@ -101,6 +104,9 @@ const SellPage = ({ loc, categories }) => {
         imageProcessError: "One or more images couldn't be processed and were skipped.",
         publishError: 'Could not publish your item. Please try again.',
         wordCount: 'words',
+        paymentTitle: 'Accepted Payment Methods',
+        paymentDesc: 'Choose how buyers can pay for this item. Select at least one.',
+        paymentRequired: 'Select at least one accepted payment method.',
         shippingOptions: 'Shipping Options',
         shippingDesc: 'Select how the buyer can receive your item.',
         ship: 'Ship this item',
@@ -156,6 +162,9 @@ const SellPage = ({ loc, categories }) => {
         imageProcessError: 'Una o más imágenes no se pudieron procesar y fueron omitidas.',
         publishError: 'No se pudo publicar tu artículo. Intenta de nuevo.',
         wordCount: 'palabras',
+        paymentTitle: 'Métodos de Pago Aceptados',
+        paymentDesc: 'Elige cómo pueden pagar los compradores este artículo. Selecciona al menos uno.',
+        paymentRequired: 'Selecciona al menos un método de pago aceptado.',
         shippingOptions: 'Opciones de Envío',
         shippingDesc: 'Selecciona cómo el comprador puede recibir tu artículo.',
         ship: 'Enviar este artículo',
@@ -187,6 +196,15 @@ const SellPage = ({ loc, categories }) => {
 
     const handleAttributeChange = (key, value) => {
         setFormData(prev => ({ ...prev, attributes: { ...prev.attributes, [key]: value } }));
+    };
+
+    const togglePaymentMethod = (method) => {
+        setFormData(prev => ({
+            ...prev,
+            paymentMethods: prev.paymentMethods.includes(method)
+                ? prev.paymentMethods.filter(m => m !== method)
+                : PAYMENT_METHODS.filter(m => m === method || prev.paymentMethods.includes(m)),
+        }));
     };
 
     const handleChange = (e) => {
@@ -303,6 +321,10 @@ const SellPage = ({ loc, categories }) => {
             alert(L.descLengthError);
             return;
         }
+        if (formData.paymentMethods.length === 0) {
+            alert(L.paymentRequired);
+            return;
+        }
         if (formData.images.length === 0) {
             alert(L.errorMsg);
             return;
@@ -345,6 +367,7 @@ const SellPage = ({ loc, categories }) => {
             const knownErrors = {
                 TOO_MANY_IMAGES: L.errorMsg,
                 IMAGES_REQUIRED: L.errorMsg,
+                PAYMENT_METHOD_REQUIRED: L.paymentRequired,
             };
             alert(knownErrors[err.message] || L.publishError);
         } finally {
@@ -566,6 +589,28 @@ const SellPage = ({ loc, categories }) => {
                                 <label htmlFor="shippingLocal" className="ml-3 block text-sm font-medium text-gray-700">{L.localPickup}</label>
                             </div>
                         </div>
+                    </FormSection>
+
+                    {/* Accepted Payment Methods */}
+                    <FormSection title={L.paymentTitle}>
+                        <p className="text-sm text-gray-500 -mt-2 mb-4">{L.paymentDesc}</p>
+                        <div className="space-y-2" role="group" aria-label={L.paymentTitle}>
+                            {PAYMENT_METHODS.map((method) => (
+                                <div key={method} className="flex items-center">
+                                    <input
+                                        type="checkbox"
+                                        id={`pay-${method}`}
+                                        checked={formData.paymentMethods.includes(method)}
+                                        onChange={() => togglePaymentMethod(method)}
+                                        className="h-4 w-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                                    />
+                                    <label htmlFor={`pay-${method}`} className="ml-3 block text-sm font-medium text-gray-700">{paymentMethodLabel(method, loc)}</label>
+                                </div>
+                            ))}
+                        </div>
+                        {formData.paymentMethods.length === 0 && (
+                            <p className="mt-3 text-sm text-red-600" role="alert">{L.paymentRequired}</p>
+                        )}
                     </FormSection>
 
                     {/* Image Uploader */}

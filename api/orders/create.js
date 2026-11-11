@@ -3,6 +3,7 @@ import { getUserIdFromRequest } from '../_lib/session.js';
 import { toPublicOrder, generateOrderId, sanitizeShippingAddress } from '../_lib/orders.js';
 import { getItemById } from '../_lib/items.js';
 import { notifySellerOfSale } from '../_lib/notify.js';
+import { itemAcceptsMethod } from '../../src/data/paymentMethods.js';
 import { ESCROW_WINDOW_MS, ORDER_STATUS } from '../../src/data/escrow.js';
 
 export default async function handler(req, res) {
@@ -39,6 +40,14 @@ export default async function handler(req, res) {
     // An auction is a single one-off lot.
     const qty = item.saleType === 'auc' ? 1 : requestedQty;
     resolved.push({ item, qty });
+  }
+
+  // The buyer can only pay a way the seller accepts for every item.
+  const requestedMethod = paymentMethod || 'sinpe';
+  for (const { item } of resolved) {
+    if (!itemAcceptsMethod(item, requestedMethod)) {
+      return res.status(409).json({ error: 'PAYMENT_METHOD_NOT_ACCEPTED', itemId: item.id });
+    }
   }
 
   // An auction can only be bought outright through its Buy Now price, and

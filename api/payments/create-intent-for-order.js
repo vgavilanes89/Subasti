@@ -3,6 +3,8 @@ import { getUserIdFromRequest } from '../_lib/session.js';
 import { getStripe, toStripeAmount } from '../_lib/stripe.js';
 import { getOrderById } from '../_lib/orders.js';
 import { ORDER_STATUS } from '../../src/data/escrow.js';
+import { getItemById } from '../_lib/items.js';
+import { itemAcceptsMethod } from '../../src/data/paymentMethods.js';
 
 // Pays off an EXISTING pending_payment order (an auction win) — unlike
 // create-intent.js, there's no cart to resolve; the order already has the
@@ -28,6 +30,11 @@ export default async function handler(req, res) {
   }
   if (order.status !== ORDER_STATUS.PENDING_PAYMENT) {
     return res.status(409).json({ error: 'NOT_PAYABLE' });
+  }
+
+  const orderItem = await getItemById(sql, order.item_id);
+  if (orderItem && !itemAcceptsMethod(orderItem, 'card')) {
+    return res.status(409).json({ error: 'PAYMENT_METHOD_NOT_ACCEPTED' });
   }
 
   const total = Number(order.amount) + Number(order.shipping_cost);

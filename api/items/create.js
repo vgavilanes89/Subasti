@@ -1,6 +1,6 @@
 import { getSql } from '../_lib/db.js';
 import { getUserIdFromRequest } from '../_lib/session.js';
-import { toPublicItem, generateItemId, generateItemNumber, sanitizeAttributes } from '../_lib/items.js';
+import { toPublicItem, generateItemId, generateItemNumber, sanitizeAttributes, parsePaymentMethods } from '../_lib/items.js';
 
 const UNIQUE_VIOLATION = '23505';
 const MAX_ITEM_NUMBER_ATTEMPTS = 5;
@@ -46,10 +46,12 @@ export default async function handler(req, res) {
   const shippingLocal = Boolean(body.shippingLocal);
   const shippingCost = shippingShip ? Number(body.shippingCost) || 0 : 0;
   const attributes = sanitizeAttributes(body.attributes);
+  const paymentMethods = parsePaymentMethods(body.paymentMethods);
 
   if (!title || title.length < 10) return res.status(400).json({ error: 'INVALID_TITLE' });
   if (!category) return res.status(400).json({ error: 'INVALID_CATEGORY' });
   if (!Number.isFinite(price) || price <= 0) return res.status(400).json({ error: 'INVALID_PRICE' });
+  if (!paymentMethods) return res.status(400).json({ error: 'PAYMENT_METHOD_REQUIRED' });
   if (images.length === 0) return res.status(400).json({ error: 'IMAGES_REQUIRED' });
   if (images.length > MAX_IMAGES) return res.status(400).json({ error: 'TOO_MANY_IMAGES' });
 
@@ -90,12 +92,12 @@ export default async function handler(req, res) {
           id, item_number, title, description, category, sub_category, currency, price, image, images,
           sale_type, condition, condition_detail, seller_id, quantity,
           shipping_ship, shipping_local, shipping_cost, buy_now_price,
-          current_bid, bids, reserve_price, end_at, attributes
+          current_bid, bids, reserve_price, end_at, attributes, payment_methods
         ) VALUES (
           ${id}, ${itemNumber}, ${title}, ${description}, ${category}, ${subCategory}, ${currency}, ${price}, ${images[0]}, ${JSON.stringify(images)},
           ${saleType}, ${condition}, ${conditionDetail}, ${userId}, ${quantity},
           ${shippingShip}, ${shippingLocal}, ${shippingCost}, ${buyNowPrice},
-          ${currentBid}, ${bids}, ${reservePrice}, ${endAt}, ${JSON.stringify(attributes)}
+          ${currentBid}, ${bids}, ${reservePrice}, ${endAt}, ${JSON.stringify(attributes)}, ${JSON.stringify(paymentMethods)}
         )
         RETURNING *
       `;

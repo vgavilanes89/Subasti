@@ -11,6 +11,7 @@ import { useMessages } from '../context/MessagesContext';
 import ChatPanel from '../components/ChatPanel';
 import EscrowPanel from '../components/EscrowPanel';
 import Avatar from '../components/Avatar';
+import { acceptedMethods, paymentMethodLabel } from '../data/paymentMethods';
 
 const ItemViewPage = ({ loc }) => {
     // 1. Get ID from URL and tools from Context
@@ -124,6 +125,7 @@ const ItemViewPage = ({ loc }) => {
         condition: 'Condition', 
         ends: 'Ends in', 
         bids: 'Bids', 
+        acceptedPayments: 'Accepted payment methods',
         quantity: 'Quantity', 
         shipping: 'Shipping Options', 
         ship: 'Available for shipping', 
@@ -173,6 +175,7 @@ const ItemViewPage = ({ loc }) => {
         condition: 'Condición', 
         ends: 'Termina en', 
         bids: 'Ofertas', 
+        acceptedPayments: 'Métodos de pago aceptados',
         quantity: 'Cantidad', 
         shipping: 'Opciones de Envío', 
         ship: 'Disponible para envío', 
@@ -442,6 +445,7 @@ const ItemViewPage = ({ loc }) => {
                 <p className="mb-1"><b>{L.sale}:</b> <span className="capitalize">{item.saleType==='auc'?L.auc:L.buy}</span></p>
                 <p className="mb-1"><b>{L.condition}:</b> <span>{formatCondition(item.condition, loc, item.conditionDetail)}</span></p>
                 {item.saleType === 'buy' && item.quantity > 1 && <p className="mb-1"><b>{L.quantity}:</b> {item.quantity}</p>}
+                <p className="mb-1"><b>{L.acceptedPayments}:</b> {acceptedMethods(item).map((m) => paymentMethodLabel(m, loc)).join(' · ')}</p>
                 {attributeFields.map((field) => {
                     const value = item.attributes?.[field.key];
                     if (!value) return null;

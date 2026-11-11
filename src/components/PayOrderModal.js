@@ -3,6 +3,7 @@ import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-
 import { getStripePromise } from '../lib/stripe';
 import { formatMoney } from './Shared';
 import { payBuyerOrder } from '../api/orders';
+import { PAYMENT_METHODS } from '../data/paymentMethods';
 
 async function waitForPaidOrder(paymentIntentId, attempts = 8, delayMs = 800) {
     for (let i = 0; i < attempts; i++) {
@@ -68,8 +69,9 @@ const CardPaymentForm = ({ order, loc, L, onPaid, onClose }) => {
     );
 };
 
-const PayOrderModal = ({ order, loc, onClose, onPaid }) => {
-    const [tab, setTab] = useState('card');
+// `methods`: the payment methods the seller accepts for this item.
+const PayOrderModal = ({ order, loc, onClose, onPaid, methods = PAYMENT_METHODS }) => {
+    const [tab, setTab] = useState(methods[0] || 'card');
     const [clientSecret, setClientSecret] = useState(null);
     const [error, setError] = useState('');
     const [sinpeSubmitting, setSinpeSubmitting] = useState(false);
@@ -149,20 +151,16 @@ const PayOrderModal = ({ order, loc, onClose, onPaid }) => {
                 <p className="text-xl font-bold text-gray-800 mb-4">{L.total}: {formatMoney(total, loc, order.currency)}</p>
 
                 <div className="flex border-b mb-4">
-                    <button
-                        type="button"
-                        onClick={() => setTab('card')}
-                        className={`py-2 px-4 font-semibold ${tab === 'card' ? 'border-b-2 border-purple-600 text-purple-600' : 'text-gray-500'}`}
-                    >
-                        {L.card}
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setTab('sinpe')}
-                        className={`py-2 px-4 font-semibold ${tab === 'sinpe' ? 'border-b-2 border-purple-600 text-purple-600' : 'text-gray-500'}`}
-                    >
-                        {L.sinpe}
-                    </button>
+                    {methods.map((method) => (
+                        <button
+                            key={method}
+                            type="button"
+                            onClick={() => setTab(method)}
+                            className={`py-2 px-4 font-semibold ${tab === method ? 'border-b-2 border-purple-600 text-purple-600' : 'text-gray-500'}`}
+                        >
+                            {method === 'card' ? L.card : L.sinpe}
+                        </button>
+                    ))}
                 </div>
 
                 {error && <p className="text-sm text-red-500 mb-2">{error}</p>}

@@ -9,6 +9,7 @@ import { CRC, itemCurrency, formatMoneyTotals } from '../components/Shared';
 import EscrowPanel from '../components/EscrowPanel';
 import { createCheckoutOrders } from '../api/orders';
 import { getStripePromise } from '../lib/stripe';
+import { commonPaymentMethods, acceptedMethods, paymentMethodLabel } from '../data/paymentMethods';
 
 async function waitForOrders(paymentIntentId, attempts = 8, delayMs = 800) {
     for (let i = 0; i < attempts; i++) {
@@ -65,6 +66,8 @@ const CheckoutPage = ({ loc }) => {
         escrowNote: 'Your payment is held securely by Subasti until you receive the item and confirm satisfaction (or 48 hours pass).',
         orderSuccess: 'Payment secured in Subasti escrow. Track your order in Buying.',
         placing: 'Securing payment…',
+        noCommonPayment: "These items can't be paid for together: the sellers accept different payment methods. Buy them in separate orders.",
+        acceptsLabel: 'Accepts',
         mixedCurrency: 'Your cart mixes CRC and USD items. Card payment supports one currency per order — remove items so only one currency remains, or pay with SINPE Móvil.',
         cardUnavailable: 'Card payment is unavailable right now.',
         confirming: 'Confirming your payment…',
@@ -102,6 +105,8 @@ const CheckoutPage = ({ loc }) => {
         escrowNote: 'Su pago queda retenido de forma segura por Subasti hasta que reciba el artículo y confirme conformidad (o pasen 48 horas).',
         orderSuccess: 'Pago asegurado en depósito Subasti. Rastree su pedido en Compras.',
         placing: 'Asegurando pago…',
+        noCommonPayment: 'Estos artículos no se pueden pagar juntos: los vendedores aceptan métodos de pago distintos. Cómpralos en pedidos separados.',
+        acceptsLabel: 'Acepta',
         mixedCurrency: 'Su carrito mezcla artículos en CRC y USD. El pago con tarjeta admite una sola moneda por orden — elimine artículos hasta dejar una sola moneda, o pague con SINPE Móvil.',
         cardUnavailable: 'El pago con tarjeta no está disponible en este momento.',
         confirming: 'Confirmando su pago…',
@@ -158,7 +163,8 @@ const CheckoutPage = ({ loc }) => {
 
     const handleUseDefaultPayment = () => {
         if (defaultPayment) {
-            setPaymentMethod(defaultPayment.type === 'sinpe' ? 'sinpe' : 'card');
+            const wanted = defaultPayment.type === 'sinpe' ? 'sinpe' : 'card';
+            if (payOptions.includes(wanted)) setPaymentMethod(wanted);
             setShowPaymentPrompt(false);
         }
     };
@@ -204,6 +210,14 @@ const CheckoutPage = ({ loc }) => {
     const isSingleCurrency = currencyKeys.length === 1;
     const cardCurrency = isSingleCurrency ? currencyKeys[0] : null;
     const cardTotal = cardCurrency ? totalsByCurrency[cardCurrency] : 0;
+
+    // Only methods every seller in the cart accepts can be offered.
+    const payOptions = useMemo(() => commonPaymentMethods(cartWithDetails), [cartWithDetails]);
+    useEffect(() => {
+        if (payOptions.length > 0 && !payOptions.includes(paymentMethod)) {
+            setPaymentMethod(payOptions[0]);
+        }
+    }, [payOptions, paymentMethod]);
 
     const stripeOptions = useMemo(() => ({
         mode: 'payment',
@@ -299,7 +313,7 @@ const CheckoutPage = ({ loc }) => {
         selectedAddressId, handleAddressSelection, shippingData, handleFormChange, setShippingData, saveNewAddress,
         setSaveNewAddress, provinces, cities, paymentMethod, setPaymentMethod, defaultPayment, showPaymentPrompt,
         handleUseDefaultPayment, subtotalsByCurrency, shippingByCurrency, totalsByCurrency, placing, setPlacing,
-        cardCurrency, cardTotal, saveShippingAddressIfNeeded, handleSinpeSubmit, navigate, clearCart,
+        cardCurrency, cardTotal, saveShippingAddressIfNeeded, handleSinpeSubmit, navigate, clearCart, payOptions,
     };
 
     return (
@@ -315,7 +329,7 @@ const CheckoutFormBody = (props) => {
         selectedAddressId, handleAddressSelection, shippingData, handleFormChange, setShippingData, saveNewAddress,
         setSaveNewAddress, provinces, cities, paymentMethod, setPaymentMethod, defaultPayment, showPaymentPrompt,
         handleUseDefaultPayment, subtotalsByCurrency, shippingByCurrency, totalsByCurrency, placing, setPlacing,
-        cardCurrency, saveShippingAddressIfNeeded, handleSinpeSubmit, navigate, user, clearCart,
+        cardCurrency, saveShippingAddressIfNeeded, handleSinpeSubmit, navigate, user, clearCart, payOptions,
     } = props;
 
     const stripe = useStripe();
@@ -325,6 +339,10 @@ const CheckoutFormBody = (props) => {
         e.preventDefault();
         if (!user) {
             navigate('/login');
+            return;
+        }
+        if (payOptions.length === 0) {
+            alert(L.noCommonPayment);
             return;
         }
         saveShippingAddressIfNeeded();
@@ -502,30 +520,37 @@ const CheckoutFormBody = (props) => {
                                 <button type="button" onClick={handleUseDefaultPayment} className="text-sm font-bold bg-purple-200 text-purple-800 px-3 py-1 rounded-md hover:bg-purple-300">{L.useThis}</button>
                             </div>
                         )}
-                        <div className="flex border-b mb-4">
-                            <button
-                                type="button"
-                                onClick={() => setPaymentMethod('card')}
-                                className={`py-2 px-4 font-semibold ${paymentMethod === 'card' ? 'border-b-2 border-purple-600 text-purple-600' : 'text-gray-500'}`}
-                            >
-                                {L.card}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setPaymentMethod('sinpe')}
-                                className={`py-2 px-4 font-semibold ${paymentMethod === 'sinpe' ? 'border-b-2 border-purple-600 text-purple-600' : 'text-gray-500'}`}
-                            >
-                                {L.sinpe}
-                            </button>
-                        </div>
-                        {paymentMethod === 'card' && (
+                        {payOptions.length === 0 ? (
+                            <div className="bg-red-50 text-red-700 p-4 rounded-lg text-sm space-y-2">
+                                <p className="font-semibold">{L.noCommonPayment}</p>
+                                <ul className="list-disc pl-5">
+                                    {cartWithDetails.map(item => (
+                                        <li key={item.id}>{item.title}: {L.acceptsLabel} {acceptedMethods(item).map(m => paymentMethodLabel(m, loc)).join(', ')}</li>
+                                    ))}
+                                </ul>
+                            </div>
+                        ) : (
+                            <div className="flex border-b mb-4">
+                                {payOptions.map((method) => (
+                                    <button
+                                        key={method}
+                                        type="button"
+                                        onClick={() => setPaymentMethod(method)}
+                                        className={`py-2 px-4 font-semibold ${paymentMethod === method ? 'border-b-2 border-purple-600 text-purple-600' : 'text-gray-500'}`}
+                                    >
+                                        {method === 'card' ? L.card : L.sinpe}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                        {payOptions.length > 0 && paymentMethod === 'card' && (
                             cardCurrency ? (
                                 <PaymentElement />
                             ) : (
                                 <p className="text-sm text-red-600 bg-red-50 p-3 rounded-lg">{L.mixedCurrency}</p>
                             )
                         )}
-                        {paymentMethod === 'sinpe' && (
+                        {payOptions.length > 0 && paymentMethod === 'sinpe' && (
                             <div className="bg-gray-50 p-4 rounded-lg text-center">
                                 <p className="text-sm text-gray-600">{L.sinpeInstructions}</p>
                                 <p className="text-2xl font-bold text-gray-800 my-2">{defaultPayment?.type === 'sinpe' ? defaultPayment.phone : '8888-8888'}</p>
@@ -553,7 +578,7 @@ const CheckoutFormBody = (props) => {
                             <div className="flex justify-between"><span>{L.shipping}</span><span>{Object.keys(shippingByCurrency).length === 0 ? L.free : formatMoneyTotals(shippingByCurrency, loc)}</span></div>
                             <div className="flex justify-between font-bold text-lg border-t pt-4 mt-2"><span>{L.total}</span><span>{formatMoneyTotals(totalsByCurrency, loc)}</span></div>
                         </div>
-                        <button type="submit" disabled={placing} className="mt-6 w-full bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors disabled:opacity-60">
+                        <button type="submit" disabled={placing || payOptions.length === 0} className="mt-6 w-full bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors disabled:opacity-60">
                             {placing ? L.placing : L.placeOrder}
                         </button>
                         <p className="text-xs text-gray-500 mt-3 text-center">{L.escrowNote}</p>
