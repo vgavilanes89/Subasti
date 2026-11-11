@@ -1080,3 +1080,71 @@ code {
   max-height: 90vh;
   overflow-y: auto;
 }
+/* Homepage item cards: never narrower than 210px. When the columns for the
+   current screen can't fit at that width, the cards scroll sideways instead
+   of being squeezed. The native bar would sit below the whole list (out of
+   sight on a long page), so it is hidden and a synced bar stays pinned to
+   the bottom of the window while the cards are on screen. */
+.home-card-scroll {
+  overflow-x: auto;
+  /* Room so card hover shadows and focus rings aren't clipped by the scroller. */
+  padding: 0.25rem 0.25rem 0.75rem;
+  margin: -0.25rem -0.25rem 0;
+  scrollbar-width: none;
+}
+
+.home-card-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.home-card-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: rgba(250, 248, 244, 0.95);
+  border-top: 1px solid #e5e0d6;
+  scrollbar-width: auto;
+  scrollbar-color: #94a3b8 #eef0f3;
+}
+
+.home-card-bar::-webkit-scrollbar {
+  height: 14px;
+}
+
+.home-card-bar::-webkit-scrollbar-track {
+  background: #eef0f3;
+}
+
+.home-card-bar::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 9999px;
+  border: 3px solid #eef0f3;
+}
+
+.home-card-bar::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+.home-card-bar > div {
+  height: 1px;
+}
+
+.home-card-grid {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(1, minmax(210px, 1fr));
+}
+
+@media (min-width: 640px) {
+  .home-card-grid { grid-template-columns: repeat(2, minmax(210px, 1fr)); }
+}
+
+@media (min-width: 768px) {
+  .home-card-grid { grid-template-columns: repeat(3, minmax(210px, 1fr)); }
+}
+
+@media (min-width: 1024px) {
+  .home-card-grid { grid-template-columns: repeat(4, minmax(210px, 1fr)); }
+}

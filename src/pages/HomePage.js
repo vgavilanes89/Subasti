@@ -9,6 +9,7 @@ import { tCategory, tSubCategory, formatCondition } from '../data/i18n';
 import { normalizeSearch } from '../lib/search';
 import EscrowPanel from '../components/EscrowPanel';
 import CategoryTree from '../components/CategoryTree';
+import CardScroller from '../components/CardScroller';
 
 const getItemPrice = (item) =>
   item.saleType === 'auc' ? (item.currentBid ?? item.price ?? 0) : (item.price ?? 0);
@@ -327,15 +328,17 @@ const HomePage = ({ loc, categories }) => {
       </div>
 
       {/* Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {showing.map(it => <ProductCard key={it.id} it={it} />)}
-        {showing.length === 0 && (
-          <div className="col-span-full text-center text-gray-500 py-16">
-            <h3 className="text-xl font-semibold">{L.none}</h3>
-            <p>{L.adjustFilters}</p>
-          </div>
-        )}
-      </div>
+      <CardScroller>
+        <div className="home-card-grid">
+          {showing.map(it => <ProductCard key={it.id} it={it} />)}
+          {showing.length === 0 && (
+            <div className="col-span-full text-center text-gray-500 py-16">
+              <h3 className="text-xl font-semibold">{L.none}</h3>
+              <p>{L.adjustFilters}</p>
+            </div>
+          )}
+        </div>
+      </CardScroller>
         </div>
       </div>
     </div>
