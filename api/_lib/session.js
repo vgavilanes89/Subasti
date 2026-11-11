@@ -1,7 +1,10 @@
 import jwt from 'jsonwebtoken';
 
 export const SESSION_COOKIE = 'subasti_session';
-const SESSION_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
+// Idle timeout: a session lasts 3 hours from its last renewal. The page renews
+// it (POST /api/auth/keepalive, and /api/auth/me on load) only when the person
+// actually uses the site, so 3 hours without activity ends the session.
+const SESSION_TTL_SECONDS = 3 * 60 * 60;
 
 function getSecret() {
   const secret = process.env.SESSION_SECRET;
@@ -17,7 +20,9 @@ export function createSessionToken(userId) {
 
 export function verifySessionToken(token) {
   try {
-    const payload = jwt.verify(token, getSecret());
+    // maxAge checks `iat`, so the old 30-day tokens issued before this limit
+    // existed are rejected too instead of lingering for a month.
+    const payload = jwt.verify(token, getSecret(), { maxAge: SESSION_TTL_SECONDS });
     return payload.sub;
   } catch {
     return null;

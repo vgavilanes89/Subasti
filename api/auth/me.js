@@ -1,5 +1,5 @@
 import { getSql } from '../_lib/db.js';
-import { getUserIdFromRequest, clearSessionCookie } from '../_lib/session.js';
+import { getUserIdFromRequest, clearSessionCookie, createSessionToken, setSessionCookie } from '../_lib/session.js';
 import { toPublicUser } from '../_lib/users.js';
 
 export default async function handler(req, res) {
@@ -23,6 +23,8 @@ export default async function handler(req, res) {
       clearSessionCookie(res);
       return res.status(401).json({ error: 'Not authenticated' });
     }
+    // Called when the app loads, which is the user opening the site — renew.
+    setSessionCookie(res, createSessionToken(String(rows[0].id)));
     return res.status(200).json(toPublicUser(rows[0]));
   } catch {
     return res.status(500).json({ error: 'Could not load session' });

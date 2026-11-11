@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const LoginPage = ({loc}) => {
@@ -8,10 +8,12 @@ const LoginPage = ({loc}) => {
     const [error, setError] = useState('');
     const { login } = useAuth();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const sessionExpired = searchParams.get('expired') === '1';
 
     const L = loc === 'en'
-        ? {title:'Log In', email:'Email', pass:'Password', submit:'Log In', switch:"Don't have an account?", link:'Sign up', forgot:'Forgot your password?', error: 'Invalid credentials', suspended: 'This account has been suspended. Contact support for details.'}
-        : {title:'Iniciar Sesión', email:'Correo', pass:'Contraseña', submit:'Iniciar Sesión', switch:'¿No tienes una cuenta?', link:'Regístrate', forgot:'¿Olvidaste tu contraseña?', error: 'Credenciales inválidas', suspended: 'Esta cuenta ha sido suspendida. Contacta a soporte para más detalles.'};
+        ? {title:'Log In', email:'Email', pass:'Password', submit:'Log In', switch:"Don't have an account?", link:'Sign up', forgot:'Forgot your password?', expired:'You were logged out after 3 hours of inactivity. Please log in again.', error: 'Invalid credentials', suspended: 'This account has been suspended. Contact support for details.'}
+        : {title:'Iniciar Sesión', email:'Correo', pass:'Contraseña', submit:'Iniciar Sesión', switch:'¿No tienes una cuenta?', link:'Regístrate', forgot:'¿Olvidaste tu contraseña?', expired:'Cerramos tu sesión tras 3 horas de inactividad. Inicia sesión de nuevo.', error: 'Credenciales inválidas', suspended: 'Esta cuenta ha sido suspendida. Contacta a soporte para más detalles.'};
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -28,6 +30,7 @@ const LoginPage = ({loc}) => {
         <div className="max-w-md mx-auto mt-8">
             <div className="bg-white p-8 rounded-lg shadow-md border border-gray-200">
                 <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">{L.title}</h2>
+                {sessionExpired && !error && <div className="mb-4 p-3 bg-amber-50 text-amber-800 rounded-lg text-sm">{L.expired}</div>}
                 {error && <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm">{error}</div>}
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div>

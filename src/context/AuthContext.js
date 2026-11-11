@@ -4,6 +4,13 @@ import * as accountApi from '../api/account';
 
 const AuthContext = createContext();
 
+// Idle timeout (matches the 3h session lifetime on the server).
+const IDLE_LIMIT_MS = 3 * 60 * 60 * 1000;
+const KEEPALIVE_EVERY_MS = 5 * 60 * 1000;
+// Shared across tabs so activity in one tab keeps the whole session alive.
+const LAST_ACTIVITY_KEY = 'subasti_last_activity';
+const ACTIVITY_EVENTS = ['mousedown', 'keydown', 'touchstart', 'scroll', 'wheel'];
+
 export const useAuth = () => useContext(AuthContext);
 
 async function parseErrorMessage(res, fallback) {
@@ -34,6 +41,68 @@ export const AuthProvider = ({ children }) => {
             .catch(() => {});
         return () => { cancelled = true; };
     }, []);
+
+    // Ends the session after 3 hours with no user activity. Background polling
+    // (chat, notifications) is not activity — only real input is — so a tab
+    // left open on a shared computer does time out.
+    useEffect(() => {
+        if (!user) return undefined;
+
+        let lastWrite = 0;
+        let lastKeepalive = Date.now();
+        let expiring = false;
+        let fallbackLast = Date.now();
+
+        const readLast = () => {
+            try {
+                return Number(localStorage.getItem(LAST_ACTIVITY_KEY)) || fallbackLast;
+            } catch {
+                return fallbackLast;
+            }
+        };
+        const writeLast = (now) => {
+            fallbackLast = now;
+            try { localStorage.setItem(LAST_ACTIVITY_KEY, String(now)); } catch { /* storage unavailable */ }
+        };
+        const expire = async () => {
+            if (expiring) return;
+            expiring = true;
+            try { await fetch('/api/auth/logout', { method: 'POST' }); } catch { /* cookie expires on its own */ }
+            window.location.assign('/login?expired=1');
+        };
+        const onActivity = () => {
+            const now = Date.now();
+            // Returning after the limit (e.g. a laptop that was asleep, when no
+            // timer could fire) counts as expired, not as fresh activity.
+            if (now - readLast() >= IDLE_LIMIT_MS) {
+                expire();
+                return;
+            }
+            if (now - lastWrite > 10000) {
+                lastWrite = now;
+                writeLast(now);
+            }
+            if (now - lastKeepalive >= KEEPALIVE_EVERY_MS) {
+                lastKeepalive = now;
+                fetch('/api/auth/keepalive', { method: 'POST' })
+                    .then((res) => { if (res.status === 401) expire(); })
+                    .catch(() => { /* transient; the next activity retries */ });
+            }
+        };
+
+        writeLast(Date.now());
+        ACTIVITY_EVENTS.forEach((e) => window.addEventListener(e, onActivity, { passive: true }));
+        document.addEventListener('visibilitychange', onActivity);
+        const timer = setInterval(() => {
+            if (Date.now() - readLast() >= IDLE_LIMIT_MS) expire();
+        }, 60 * 1000);
+
+        return () => {
+            ACTIVITY_EVENTS.forEach((e) => window.removeEventListener(e, onActivity));
+            document.removeEventListener('visibilitychange', onActivity);
+            clearInterval(timer);
+        };
+    }, [user]);
 
     const login = async (email, password) => {
         const res = await fetch('/api/auth/login', {
