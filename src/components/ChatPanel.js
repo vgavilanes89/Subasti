@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useMessages } from '../context/MessagesContext';
 import { useEnsureUsers } from '../lib/useEnsureUsers';
+import Avatar from './Avatar';
 
 const displayName = (userId, users, loc, role) => {
     if (!userId) return role === 'seller' ? (loc === 'en' ? 'Seller' : 'Vendedor') : (loc === 'en' ? 'Buyer' : 'Comprador');
@@ -65,6 +66,9 @@ const ChatPanel = ({
 
     useEnsureUsers(threads.map(t => (roleFor(t) === 'seller' ? t.buyerId : t.sellerId)));
 
+    const counterpartOf = (thread) =>
+        users[roleFor(thread) === 'seller' ? thread.buyerId : thread.sellerId];
+
     const unreadCount = (thread) =>
         roleFor(thread) === 'seller' ? (thread.unreadForSeller || 0) : (thread.unreadForBuyer || 0);
 
@@ -119,10 +123,13 @@ const ChatPanel = ({
             {activeThread && (
                 <div className="seller-chat-panel">
                     <div className="seller-chat-header">
-                        <strong>
-                            {roleFor(activeThread) === 'buyer'
-                                ? `${L.withSeller} ${threadLabel(activeThread)}`
-                                : threadLabel(activeThread)}
+                        <strong className="inline-flex items-center gap-2">
+                            <Avatar name={threadLabel(activeThread)} src={counterpartOf(activeThread)?.avatarUrl} size={28} />
+                            <span>
+                                {roleFor(activeThread) === 'buyer'
+                                    ? `${L.withSeller} ${threadLabel(activeThread)}`
+                                    : threadLabel(activeThread)}
+                            </span>
                         </strong>
                         <span className="text-sm text-gray-500">{L.about}: {activeThread.itemTitle}</span>
                         <p className="chat-email-notice">

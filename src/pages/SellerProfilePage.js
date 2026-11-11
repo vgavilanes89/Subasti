@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useItems } from '../context/ItemsContext';
 import { StarRating, calculateAverageRating } from '../components/Shared';
 import ProductCard from '../components/ProductCard';
+import Avatar from '../components/Avatar';
 
 const SellerProfilePage = ({ loc }) => {
     const { id } = useParams();
@@ -66,7 +67,10 @@ const SellerProfilePage = ({ loc }) => {
                 {L.back}
             </button>
             <div className="bg-white p-6 rounded-lg shadow-md border mb-6">
-                <h1 className="text-3xl font-bold">{loc === 'en' ? `${seller.profileName}${L.title}` : `${L.title} ${seller.profileName}`}</h1>
+                <div className="flex items-center gap-4">
+                    <Avatar name={seller.profileName} src={seller.avatarUrl} size={72} />
+                    <h1 className="text-3xl font-bold">{loc === 'en' ? `${seller.profileName}${L.title}` : `${L.title} ${seller.profileName}`}</h1>
+                </div>
                 <div className="flex items-center gap-2 mt-2">
                     <StarRating rating={averageRating} />
                     <span className="text-gray-600">({averageRating.toFixed(1)} {L.reviewsFrom} {seller.reviews.length} {L.reviews})</span>

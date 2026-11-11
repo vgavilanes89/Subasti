@@ -7,6 +7,8 @@ import { useNotifications } from '../context/NotificationsContext';
 import SellerDashboard from '../components/SellerDashboard';
 import BuyerDashboard from '../components/BuyerDashboard';
 import ChatPanel from '../components/ChatPanel';
+import Avatar from '../components/Avatar';
+import { prepareAvatar } from '../lib/prepareAvatar';
 import { fetchBuyerOrders, fetchSellerOrders } from '../api/orders';
 import { fetchRecentlyViewed } from '../api/account';
 import { PLACEHOLDER_IMG, CRC, formatMoneyTotals, StatCard, ProfilePageItemList } from '../components/Shared';
@@ -25,7 +27,7 @@ const sumByCurrency = (orders) => orders.reduce((sums, o) => {
 const isActiveListing = (item) => item.saleType !== 'auc' || !item.endAt || item.endAt > Date.now();
 
 const ProfilePage = ({ loc }) => {
-    const { user, users, updateProfile, ensureUserLoaded } = useAuth();
+    const { user, users, updateProfile, updateAvatar, removeAvatar, ensureUserLoaded } = useAuth();
     const { items, favorites, isFav, toggleFav } = useItems();
     const { threads, unreadBuyerCount, unreadSellerCount } = useMessages();
     const { notifications, unreadCount: unreadNotificationCount, markRead: markNotificationRead, markAllRead: markAllNotificationsRead } = useNotifications();
@@ -38,12 +40,26 @@ const ProfilePage = ({ loc }) => {
     const [sellerOrders, setSellerOrders] = useState([]);
     const [recentlyViewedIds, setRecentlyViewedIds] = useState([]);
     const [isEditing, setIsEditing] = useState(false);
+    const [photoBusy, setPhotoBusy] = useState(false);
+    const [photoError, setPhotoError] = useState('');
+    const photoInputRef = useRef(null);
     const [formData, setFormData] = useState(user || {});
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState('');
 
     const L = loc === 'en' ? {
         title: 'My Profile',
+        changePhoto: 'Change photo',
+        addPhoto: 'Add photo',
+        removePhoto: 'Remove',
+        photoBusy: 'Saving…',
+        photoErrors: {
+            NOT_AN_IMAGE: 'Please choose an image file (JPG, PNG or WebP).',
+            FILE_TOO_LARGE: 'That photo is too large. Choose one under 15 MB.',
+            UNREADABLE_IMAGE: "We couldn't read that image. Try a different one.",
+            TOO_MANY: 'Too many attempts. Please wait a minute and try again.',
+            REQUEST_FAILED: 'Could not save your photo. Please try again.',
+        },
         tabAccount: 'Overview',
         tabBuying: 'Buying',
         tabSelling: 'Selling',
@@ -88,6 +104,17 @@ const ProfilePage = ({ loc }) => {
         saveFailed: 'Could not save changes.',
     } : {
         title: 'Mi Perfil',
+        changePhoto: 'Cambiar foto',
+        addPhoto: 'Agregar foto',
+        removePhoto: 'Quitar',
+        photoBusy: 'Guardando…',
+        photoErrors: {
+            NOT_AN_IMAGE: 'Elige un archivo de imagen (JPG, PNG o WebP).',
+            FILE_TOO_LARGE: 'Esa foto es muy grande. Elige una de menos de 15 MB.',
+            UNREADABLE_IMAGE: 'No pudimos leer esa imagen. Prueba con otra.',
+            TOO_MANY: 'Demasiados intentos. Espera un minuto e intenta de nuevo.',
+            REQUEST_FAILED: 'No se pudo guardar tu foto. Intenta de nuevo.',
+        },
         tabAccount: 'Resumen',
         tabBuying: 'Compras',
         tabSelling: 'Ventas',
@@ -187,6 +214,33 @@ const ProfilePage = ({ loc }) => {
     useEffect(() => {
         if (user && !isEditing) setFormData(user);
     }, [user, isEditing]);
+
+    const handlePhotoChosen = async (e) => {
+        const file = e.target.files?.[0];
+        e.target.value = ''; // lets the same file be chosen again later
+        if (!file) return;
+        setPhotoError('');
+        setPhotoBusy(true);
+        try {
+            await updateAvatar(await prepareAvatar(file));
+        } catch (err) {
+            setPhotoError(L.photoErrors[err.message] || L.photoErrors.REQUEST_FAILED);
+        } finally {
+            setPhotoBusy(false);
+        }
+    };
+
+    const handlePhotoRemove = async () => {
+        setPhotoError('');
+        setPhotoBusy(true);
+        try {
+            await removeAvatar();
+        } catch {
+            setPhotoError(L.photoErrors.REQUEST_FAILED);
+        } finally {
+            setPhotoBusy(false);
+        }
+    };
 
     const buyerAlertCount = useMemo(() => buyerOrders.filter(o =>
         o.status === ORDER_STATUS.PENDING_PAYMENT || o.status === ORDER_STATUS.SHIPPED || o.status === ORDER_STATUS.AWAITING_CONFIRMATION
@@ -309,12 +363,25 @@ const ProfilePage = ({ loc }) => {
                     {/* Profile header + editable info */}
                     <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
                         <div className="flex justify-between items-start mb-4">
-                            <div>
+                            <div className="flex items-center gap-4">
+                                <div className="flex flex-col items-center gap-1">
+                                    <Avatar name={user.profileName} src={user.avatarUrl} size={72} />
+                                    <input ref={photoInputRef} type="file" accept="image/*" onChange={handlePhotoChosen} className="hidden" />
+                                    <button type="button" disabled={photoBusy} onClick={() => photoInputRef.current?.click()} className="text-xs font-semibold text-purple-600 hover:underline disabled:opacity-60">
+                                        {photoBusy ? L.photoBusy : (user.avatarUrl ? L.changePhoto : L.addPhoto)}
+                                    </button>
+                                    {user.avatarUrl && !photoBusy && (
+                                        <button type="button" onClick={handlePhotoRemove} className="text-xs text-gray-500 hover:underline">{L.removePhoto}</button>
+                                    )}
+                                </div>
+                                <div>
+                                {photoError && <p className="text-xs text-red-600 mb-1">{photoError}</p>}
                                 <h3 className="text-2xl font-bold text-gray-800">{user.profileName}</h3>
                                 <p className="text-sm text-gray-500 mt-1">
                                     {L.accountNumber}: {user.accountNumber}
                                     {user.createdAt && ` · ${L.memberSince} ${new Date(user.createdAt).toLocaleDateString(loc === 'en' ? 'en-US' : 'es-CR', { year: 'numeric', month: 'long' })}`}
                                 </p>
+                                </div>
                             </div>
                             {!isEditing && (
                                 <button type="button" onClick={() => setIsEditing(true)} className="text-sm font-semibold text-purple-600 hover:underline whitespace-nowrap">{L.edit}</button>

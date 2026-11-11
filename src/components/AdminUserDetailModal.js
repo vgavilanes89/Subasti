@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { CRC } from './Shared';
+import Avatar from './Avatar';
 
 const money = (amount, currency, loc) => CRC(amount, loc, currency);
 
@@ -31,6 +32,7 @@ const AdminUserDetailModal = ({ userId, loc, onClose, onUserUpdated }) => {
 
     const L = loc === 'en' ? {
         profile: 'Profile', edit: 'Edit', cancel: 'Cancel', save: 'Save Changes', saving: 'Saving…',
+        removePhoto: 'Remove photo', confirmRemovePhoto: "Remove this user's profile picture?", removePhotoFailed: 'Could not remove the photo.',
         realName: 'Full Name', profileName: 'Profile Name', email: 'Email', cedula: 'Cédula',
         countryCode: 'Country Code', phone: 'Phone', province: 'Province', city: 'City',
         stats: 'Statistics', spent: 'Total Spent', earned: 'Total Earned',
@@ -45,6 +47,7 @@ const AdminUserDetailModal = ({ userId, loc, onClose, onUserUpdated }) => {
         joined: 'Joined',
     } : {
         profile: 'Perfil', edit: 'Editar', cancel: 'Cancelar', save: 'Guardar Cambios', saving: 'Guardando…',
+        removePhoto: 'Quitar foto', confirmRemovePhoto: '¿Quitar la foto de perfil de este usuario?', removePhotoFailed: 'No se pudo quitar la foto.',
         realName: 'Nombre Completo', profileName: 'Nombre de Perfil', email: 'Correo', cedula: 'Cédula',
         countryCode: 'Código de País', phone: 'Teléfono', province: 'Provincia', city: 'Ciudad',
         stats: 'Estadísticas', spent: 'Total Gastado', earned: 'Total Ganado',
@@ -57,6 +60,21 @@ const AdminUserDetailModal = ({ userId, loc, onClose, onUserUpdated }) => {
         price: 'Precio', winning: 'Ganando', outbid: 'Superado', ended: 'Terminada',
         noData: 'Aún no hay nada.', loading: 'Cargando…', close: 'Cerrar',
         joined: 'Se unió',
+    };
+
+    const handleRemoveAvatar = async () => {
+        if (!window.confirm(L.confirmRemovePhoto)) return;
+        try {
+            const res = await fetch('/api/admin/remove-avatar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId }),
+            });
+            if (!res.ok) throw new Error('REMOVE_FAILED');
+            setData((prev) => (prev ? { ...prev, profile: { ...prev.profile, avatarUrl: null } } : prev));
+        } catch {
+            setError(L.removePhotoFailed);
+        }
     };
 
     const load = useCallback(async () => {
@@ -136,9 +154,15 @@ const AdminUserDetailModal = ({ userId, loc, onClose, onUserUpdated }) => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
             <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
                 <div className="flex justify-between items-start mb-4">
-                    <h2 className="text-2xl font-bold text-gray-800">
-                        {loading ? L.loading : data?.profile.profileName}
-                    </h2>
+                    <div className="flex items-center gap-3">
+                        {data && !loading && <Avatar name={data.profile.profileName} src={data.profile.avatarUrl} size={48} />}
+                        <h2 className="text-2xl font-bold text-gray-800">
+                            {loading ? L.loading : data?.profile.profileName}
+                        </h2>
+                        {data?.profile.avatarUrl && !loading && (
+                            <button type="button" onClick={handleRemoveAvatar} className="text-sm font-medium text-red-600 hover:underline">{L.removePhoto}</button>
+                        )}
+                    </div>
                     <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
                 </div>
 

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import * as authService from '../api/auth';
 import * as accountApi from '../api/account';
+import * as avatarApi from '../api/avatar';
 
 const AuthContext = createContext();
 
@@ -169,6 +170,20 @@ export const AuthProvider = ({ children }) => {
         return updatedUser;
     };
 
+    const updateAvatar = async (blob) => {
+        const updatedUser = await avatarApi.uploadAvatar(blob);
+        setUser(updatedUser);
+        setUsersMap(prev => ({ ...prev, [updatedUser.id]: updatedUser }));
+        return updatedUser;
+    };
+
+    const removeAvatar = async () => {
+        const updatedUser = await avatarApi.deleteAvatar();
+        setUser(updatedUser);
+        setUsersMap(prev => ({ ...prev, [updatedUser.id]: updatedUser }));
+        return updatedUser;
+    };
+
     // Address & Payment handlers (Moved from App.js)
     const saveAddress = (address) => {
         if (!user) return;
@@ -216,6 +231,8 @@ export const AuthProvider = ({ children }) => {
             logout,
             signup,
             updateProfile,
+            updateAvatar,
+            removeAvatar,
             ensureUserLoaded,
             saveAddress,
             deleteAddress,

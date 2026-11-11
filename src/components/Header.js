@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useHomeFilters } from '../context/HomeFilterContext';
 import NotificationBell from './NotificationBell';
+import Avatar from './Avatar';
 import logoImage from '../images/subasti-logo.png';
 
 const Header = ({ loc, setLoc }) => {
@@ -79,8 +80,9 @@ const Header = ({ loc, setLoc }) => {
                             this doesn't get a mobile fallback inline like Sell/Login do. */}
                         {user && (
                             <div className="relative hidden md:block">
-                                <button onClick={() => setMenuOpen(o => !o)} className="capitalize text-gray-600 hover:text-purple-600">
-                                    {loc === 'en' ? 'Hi' : 'Hola'}, {user.profileName.split(' ')[0]}
+                                <button onClick={() => setMenuOpen(o => !o)} className="capitalize text-gray-600 hover:text-purple-600 inline-flex items-center gap-2">
+                                    <Avatar name={user.profileName} src={user.avatarUrl} size={28} />
+                                    <span>{loc === 'en' ? 'Hi' : 'Hola'}, {user.profileName.split(' ')[0]}</span>
                                 </button>
                                 {menuOpen && (
                                     <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl py-1 z-50 border">
@@ -154,6 +156,10 @@ const Header = ({ loc, setLoc }) => {
                     )}
                     {user && (
                         <>
+                            <div className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700">
+                                <Avatar name={user.profileName} src={user.avatarUrl} size={28} />
+                                <span>{user.profileName}</span>
+                            </div>
                             <Link
                                 to="/profile"
                                 onClick={() => setMobileMenuOpen(false)}

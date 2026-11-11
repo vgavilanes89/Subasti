@@ -10,6 +10,7 @@ import { getMinBid, fetchItem } from '../api/items';
 import { useMessages } from '../context/MessagesContext';
 import ChatPanel from '../components/ChatPanel';
 import EscrowPanel from '../components/EscrowPanel';
+import Avatar from '../components/Avatar';
 
 const ItemViewPage = ({ loc }) => {
     // 1. Get ID from URL and tools from Context
@@ -406,6 +407,7 @@ const ItemViewPage = ({ loc }) => {
                             <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 mt-4">
                                 <p className="flex items-center gap-2 flex-wrap">
                                     <b>{L.soldBy}:</b>
+                                    <Avatar name={seller.profileName} src={seller.avatarUrl} size={28} />
                                     <button onClick={() => handleSellerClick(seller.id)} className="text-purple-600 hover:underline font-semibold">{seller.profileName}</button>
                                     {averageRating > 0 && (
                                         <span className="inline-flex items-center">

@@ -13,6 +13,7 @@ export function toPublicUser(row) {
     isAdmin: row.is_admin,
     isSuspended: row.is_suspended,
     returnPolicy: row.return_policy,
+    avatarUrl: row.avatar_url || null,
     createdAt: row.created_at ? new Date(row.created_at).getTime() : null,
     savedAddresses: [],
     savedPayments: [],
@@ -32,6 +33,7 @@ export function toPublicProfile(row) {
     province: row.province,
     isAdmin: row.is_admin,
     returnPolicy: row.return_policy,
+    avatarUrl: row.avatar_url || null,
     reviews: [],
   };
 }
