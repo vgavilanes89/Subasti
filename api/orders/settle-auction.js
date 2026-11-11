@@ -34,6 +34,15 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'RESERVE_NOT_MET' });
   }
 
+  // The auction may have ended because someone bought it outright (Buy Now),
+  // in which case the leading bidder didn't win it.
+  const boughtOutright = await sql`
+    SELECT 1 FROM orders WHERE item_id = ${item.id} AND order_type = 'buy_now' LIMIT 1
+  `;
+  if (boughtOutright[0]) {
+    return res.status(409).json({ error: 'ALREADY_SOLD' });
+  }
+
   const amount = item.currentBid;
   const wantsPickup = body.fulfillment === 'pickup' && item.shippingLocal;
   const wantsShip = body.fulfillment === 'ship' && item.shippingShip;

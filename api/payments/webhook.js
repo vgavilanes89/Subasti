@@ -48,6 +48,8 @@ async function fulfillCheckout(sql, pending) {
     if (typeof line.qty === 'number') {
       await sql`UPDATE items SET quantity = GREATEST(0, quantity - ${line.qty}) WHERE id = ${line.id} AND sale_type = 'buy'`;
     }
+    // Buying an auction outright ends it (no-op for fixed-price items).
+    await sql`UPDATE items SET end_at = now() WHERE id = ${line.id} AND sale_type = 'auc' AND end_at > now()`;
     await notifySellerOfSale({ sql, sellerId: line.sellerId, itemTitle: line.title, quantity: line.qty });
   }
 }

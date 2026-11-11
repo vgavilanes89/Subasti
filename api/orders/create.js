@@ -35,8 +35,19 @@ export default async function handler(req, res) {
     if (!item) {
       return res.status(400).json({ error: `Item ${cartItem.id} not found` });
     }
-    const qty = Number.isFinite(cartItem.qty) && cartItem.qty > 0 ? Math.floor(cartItem.qty) : 1;
+    const requestedQty = Number.isFinite(cartItem.qty) && cartItem.qty > 0 ? Math.floor(cartItem.qty) : 1;
+    // An auction is a single one-off lot.
+    const qty = item.saleType === 'auc' ? 1 : requestedQty;
     resolved.push({ item, qty });
+  }
+
+  // An auction can only be bought outright through its Buy Now price, and
+  // only while it's still running — otherwise `buyNowPrice || price` below
+  // would quietly sell it at the starting price.
+  for (const { item } of resolved) {
+    if (item.saleType === 'auc' && (!item.buyNowPrice || !item.endAt || item.endAt <= Date.now())) {
+      return res.status(409).json({ error: 'AUCTION_NOT_BUYABLE', itemId: item.id });
+    }
   }
 
   // Reserve stock before charging/committing any order — guarded UPDATE so a
@@ -44,15 +55,35 @@ export default async function handler(req, res) {
   // If a later line in a multi-item cart is out of stock, put back what this
   // request already reserved rather than leaving stock short with no order.
   const reserved = [];
+  const rollback = async () => {
+    for (const r of reserved) {
+      if (r.item.saleType === 'auc') {
+        await sql`UPDATE items SET end_at = ${new Date(r.item.endAt)} WHERE id = ${r.item.id}`;
+      } else {
+        await sql`UPDATE items SET quantity = quantity + ${r.qty} WHERE id = ${r.item.id}`;
+      }
+    }
+  };
   for (const { item, qty } of resolved) {
+    if (item.saleType === 'auc') {
+      // Buying an auction outright ends it. Guarded on end_at so two buyers
+      // racing for the same Buy Now can't both succeed.
+      const ended = await sql`
+        UPDATE items SET end_at = now() WHERE id = ${item.id} AND sale_type = 'auc' AND end_at > now() RETURNING id
+      `;
+      if (!ended[0]) {
+        await rollback();
+        return res.status(409).json({ error: 'AUCTION_NOT_BUYABLE', itemId: item.id });
+      }
+      reserved.push({ item, qty });
+      continue;
+    }
     if (item.saleType !== 'buy') continue;
     const decremented = await sql`
       UPDATE items SET quantity = quantity - ${qty} WHERE id = ${item.id} AND quantity >= ${qty} RETURNING id
     `;
     if (!decremented[0]) {
-      for (const r of reserved) {
-        await sql`UPDATE items SET quantity = quantity + ${r.qty} WHERE id = ${r.item.id}`;
-      }
+      await rollback();
       return res.status(409).json({ error: 'OUT_OF_STOCK', itemId: item.id });
     }
     reserved.push({ item, qty });

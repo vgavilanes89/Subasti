@@ -33,8 +33,19 @@ export default async function handler(req, res) {
     if (!item) {
       return res.status(400).json({ error: `Item ${cartItem.id} not found` });
     }
-    const qty = Number.isFinite(cartItem.qty) && cartItem.qty > 0 ? Math.floor(cartItem.qty) : 1;
+    const requestedQty = Number.isFinite(cartItem.qty) && cartItem.qty > 0 ? Math.floor(cartItem.qty) : 1;
+    // An auction is a single one-off lot.
+    const qty = item.saleType === 'auc' ? 1 : requestedQty;
     resolved.push({ item, qty });
+  }
+
+  // An auction can only be bought outright through its Buy Now price, and only
+  // while it's still running — otherwise `buyNowPrice || price` below would
+  // charge the starting price.
+  for (const { item } of resolved) {
+    if (item.saleType === 'auc' && (!item.buyNowPrice || !item.endAt || item.endAt <= Date.now())) {
+      return res.status(409).json({ error: 'AUCTION_NOT_BUYABLE', itemId: item.id });
+    }
   }
 
   for (const { item, qty } of resolved) {
