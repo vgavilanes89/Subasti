@@ -49,6 +49,22 @@ const PayoutModal = ({ balance, loc, onClose, onSubmit, L }) => {
             <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
                 <h3 className="text-lg font-bold mb-4">{L.payOut} — {balance.sellerName}</h3>
                 <p className="text-sm text-gray-500 mb-4">{L.outstanding}: {money(balance.outstanding, balance.currency, loc)}</p>
+                {balance.payoutAccount ? (
+                    <div className="bg-gray-50 border rounded-lg p-3 mb-4 text-sm">
+                        <p className="font-semibold text-gray-800">{L.sendTo}: {balance.payoutAccount.method === 'bank' ? L.bankTransfer : L.sinpeMovil}</p>
+                        <p className="text-gray-700">{L.accountHolder}: {balance.payoutAccount.holderName}</p>
+                        {balance.payoutAccount.method === 'bank' ? (
+                            <>
+                                <p className="text-gray-700">{L.bankLabel}: {balance.payoutAccount.bankName}</p>
+                                <p className="font-mono text-gray-900 select-all">{balance.payoutAccount.iban}</p>
+                            </>
+                        ) : (
+                            <p className="font-mono text-gray-900 select-all">{balance.payoutAccount.sinpePhone}</p>
+                        )}
+                    </div>
+                ) : (
+                    <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">{L.noPayoutAccount}</p>
+                )}
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                         <label className="text-sm font-semibold text-gray-700 block mb-1">{L.amount}</label>
@@ -158,6 +174,12 @@ const AdminPage = ({ loc }) => {
         orderCount: 'Orders',
         outstandingBalances: 'Outstanding Seller Balances',
         payoutHistory: 'Payout History',
+        sendTo: 'Send payment to',
+        noPayoutAccount: 'No payout account on file — ask the seller to add one before paying out.',
+        bankTransfer: 'Bank transfer (IBAN)',
+        sinpeMovil: 'SINPE Móvil',
+        accountHolder: 'Account holder',
+        bankLabel: 'Bank',
         payOut: 'Pay out',
         outstanding: 'Outstanding',
         note: 'Note (optional)',
@@ -268,6 +290,12 @@ const AdminPage = ({ loc }) => {
         orderCount: 'Pedidos',
         outstandingBalances: 'Saldos Pendientes de Vendedores',
         payoutHistory: 'Historial de Pagos',
+        sendTo: 'Enviar pago a',
+        noPayoutAccount: 'No hay cuenta registrada — pide al vendedor que agregue una antes de pagarle.',
+        bankTransfer: 'Transferencia bancaria (IBAN)',
+        sinpeMovil: 'SINPE Móvil',
+        accountHolder: 'Titular',
+        bankLabel: 'Banco',
         payOut: 'Pagar',
         outstanding: 'Pendiente',
         note: 'Nota (opcional)',
@@ -1055,7 +1083,10 @@ const AdminPage = ({ loc }) => {
                                         )}
                                         {payoutsData.balances.map((b, i) => (
                                             <tr key={i} className="bg-white border-b">
-                                                <td className="px-4 py-3 font-medium text-gray-900">{b.sellerName}</td>
+                                                <td className="px-4 py-3 font-medium text-gray-900">
+                                                    {b.sellerName}
+                                                    {!b.payoutAccount && <span className="block text-xs font-normal text-amber-700">{L.noPayoutAccount}</span>}
+                                                </td>
                                                 <td className="px-4 py-3">{money(b.outstanding, b.currency, loc)}</td>
                                                 <td className="px-4 py-3">
                                                     <button onClick={() => setPayoutTarget(b)} className="font-medium text-purple-600 hover:underline">{L.payOut}</button>

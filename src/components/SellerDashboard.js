@@ -17,6 +17,7 @@ import { useRefreshOnNotification } from '../lib/useRefreshOnNotification';
 import ChatPanel from './ChatPanel';
 import { sellerStatusLabel, orderStatusClass, canSellerShip, canSellerCancel } from '../data/escrow';
 import EscrowPanel from './EscrowPanel';
+import PayoutAccountSection from './PayoutAccountSection';
 
 const sumByCurrency = (entries, getAmount) =>
     entries.reduce((acc, entry) => {
@@ -305,6 +306,8 @@ const SellerDashboard = ({ user, users, items, loc }) => {
                         ? `${awaitingPayment.length} ${loc === 'en' ? 'awaiting buyer payment (do not ship yet).' : 'esperando pago del comprador (no envíe aún).'}` 
                         : L.noNotices}
             </div>
+
+            <PayoutAccountSection loc={loc} realName={user.realName} />
 
             <div className="seller-section">
                 <div className="seller-section-header">

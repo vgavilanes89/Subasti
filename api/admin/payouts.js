@@ -1,5 +1,6 @@
 import { getSql } from '../_lib/db.js';
 import { getRequestingAdmin } from '../_lib/admin.js';
+import { toPublicPayoutAccount } from '../_lib/payoutAccount.js';
 
 // A seller's outstanding balance = revenue from their completed orders minus
 // whatever has already been recorded as paid out to them. This is a ledger,
@@ -16,7 +17,7 @@ export default async function handler(req, res) {
   }
 
   const sql = getSql();
-  const [earnedRows, paidRows, history, userRows] = await Promise.all([
+  const [earnedRows, paidRows, history, userRows, accountRows] = await Promise.all([
     sql`
       SELECT seller_id, currency, SUM(amount + shipping_cost) AS total
       FROM orders WHERE status = 'completed' GROUP BY seller_id, currency
@@ -24,7 +25,10 @@ export default async function handler(req, res) {
     sql`SELECT seller_id, currency, SUM(amount) AS total FROM payouts GROUP BY seller_id, currency`,
     sql`SELECT * FROM payouts ORDER BY paid_out_at DESC LIMIT 50`,
     sql`SELECT id, profile_name FROM users`,
+    // Tolerate the table not existing yet so the payouts tab never breaks.
+    sql`SELECT * FROM seller_payout_accounts`.catch(() => []),
   ]);
+  const accountBySeller = new Map(accountRows.map((a) => [a.user_id, toPublicPayoutAccount(a)]));
   const nameById = new Map(userRows.map((u) => [String(u.id), u.profile_name]));
 
   const key = (sellerId, currency) => `${sellerId}::${currency}`;
@@ -40,6 +44,7 @@ export default async function handler(req, res) {
       earned,
       paidOut: paid,
       outstanding: earned - paid,
+      payoutAccount: accountBySeller.get(r.seller_id) || null,
     };
   }).filter((b) => b.outstanding > 0.005);
 

@@ -36,13 +36,17 @@ export default async function handler(req, res) {
   `;
 
   const seller = await getUserContact(sql, order.seller_id);
+  // Only used for a reminder in the notification — never let it block the release.
+  const hasAccount = await sql`SELECT 1 FROM seller_payout_accounts WHERE user_id = ${order.seller_id}`
+    .then((rows) => rows.length > 0)
+    .catch(() => true);
   if (seller) {
     await createNotification({
       sql,
       userId: order.seller_id,
       type: 'order_status',
       title: `¡Venta completada! Fondos liberados por "${order.item_title}"`,
-      body: `Se liberaron ${formatMoney(order.amount, order.currency)} a tu favor.`,
+      body: `Se liberaron ${formatMoney(order.amount, order.currency)} a tu favor.${hasAccount ? '' : ' Agrega tu cuenta para recibir pagos en tu perfil (pestaña Ventas) para que Subasti pueda enviarte el dinero.'}`,
       link: '/profile?tab=selling',
       email: seller.email,
       name: seller.name,
