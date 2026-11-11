@@ -81,7 +81,7 @@ const CartPage = ({ loc }) => {
                             <div className="flex-1 min-w-[140px]">
                                 <h3 className="font-semibold text-lg">{item.title}</h3>
                                 <p className="text-sm text-gray-500">{tCategory(item.category, loc)}</p>
-                                <button onClick={() => removeFromCart(item.id)} className="text-red-500 text-sm font-semibold hover:underline mt-1">{L.remove}</button>
+                                <button onClick={() => removeFromCart(item.id)} className="tap-target text-red-500 text-sm font-semibold hover:underline mt-1">{L.remove}</button>
                             </div>
                             <div className="flex items-center gap-2">
                                 <button onClick={() => updateQuantity(item.id, item.qty - 1)} className="w-8 h-8 border rounded-md">-</button>

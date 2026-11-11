@@ -45,7 +45,7 @@ const PayoutModal = ({ balance, loc, onClose, onSubmit, L }) => {
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={onClose}>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
             <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
                 <h3 className="text-lg font-bold mb-4">{L.payOut} — {balance.sellerName}</h3>
                 <p className="text-sm text-gray-500 mb-4">{L.outstanding}: {money(balance.outstanding, balance.currency, loc)}</p>
@@ -471,10 +471,12 @@ const AdminPage = ({ loc }) => {
 
     const claimPendingOrders = useMemo(() => orders.filter(o => o.status === 'claim_pending'), [orders]);
 
+    // Long amounts (e.g. two currencies added together) take the full row on
+    // phones instead of being squeezed into half a row and broken mid-number.
     const StatCard = ({ title, value }) => (
-        <div className="bg-gray-50 p-4 rounded-lg border">
+        <div className={`bg-gray-50 p-4 rounded-lg border ${String(value).length >= 10 ? 'col-span-2 md:col-span-1' : ''}`}>
             <h4 className="text-sm text-gray-500 font-medium">{title}</h4>
-            <p className="text-3xl font-bold text-gray-900">{value}</p>
+            <p className="text-xl sm:text-3xl font-bold text-gray-900 break-words">{value}</p>
         </div>
     );
 
@@ -591,7 +593,7 @@ const AdminPage = ({ loc }) => {
     return (
         <>
             {messagingThreadId && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setMessagingThreadId(null)}>
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setMessagingThreadId(null)}>
                     <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-lg font-bold">{L.messages}</h3>

@@ -367,24 +367,24 @@ const ProfilePage = ({ loc }) => {
                                 <div className="flex flex-col items-center gap-1">
                                     <Avatar name={user.profileName} src={user.avatarUrl} size={72} />
                                     <input ref={photoInputRef} type="file" accept="image/*" onChange={handlePhotoChosen} className="hidden" />
-                                    <button type="button" disabled={photoBusy} onClick={() => photoInputRef.current?.click()} className="text-xs font-semibold text-purple-600 hover:underline disabled:opacity-60">
+                                    <button type="button" disabled={photoBusy} onClick={() => photoInputRef.current?.click()} className="tap-target text-xs font-semibold text-purple-600 hover:underline disabled:opacity-60">
                                         {photoBusy ? L.photoBusy : (user.avatarUrl ? L.changePhoto : L.addPhoto)}
                                     </button>
                                     {user.avatarUrl && !photoBusy && (
-                                        <button type="button" onClick={handlePhotoRemove} className="text-xs text-gray-500 hover:underline">{L.removePhoto}</button>
+                                        <button type="button" onClick={handlePhotoRemove} className="tap-target text-xs text-gray-500 hover:underline">{L.removePhoto}</button>
                                     )}
                                 </div>
                                 <div>
                                 {photoError && <p className="text-xs text-red-600 mb-1">{photoError}</p>}
                                 <h3 className="text-2xl font-bold text-gray-800">{user.profileName}</h3>
                                 <p className="text-sm text-gray-500 mt-1">
-                                    {L.accountNumber}: {user.accountNumber}
+                                    {L.accountNumber}: <span className="whitespace-nowrap">{user.accountNumber}</span>
                                     {user.createdAt && ` · ${L.memberSince} ${new Date(user.createdAt).toLocaleDateString(loc === 'en' ? 'en-US' : 'es-CR', { year: 'numeric', month: 'long' })}`}
                                 </p>
                                 </div>
                             </div>
                             {!isEditing && (
-                                <button type="button" onClick={() => setIsEditing(true)} className="text-sm font-semibold text-purple-600 hover:underline whitespace-nowrap">{L.edit}</button>
+                                <button type="button" onClick={() => setIsEditing(true)} className="tap-target text-sm font-semibold text-purple-600 hover:underline whitespace-nowrap">{L.edit}</button>
                             )}
                         </div>
 

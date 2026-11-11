@@ -139,7 +139,10 @@ const PayoutAccountSection = ({ loc, realName }) => {
                     </p>
                     <p className="text-gray-700">{account.holderName}</p>
                     {account.method === 'bank' ? (
-                        <p className="text-gray-600">{account.bankName} · <span className="font-mono">{maskIban(account.iban)}</span></p>
+                        <>
+                            <p className="text-gray-600">{account.bankName}</p>
+                            <p className="text-gray-600 font-mono whitespace-nowrap">{maskIban(account.iban)}</p>
+                        </>
                     ) : (
                         <p className="text-gray-600 font-mono">{account.sinpePhone}</p>
                     )}

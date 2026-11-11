@@ -201,6 +201,17 @@ code {
   display: flex;
   align-items: center;
   line-height: 0;
+  /* Never let a crowded nav row squeeze the logo away. */
+  flex-shrink: 0;
+}
+
+/* On narrow phones the nav row can't fit every link next to the logo, so
+   Favorites/Admin live in the menu there instead and appear inline from 370px. */
+.header-wide-only { display: none; }
+.header-narrow-only { display: block; }
+@media (min-width: 370px) {
+  .header-wide-only { display: block; }
+  .header-narrow-only { display: none; }
 }
 
 .header-logo-img {
@@ -962,7 +973,8 @@ code {
 }
 
 .escrow-panel--compact {
-  padding: 0.875rem 1rem;
+  /* Right side keeps the room the close button needs so the badge never runs under it. */
+  padding: 0.875rem 2.5rem 0.875rem 1rem;
 }
 
 .escrow-panel-header h3 {
@@ -1147,4 +1159,31 @@ code {
 
 @media (min-width: 1024px) {
   .home-card-grid { grid-template-columns: repeat(4, minmax(210px, 1fr)); }
+}
+
+/* Phones: comfortable minimum sizes for small text-style controls. */
+@media (max-width: 767px) {
+  .tap-target,
+  .buyer-order-link-btn,
+  .seller-link-btn {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.5rem;
+  }
+
+  .home-category-links-inner button {
+    min-height: 2rem;
+  }
+
+  .escrow-panel-close {
+    top: 0.125rem;
+    right: 0.125rem;
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  .escrow-panel,
+  .escrow-panel--compact {
+    padding-right: 3rem;
+  }
 }

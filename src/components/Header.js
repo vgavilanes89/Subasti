@@ -48,14 +48,14 @@ const Header = ({ loc, setLoc }) => {
 
                         {/* Admin Link */}
                         {user?.isAdmin && (
-                            <Link to="/admin" className="px-3 py-2 text-sm font-medium text-red-600 hover:text-red-800 rounded-md">
+                            <Link to="/admin" className="header-wide-only px-3 py-2 text-sm font-medium text-red-600 hover:text-red-800 rounded-md">
                                 {loc === 'en' ? 'Admin' : 'Administración'}
                             </Link>
                         )}
 
                         {/* Favorites */}
                         {user && !user.isAdmin && (
-                            <Link to="/favorites" className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-purple-600 rounded-md">
+                            <Link to="/favorites" className="header-wide-only px-3 py-2 text-sm font-medium text-gray-600 hover:text-purple-600 rounded-md">
                                 {loc === 'en' ? 'Favorites' : 'Favoritos'}
                             </Link>
                         )}
@@ -160,6 +160,23 @@ const Header = ({ loc, setLoc }) => {
                                 <Avatar name={user.profileName} src={user.avatarUrl} size={28} />
                                 <span>{user.profileName}</span>
                             </div>
+                            {user.isAdmin ? (
+                                <Link
+                                    to="/admin"
+                                    onClick={() => setMobileMenuOpen(false)}
+                                    className="header-narrow-only px-3 py-2 text-sm font-medium text-red-600 hover:text-red-800 rounded-md"
+                                >
+                                    {loc === 'en' ? 'Admin' : 'Administración'}
+                                </Link>
+                            ) : (
+                                <Link
+                                    to="/favorites"
+                                    onClick={() => setMobileMenuOpen(false)}
+                                    className="header-narrow-only px-3 py-2 text-sm font-medium text-gray-600 hover:text-purple-600 rounded-md"
+                                >
+                                    {loc === 'en' ? 'Favorites' : 'Favoritos'}
+                                </Link>
+                            )}
                             <Link
                                 to="/profile"
                                 onClick={() => setMobileMenuOpen(false)}
