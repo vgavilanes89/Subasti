@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import * as messagesApi from '../api/messages';
 
@@ -6,8 +7,17 @@ const MessagesContext = createContext();
 
 export const useMessages = () => useContext(MessagesContext);
 
+// Polled like notifications and the item page's live bids — no websocket
+// infra here. Fast where a chat is on screen, slow elsewhere so unread
+// badges still catch up without hammering the API on every page.
+const CHAT_POLL_MS = 5000;
+const IDLE_POLL_MS = 30000;
+const isChatRoute = (pathname) =>
+    pathname.startsWith('/profile') || pathname.startsWith('/admin') || pathname.startsWith('/item/');
+
 export const MessagesProvider = ({ children }) => {
     const { user, users } = useAuth();
+    const { pathname } = useLocation();
     const [threads, setThreads] = useState([]);
     const [loading, setLoading] = useState(false);
     const [lastEmailNotice, setLastEmailNotice] = useState(null);
@@ -26,6 +36,33 @@ export const MessagesProvider = ({ children }) => {
     useEffect(() => {
         reloadThreads();
     }, [reloadThreads]);
+
+    // Silent refresh (no loading flag, so the chat doesn't flicker). The
+    // sequence guard drops a poll response that was overtaken by a newer
+    // request, e.g. one that landed after the user's own send.
+    const pollSeq = useRef(0);
+    const refreshThreads = useCallback(async () => {
+        if (!user) return;
+        const seq = ++pollSeq.current;
+        try {
+            const data = await messagesApi.fetchThreadsForUser(user.id);
+            if (seq === pollSeq.current) setThreads(data);
+        } catch {
+            // Transient failure — the next poll retries.
+        }
+    }, [user]);
+
+    const chatRoute = isChatRoute(pathname);
+    useEffect(() => {
+        if (!user) return undefined;
+        const poll = () => { if (!document.hidden) refreshThreads(); };
+        const interval = setInterval(poll, chatRoute ? CHAT_POLL_MS : IDLE_POLL_MS);
+        document.addEventListener('visibilitychange', poll);
+        return () => {
+            clearInterval(interval);
+            document.removeEventListener('visibilitychange', poll);
+        };
+    }, [user, chatRoute, refreshThreads]);
 
     const getOrCreateThread = useCallback(async ({ itemId, itemTitle, sellerId, buyerId }) => {
         const thread = await messagesApi.getOrCreateThread({ itemId, itemTitle, sellerId, buyerId });
@@ -51,6 +88,7 @@ export const MessagesProvider = ({ children }) => {
     const sendMessage = useCallback(async (threadId, text) => {
         if (!user) throw new Error('NOT_LOGGED_IN');
         const { thread, emailEntry } = await messagesApi.sendMessage(threadId, user.id, text, users);
+        pollSeq.current += 1;
         setThreads(prev => prev.map(t => (t.id === thread.id ? thread : t)).sort((a, b) => b.lastMessageAt - a.lastMessageAt));
         if (emailEntry) setLastEmailNotice(emailEntry);
         return thread;
