@@ -1,6 +1,7 @@
 import { getSql } from '../_lib/db.js';
 import { getStripe } from '../_lib/stripe.js';
 import { generateOrderId } from '../_lib/orders.js';
+import { notifySellerOfSale } from '../_lib/notify.js';
 import { ESCROW_WINDOW_MS, ORDER_STATUS } from '../../src/data/escrow.js';
 
 // Stripe signs the exact raw bytes of the request; Vercel's default JSON
@@ -46,6 +47,7 @@ async function fulfillCheckout(sql, pending) {
     if (typeof line.qty === 'number') {
       await sql`UPDATE items SET quantity = GREATEST(0, quantity - ${line.qty}) WHERE id = ${line.id} AND sale_type = 'buy'`;
     }
+    await notifySellerOfSale({ sql, sellerId: line.sellerId, itemTitle: line.title, quantity: line.qty });
   }
 }
 
@@ -77,7 +79,7 @@ export default async function handler(req, res) {
       // Paying off an existing pending_payment order (an auction win), not a
       // new cart checkout. Guard on status so a webhook retry can't re-apply this.
       const now = Date.now();
-      await sql`
+      const paidRows = await sql`
         UPDATE orders SET
           status = ${ORDER_STATUS.ESCROW_HELD},
           payment_method = 'card',
@@ -86,7 +88,13 @@ export default async function handler(req, res) {
           ship_by_at = to_timestamp(${now + ESCROW_WINDOW_MS} / 1000.0),
           stripe_payment_intent_id = ${paymentIntentId}
         WHERE id = ${existingOrderId} AND status = ${ORDER_STATUS.PENDING_PAYMENT}
+        RETURNING seller_id, item_title
       `;
+      // Only a real pending->escrow transition returns a row, so a webhook
+      // retry can't send the seller a second notification.
+      if (paidRows[0]) {
+        await notifySellerOfSale({ sql, sellerId: paidRows[0].seller_id, itemTitle: paidRows[0].item_title });
+      }
     } else {
       // Idempotent: if orders already exist for this intent (a webhook retry,
       // or Stripe redelivering), don't create them twice.

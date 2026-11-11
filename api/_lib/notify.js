@@ -113,6 +113,29 @@ export async function createNotification({ sql, userId, type, title, body, link,
   return id;
 }
 
+// Tells a seller their item just sold (payment secured in escrow). Best-effort
+// like the other notifiers: failures are logged, never thrown, so a
+// notification problem can't fail a checkout that already took payment.
+export async function notifySellerOfSale({ sql, sellerId, itemTitle, quantity }) {
+  try {
+    const seller = await getUserContact(sql, sellerId);
+    if (!seller) return;
+    const qtyLabel = quantity > 1 ? ` (x${quantity})` : '';
+    await createNotification({
+      sql,
+      userId: sellerId,
+      type: 'order_status',
+      title: `¡Vendiste "${itemTitle}"${qtyLabel}!`,
+      body: 'El pago está asegurado en depósito. Envía el artículo dentro de las próximas 48 horas.',
+      link: '/profile?tab=selling',
+      email: seller.email,
+      name: seller.name,
+    });
+  } catch (err) {
+    console.error('Sale notification failed:', err.message);
+  }
+}
+
 // Notifies whoever was the highest bidder immediately before this new bid —
 // not the item's whole bid history, so people outbid days ago don't get
 // re-pinged on every later bid. Best-effort: callers should catch, never

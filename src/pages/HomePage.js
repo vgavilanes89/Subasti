@@ -114,11 +114,12 @@ const HomePage = ({ loc, categories }) => {
 
   const allCats = useMemo(() => ['*', ...Object.keys(categories)], [categories]);
 
-  // Filter out ended auctions
+  // Filter out ended auctions and sold-out buy-now listings
   const activeItems = useMemo(() => {
     const now = new Date().getTime();
     return items.filter(item => {
       if (item.saleType === 'auc' && item.endAt < now) return false;
+      if (item.saleType === 'buy' && item.quantity <= 0) return false;
       return true;
     });
   }, [items]);

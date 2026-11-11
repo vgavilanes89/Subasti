@@ -2,6 +2,7 @@ import { getSql } from '../_lib/db.js';
 import { getUserIdFromRequest } from '../_lib/session.js';
 import { toPublicOrder, generateOrderId } from '../_lib/orders.js';
 import { getItemById } from '../_lib/items.js';
+import { notifySellerOfSale } from '../_lib/notify.js';
 import { ESCROW_WINDOW_MS, ORDER_STATUS } from '../../src/data/escrow.js';
 
 export default async function handler(req, res) {
@@ -79,6 +80,7 @@ export default async function handler(req, res) {
       RETURNING *
     `;
     inserted.push(toPublicOrder(rows[0]));
+    await notifySellerOfSale({ sql, sellerId: item.sellerId, itemTitle: item.title, quantity: qty });
   }
 
   return res.status(201).json(inserted);
