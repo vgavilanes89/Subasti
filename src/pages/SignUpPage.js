@@ -119,6 +119,12 @@ const SignupPage = ({loc}) => {
                 alert(loc === 'en' ? 'Too many attempts. Please wait a moment and try again.' : 'Demasiados intentos. Espere un momento e intente de nuevo.');
                 return;
             }
+            if (res.status === 503) {
+                alert(loc === 'en'
+                    ? 'ID verification is temporarily unavailable. Your number was not rejected — please try again later.'
+                    : 'La verificación de cédula no está disponible temporalmente. Su número no fue rechazado; intente de nuevo más tarde.');
+                return;
+            }
             if (!res.ok) {
                 alert(loc === 'en' ? 'Could not look up ID number.' : 'No se pudo consultar la cédula.');
                 return;

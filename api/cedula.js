@@ -52,6 +52,10 @@ export default async function handler(req, res) {
     if (!upstream.ok) {
       const upstreamBody = await upstream.text().catch(() => '');
       console.error('Verifik lookup failed', upstream.status, upstreamBody.slice(0, 500));
+      // 401/402/403 mean our key or account is the problem, not the cédula.
+      if ([401, 402, 403].includes(upstream.status)) {
+        return res.status(503).json({ error: 'verification_unavailable' });
+      }
       return res.status(502).json({ error: 'Lookup failed' });
     }
 
