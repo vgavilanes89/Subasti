@@ -86,6 +86,4 @@ export const orderStatusClass = (status) => {
 
 export const canSellerShip = (order) => order.status === ORDER_STATUS.ESCROW_HELD;
 
-export const canSellerCancel = (order) =>
-    order.status === ORDER_STATUS.PENDING_PAYMENT &&
-    (!order.paymentDueAt || Date.now() > order.paymentDueAt);
+export const canSellerCancel = (order) => order.status === ORDER_STATUS.PENDING_PAYMENT;

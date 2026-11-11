@@ -88,7 +88,8 @@ const SellerDashboard = ({ user, users, items, loc }) => {
         buyNow: 'buy now',
         escrowHeld: 'Funds secured in Subasti escrow — ship within 48h',
         awaitingPayment: 'Do not ship until buyer payment is secured',
-        cancelOrder: 'Cancel & relist',
+        cancelOrder: 'Cancel order',
+        confirmCancel: 'Cancel this order? The buyer has not paid yet and will be notified. You can relist the item afterwards.',
         cancelSuccess: 'Order cancelled. You may repost the item.',
         shipTimeframe: 'Delivery timeframe',
         shipTimeframePh: 'e.g. 3-5 business days',
@@ -136,7 +137,8 @@ const SellerDashboard = ({ user, users, items, loc }) => {
         buyNow: 'compra directa',
         escrowHeld: 'Fondos asegurados en depósito Subasti — envíe en 48h',
         awaitingPayment: 'No envíe hasta que el pago del comprador esté asegurado',
-        cancelOrder: 'Cancelar y republicar',
+        cancelOrder: 'Cancelar pedido',
+        confirmCancel: '¿Cancelar este pedido? El comprador aún no ha pagado y será notificado. Puede volver a publicar el artículo después.',
         cancelSuccess: 'Pedido cancelado. Puede volver a publicar el artículo.',
         shipTimeframe: 'Plazo de entrega',
         shipTimeframePh: 'ej. 3-5 días hábiles',
@@ -234,6 +236,7 @@ const SellerDashboard = ({ user, users, items, loc }) => {
     };
 
     const handleCancelOrder = async (orderId) => {
+        if (!window.confirm(L.confirmCancel)) return;
         setActing(orderId);
         try {
             const updated = await sellerApi.sellerCancelOrder(orderId);

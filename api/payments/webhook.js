@@ -1,7 +1,7 @@
 import { getSql } from '../_lib/db.js';
 import { getStripe } from '../_lib/stripe.js';
 import { generateOrderId } from '../_lib/orders.js';
-import { notifySellerOfSale } from '../_lib/notify.js';
+import { notifySellerOfSale, createNotification } from '../_lib/notify.js';
 import { ESCROW_WINDOW_MS, ORDER_STATUS } from '../../src/data/escrow.js';
 
 // Stripe signs the exact raw bytes of the request; Vercel's default JSON
@@ -97,6 +97,28 @@ export default async function handler(req, res) {
       // retry can't send the seller a second notification.
       if (paidRows[0]) {
         await notifySellerOfSale({ sql, sellerId: paidRows[0].seller_id, itemTitle: paidRows[0].item_title });
+      } else {
+        // The seller cancelled while this card payment was in flight, so the
+        // money was taken for an order that no longer exists — give it back.
+        const cancelled = await sql`SELECT buyer_id, item_title FROM orders WHERE id = ${existingOrderId} AND status = ${ORDER_STATUS.CANCELLED}`;
+        if (cancelled[0]) {
+          try {
+            await stripe.refunds.create(
+              { payment_intent: paymentIntentId },
+              { idempotencyKey: `refund-cancelled-order-${paymentIntentId}` },
+            );
+            await createNotification({
+              sql,
+              userId: cancelled[0].buyer_id,
+              type: 'order_status',
+              title: `Te reembolsamos el pago de "${cancelled[0].item_title}"`,
+              body: 'El vendedor canceló el pedido mientras pagabas, así que te devolvimos el cobro completo.',
+              link: '/profile?tab=buying',
+            });
+          } catch (err) {
+            console.error('Refund for cancelled order failed:', paymentIntentId, err.message);
+          }
+        }
       }
     } else {
       // Idempotent: if orders already exist for this intent (a webhook retry,
