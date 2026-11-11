@@ -31,8 +31,8 @@ export const fetchBuyerOrders = async () => {
     return res.json();
 };
 
-export const createCheckoutOrders = async ({ items, fulfillment, paymentMethod }) =>
-    postAction('create', { items, fulfillment, paymentMethod });
+export const createCheckoutOrders = async ({ items, fulfillment, paymentMethod, shippingAddress }) =>
+    postAction('create', { items, fulfillment, paymentMethod, shippingAddress });
 
 export const payBuyerOrder = (orderId, paymentMethod = 'card') =>
     postAction('pay', { orderId, paymentMethod });

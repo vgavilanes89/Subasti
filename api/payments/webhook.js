@@ -33,12 +33,13 @@ async function fulfillCheckout(sql, pending) {
       INSERT INTO orders (
         id, buyer_id, seller_id, item_id, item_title, image, amount, currency,
         shipping_cost, status, fulfillment, order_type, payment_method,
-        stripe_payment_intent_id, purchased_at, escrow_held_at, ship_by_at
+        stripe_payment_intent_id, purchased_at, escrow_held_at, ship_by_at, shipping_address
       ) VALUES (
         ${id}, ${pending.buyer_id}, ${line.sellerId}, ${line.id}, ${line.title}, ${line.image},
         ${line.amount}, ${line.currency}, ${line.shippingCost}, ${ORDER_STATUS.ESCROW_HELD},
         ${pending.fulfillment}, 'buy_now', 'card', ${pending.payment_intent_id},
-        to_timestamp(${now} / 1000.0), to_timestamp(${now} / 1000.0), to_timestamp(${shipByAt} / 1000.0)
+        to_timestamp(${now} / 1000.0), to_timestamp(${now} / 1000.0), to_timestamp(${shipByAt} / 1000.0),
+        ${pending.shipping_address ? JSON.stringify(pending.shipping_address) : null}
       )
     `;
     // Payment already succeeded, so this always fulfills — floor at 0 rather

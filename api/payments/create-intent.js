@@ -2,6 +2,7 @@ import { getSql } from '../_lib/db.js';
 import { getUserIdFromRequest } from '../_lib/session.js';
 import { getStripe, toStripeAmount } from '../_lib/stripe.js';
 import { getItemById } from '../_lib/items.js';
+import { sanitizeShippingAddress } from '../_lib/orders.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -17,6 +18,7 @@ export default async function handler(req, res) {
   const body = typeof req.body === 'object' && req.body ? req.body : {};
   const cart = Array.isArray(body.items) ? body.items : [];
   const fulfillment = body.fulfillment === 'pickup' ? 'pickup' : 'ship';
+  const shippingAddress = fulfillment === 'ship' ? sanitizeShippingAddress(body.shippingAddress) : null;
 
   if (cart.length === 0) {
     return res.status(400).json({ error: 'Cart is empty' });
@@ -77,9 +79,9 @@ export default async function handler(req, res) {
   });
 
   await sql`
-    INSERT INTO pending_checkouts (payment_intent_id, buyer_id, fulfillment, cart)
-    VALUES (${intent.id}, ${userId}, ${fulfillment}, ${JSON.stringify(snapshot)})
-    ON CONFLICT (payment_intent_id) DO UPDATE SET cart = EXCLUDED.cart, fulfillment = EXCLUDED.fulfillment
+    INSERT INTO pending_checkouts (payment_intent_id, buyer_id, fulfillment, cart, shipping_address)
+    VALUES (${intent.id}, ${userId}, ${fulfillment}, ${JSON.stringify(snapshot)}, ${shippingAddress ? JSON.stringify(shippingAddress) : null})
+    ON CONFLICT (payment_intent_id) DO UPDATE SET cart = EXCLUDED.cart, fulfillment = EXCLUDED.fulfillment, shipping_address = EXCLUDED.shipping_address
   `;
 
   return res.status(200).json({ clientSecret: intent.client_secret, paymentIntentId: intent.id });

@@ -254,6 +254,7 @@ const CheckoutPage = ({ loc }) => {
             items: cartWithDetails.map(item => ({ ...item, qty: item.qty })),
             fulfillment: deliveryMethod,
             paymentMethod: 'sinpe',
+            shippingAddress: deliveryMethod === 'ship' ? shippingData : null,
         });
         clearCart();
         alert(L.orderSuccess);
@@ -355,6 +356,7 @@ const CheckoutFormBody = (props) => {
                 body: JSON.stringify({
                     items: cartWithDetails.map(item => ({ id: item.id, qty: item.qty })),
                     fulfillment: deliveryMethod,
+                    shippingAddress: deliveryMethod === 'ship' ? shippingData : null,
                 }),
             });
             if (!intentRes.ok) {

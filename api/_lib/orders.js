@@ -36,7 +36,22 @@ export function toPublicOrder(row) {
     cancelledAt: toMs(row.cancelled_at),
     refundedAt: toMs(row.refunded_at),
     resolvedBy: row.resolved_by,
+    shippingAddress: row.shipping_address || null,
   };
+}
+
+const ADDRESS_FIELDS = ['fullName', 'address', 'city', 'province', 'postalCode', 'country'];
+
+// Only the known text fields, length-capped; null when there's nothing usable
+// (pickup orders, or a client that sent nothing).
+export function sanitizeShippingAddress(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const clean = {};
+  for (const key of ADDRESS_FIELDS) {
+    const value = raw[key];
+    clean[key] = typeof value === 'string' ? value.trim().slice(0, 200) : '';
+  }
+  return clean.address ? clean : null;
 }
 
 export function generateOrderId() {

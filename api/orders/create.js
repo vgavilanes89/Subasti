@@ -1,6 +1,6 @@
 import { getSql } from '../_lib/db.js';
 import { getUserIdFromRequest } from '../_lib/session.js';
-import { toPublicOrder, generateOrderId } from '../_lib/orders.js';
+import { toPublicOrder, generateOrderId, sanitizeShippingAddress } from '../_lib/orders.js';
 import { getItemById } from '../_lib/items.js';
 import { notifySellerOfSale } from '../_lib/notify.js';
 import { ESCROW_WINDOW_MS, ORDER_STATUS } from '../../src/data/escrow.js';
@@ -20,6 +20,7 @@ export default async function handler(req, res) {
   const cart = Array.isArray(body.items) ? body.items : [];
   const fulfillment = body.fulfillment === 'pickup' ? 'pickup' : 'ship';
   const paymentMethod = typeof body.paymentMethod === 'string' ? body.paymentMethod : null;
+  const shippingAddress = fulfillment === 'ship' ? sanitizeShippingAddress(body.shippingAddress) : null;
 
   if (cart.length === 0) {
     return res.status(400).json({ error: 'Cart is empty' });
@@ -70,12 +71,13 @@ export default async function handler(req, res) {
       INSERT INTO orders (
         id, buyer_id, seller_id, item_id, item_title, image, amount, currency,
         shipping_cost, status, fulfillment, order_type, payment_method,
-        purchased_at, escrow_held_at, ship_by_at
+        purchased_at, escrow_held_at, ship_by_at, shipping_address
       ) VALUES (
         ${id}, ${userId}, ${item.sellerId}, ${item.id}, ${item.title}, ${item.image},
         ${amount}, ${item.currency || 'CRC'}, ${shippingCost}, ${ORDER_STATUS.ESCROW_HELD},
         ${fulfillment}, 'buy_now', ${paymentMethod},
-        to_timestamp(${now} / 1000.0), to_timestamp(${now} / 1000.0), to_timestamp(${shipByAt} / 1000.0)
+        to_timestamp(${now} / 1000.0), to_timestamp(${now} / 1000.0), to_timestamp(${shipByAt} / 1000.0),
+        ${shippingAddress ? JSON.stringify(shippingAddress) : null}
       )
       RETURNING *
     `;
