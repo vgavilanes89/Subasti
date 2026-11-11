@@ -195,6 +195,7 @@ const BuyerDashboard = ({
         noNotices: 'No urgent buyer actions right now.',
         pendingPayments: 'Payment required',
         noPendingPayments: 'No outstanding payments.',
+        awaitingShipment: 'Paid — awaiting shipment',
         shipping: 'Shipping to you',
         noShipping: 'Nothing in transit.',
         pickups: 'Scheduled pickups',
@@ -248,6 +249,7 @@ const BuyerDashboard = ({
         noNotices: 'No hay acciones urgentes por ahora.',
         pendingPayments: 'Pago requerido',
         noPendingPayments: 'No hay pagos pendientes.',
+        awaitingShipment: 'Pagado — esperando envío',
         shipping: 'Envíos hacia ti',
         noShipping: 'Nada en tránsito.',
         pickups: 'Recogidas programadas',
@@ -489,6 +491,13 @@ const BuyerDashboard = ({
                 <h4>{L.pendingPayments}</h4>
                 {renderOrderList(pendingPayment, L.noPendingPayments)}
             </div>
+
+            {escrowWaiting.length > 0 && (
+                <div className="seller-section">
+                    <h4>{L.awaitingShipment}</h4>
+                    {renderOrderList(escrowWaiting, '')}
+                </div>
+            )}
 
             <div className="seller-section">
                 <h4>{L.escrowSection}</h4>
