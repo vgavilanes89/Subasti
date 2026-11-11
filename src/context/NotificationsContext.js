@@ -8,9 +8,9 @@ export const useNotifications = () => useContext(NotificationsContext);
 
 // Polled rather than pushed, same call as the item page's live-bid sync
 // (see [[project-anti-snipe-and-live-sync]] memory) — this app has no
-// websocket/SSE infra, and a 30s poll for header-chrome badges is plenty
+// websocket/SSE infra, and a 15s poll for header-chrome badges and order updates is plenty
 // fresh without adding a new transport just for this.
-const POLL_MS = 30000;
+const POLL_MS = 15000;
 
 export const NotificationsProvider = ({ children }) => {
     const { user } = useAuth();

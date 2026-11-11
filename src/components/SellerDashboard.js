@@ -13,6 +13,7 @@ import { saleTypeBadge } from '../data/i18n';
 import * as sellerApi from '../api/seller';
 import { useMessages } from '../context/MessagesContext';
 import { useEnsureUsers } from '../lib/useEnsureUsers';
+import { useRefreshOnNotification } from '../lib/useRefreshOnNotification';
 import ChatPanel from './ChatPanel';
 import { sellerStatusLabel, orderStatusClass, canSellerShip, canSellerCancel } from '../data/escrow';
 import EscrowPanel from './EscrowPanel';
@@ -155,6 +156,10 @@ const SellerDashboard = ({ user, users, items, loc }) => {
         load();
         return () => { cancelled = true; };
     }, [user.id]);
+
+    useRefreshOnNotification(() => {
+        sellerApi.fetchSellerOrders(user.id).then(setOrders).catch(() => {});
+    });
 
     useEnsureUsers(orders.map(o => o.buyerId));
 

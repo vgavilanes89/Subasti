@@ -8,6 +8,7 @@ import { buyerStatusLabel, orderStatusClass } from '../data/escrow';
 import EscrowPanel from './EscrowPanel';
 import PayOrderModal from './PayOrderModal';
 import { useEnsureUsers } from '../lib/useEnsureUsers';
+import { useRefreshOnNotification } from '../lib/useRefreshOnNotification';
 
 const BuyerOrderCard = ({
     order,
@@ -305,6 +306,10 @@ const BuyerDashboard = ({
         load();
         return () => { cancelled = true; };
     }, [user.id]);
+
+    useRefreshOnNotification(() => {
+        ordersApi.fetchBuyerOrders(user.id).then(setOrders).catch(() => {});
+    });
 
     // Items/bids live only in the client (never persisted), so this is the
     // only place that can notice "an auction I won just ended" and turn it
