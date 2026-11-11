@@ -10,8 +10,8 @@ const LoginPage = ({loc}) => {
     const navigate = useNavigate();
 
     const L = loc === 'en'
-        ? {title:'Log In', email:'Email', pass:'Password', submit:'Log In', switch:"Don't have an account?", link:'Sign up', error: 'Invalid credentials', suspended: 'This account has been suspended. Contact support for details.'}
-        : {title:'Iniciar Sesión', email:'Correo', pass:'Contraseña', submit:'Iniciar Sesión', switch:'¿No tienes una cuenta?', link:'Regístrate', error: 'Credenciales inválidas', suspended: 'Esta cuenta ha sido suspendida. Contacta a soporte para más detalles.'};
+        ? {title:'Log In', email:'Email', pass:'Password', submit:'Log In', switch:"Don't have an account?", link:'Sign up', forgot:'Forgot your password?', error: 'Invalid credentials', suspended: 'This account has been suspended. Contact support for details.'}
+        : {title:'Iniciar Sesión', email:'Correo', pass:'Contraseña', submit:'Iniciar Sesión', switch:'¿No tienes una cuenta?', link:'Regístrate', forgot:'¿Olvidaste tu contraseña?', error: 'Credenciales inválidas', suspended: 'Esta cuenta ha sido suspendida. Contacta a soporte para más detalles.'};
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -37,6 +37,9 @@ const LoginPage = ({loc}) => {
                     <div>
                         <label className="text-sm font-bold text-gray-700 block mb-2">{L.pass}</label>
                         <input type="password" value={password} onChange={e => setPassword(e.target.value)} required className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500"/>
+                        <div className="text-right mt-2">
+                            <Link to="/forgot-password" className="text-sm font-semibold text-purple-600 hover:underline">{L.forgot}</Link>
+                        </div>
                     </div>
                     <button type="submit" className="w-full bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors">{L.submit}</button>
                 </form>

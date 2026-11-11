@@ -18,6 +18,8 @@ import HomePage from './pages/HomePage';
 import ItemViewPage from './pages/ItemViewPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignUpPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import ProfilePage from './pages/ProfilePage';
 import SellPage from './pages/SellPage';
 import CartPage from './pages/CartPage';
@@ -115,6 +117,8 @@ function App() {
                 {/* Auth Routes */}
                 <Route path="/login" element={<LoginPage loc={loc} />} />
                 <Route path="/signup" element={<SignupPage loc={loc} />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage loc={loc} />} />
+                <Route path="/reset-password" element={<ResetPasswordPage loc={loc} />} />
                 
                 {/* User Routes */}
                 <Route path="/profile" element={<ProfilePage loc={loc} />} />
