@@ -139,6 +139,7 @@ const CLOTHING_SIZE = {
     type: 'select',
     options: ['XS', 'S', 'M', 'L', 'XL', 'XXL'].map((v) => opt(v, v, v)).concat(OTHER),
 };
+const KIDS_SIZE = { key: 'size', label: label('Size / Age', 'Talla / Edad'), type: 'text' };
 const SHOE_SIZE = { key: 'shoeSize', label: label('Shoe Size', 'Talla de Zapato'), type: 'text' };
 const JEWELRY_MATERIAL = {
     key: 'jewelryMaterial',
@@ -226,16 +227,14 @@ export const CATEGORY_ATTRIBUTES = {
             'Camping': [CAMPING_TYPE],
         },
     },
-    'Moda': {
-        default: [BRAND(), CLOTHING_SIZE],
-        subcategories: {
-            'Calzado': [BRAND(), SHOE_SIZE],
-            'Joyería': [JEWELRY_MATERIAL],
-            'Relojes': [BRAND(), MODEL],
-            'Bolsos': [BRAND()],
-            'Accesorios': [BRAND()],
-        },
-    },
+    'Ropa de Mujer': { default: [BRAND(), CLOTHING_SIZE] },
+    'Ropa de Hombre': { default: [BRAND(), CLOTHING_SIZE] },
+    'Ropa Infantil': { default: [BRAND(), KIDS_SIZE] },
+    'Calzado': { default: [BRAND(), SHOE_SIZE] },
+    'Accesorios de Moda': { default: [BRAND()] },
+    'Bolsos y Equipaje': { default: [BRAND()] },
+    'Joyería': { default: [JEWELRY_MATERIAL] },
+    'Relojes': { default: [BRAND(), MODEL] },
     'Salud y Belleza': {
         default: [BRAND()],
     },
