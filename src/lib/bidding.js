@@ -12,9 +12,14 @@ export const getBidIncrement = (currentBid, currency = 'CRC') => {
     if (currency === 'USD') {
         // currentBid * 5 (not * 0.05 * 100) avoids floating-point drift that
         // rounded some increments a cent too high (e.g. 1638 -> 81.91 instead of 81.90).
-        return Math.max(1, Math.ceil(currentBid * 5) / 100);
+        // Floor of 5 cents so a $1 item doesn't demand a whole extra dollar.
+        return Math.max(0.05, Math.ceil(currentBid * 5) / 100);
     }
-    return Math.max(1000, Math.ceil(currentBid * 0.05));
+    // 5% of the current price, rounded UP to a tidy step that grows with the
+    // price (so a ₡100 item asks for +₡10, not a flat +₡1,000 = 10x its price).
+    const raw = Math.ceil(currentBid * 0.05);
+    const step = currentBid < 1000 ? 10 : currentBid < 10000 ? 50 : currentBid < 100000 ? 100 : 1000;
+    return Math.max(10, Math.ceil(raw / step) * step);
 };
 
 export const getMinBid = (item) => {
