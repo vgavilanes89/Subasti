@@ -1,5 +1,6 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "build",
+  "crons": [{ "path": "/api/cron/auction-results", "schedule": "0 14 * * *" }],
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }

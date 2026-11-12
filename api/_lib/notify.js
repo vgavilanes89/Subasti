@@ -89,12 +89,19 @@ export async function getUserContact(sql, userId) {
 // writes the row; only sends an email when the caller passes `email` —
 // callers that already sent their own email (e.g. notifyOutbid below)
 // should omit it rather than double-send.
-export async function createNotification({ sql, userId, type, title, body, link, email, name }) {
-  const id = `notif_${randomUUID()}`;
-  await sql`
+//
+// Pass `id` for a notification that must exist at most once (e.g. "your
+// auction ended"): a repeat insert is ignored and nothing is emailed, which
+// makes it safe for several requests to race to send the same one.
+export async function createNotification({ sql, userId, type, title, body, link, email, name, id: fixedId }) {
+  const id = fixedId || `notif_${randomUUID()}`;
+  const inserted = await sql`
     INSERT INTO notifications (id, user_id, type, title, body, link)
     VALUES (${id}, ${userId}, ${type}, ${title}, ${body || null}, ${link || null})
+    ON CONFLICT (id) DO NOTHING
+    RETURNING id
   `;
+  if (fixedId && inserted.length === 0) return null;
   if (email) {
     const appUrl = process.env.APP_URL || 'https://subasti.vercel.app';
     const fullLink = link ? `${appUrl}${link}` : appUrl;
@@ -178,4 +185,70 @@ export async function notifyOutbid({ sql, previousBidderId, item }) {
     link: `/item/${item.id}`,
   }).catch((err) => console.error('Outbid notification row failed:', err.message)));
   await Promise.allSettled(tasks);
+}
+
+// Tells everyone who bid on an auction but didn't win it that it has ended:
+// outbid, reserve price not reached, or bought outright via Buy Now. There is
+// no background worker, so this sweep is run from places that execute often
+// (the notification poll, a daily cron) and is idempotent — each bidder gets
+// exactly one notification per auction, keyed by a deterministic id. Only
+// auctions that ended in the last LOOKBACK_DAYS are considered, so turning
+// this on doesn't blast people about ancient auctions.
+const LOOKBACK_DAYS = 7;
+const SWEEP_BATCH = 200;
+
+export async function notifyEndedAuctionLosers(sql) {
+  const rows = await sql`
+    SELECT i.id, i.title, i.currency, i.current_bid, i.highest_bidder_id,
+           b.bidder_id, b.my_max,
+           (i.reserve_price IS NOT NULL AND i.current_bid < i.reserve_price) AS reserve_missed,
+           EXISTS (SELECT 1 FROM orders o WHERE o.item_id = i.id AND o.order_type = 'buy_now') AS bought_outright
+    FROM items i
+    JOIN (
+      SELECT item_id, bidder_id, MAX(amount) AS my_max
+      FROM bid_history GROUP BY item_id, bidder_id
+    ) b ON b.item_id = i.id
+    WHERE i.sale_type = 'auc'
+      AND i.end_at < now()
+      AND i.end_at > now() - (${LOOKBACK_DAYS} * interval '1 day')
+      AND (
+        i.highest_bidder_id IS DISTINCT FROM b.bidder_id
+        OR (i.reserve_price IS NOT NULL AND i.current_bid < i.reserve_price)
+        OR EXISTS (SELECT 1 FROM orders o WHERE o.item_id = i.id AND o.order_type = 'buy_now')
+      )
+      AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.item_id = i.id AND o.buyer_id = b.bidder_id)
+      AND NOT EXISTS (SELECT 1 FROM notifications n WHERE n.id = 'notif_auctionlost_' || i.id || '_' || b.bidder_id)
+    LIMIT ${SWEEP_BATCH}
+  `;
+
+  let sent = 0;
+  for (const r of rows) {
+    try {
+      const mine = formatMoney(r.my_max, r.currency);
+      let body;
+      if (r.bought_outright) {
+        body = `El artículo se vendió por compra inmediata antes de que terminara la subasta. Tu puja más alta fue ${mine}.`;
+      } else if (r.reserve_missed) {
+        body = `No se alcanzó el precio de reserva, por lo que la subasta terminó sin venta. Tu puja más alta fue ${mine}.`;
+      } else {
+        body = `Otra persona ganó con ${formatMoney(r.current_bid, r.currency)}. Tu puja más alta fue ${mine}.`;
+      }
+      const contact = await getUserContact(sql, r.bidder_id);
+      const id = await createNotification({
+        sql,
+        id: `notif_auctionlost_${r.id}_${r.bidder_id}`,
+        userId: r.bidder_id,
+        type: 'auction_lost',
+        title: `La subasta de "${r.title}" terminó y no la ganaste`,
+        body,
+        link: `/item/${r.id}`,
+        email: contact?.email,
+        name: contact?.name,
+      });
+      if (id) sent += 1;
+    } catch (err) {
+      console.error('Auction-lost notification failed for item', r.id, err.message);
+    }
+  }
+  return sent;
 }
