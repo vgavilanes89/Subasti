@@ -53,7 +53,7 @@ function App() {
   const CATEGORIES = useMemo(() => ({
     'Electrónicos': ['Celulares', 'Computadoras', 'Tablets', 'Cámaras', 'Televisores', 'Audio y Video', 'Videojuegos', 'Accesorios Tech', 'Otro'],
     'Hogar': ['Muebles', 'Electrodomésticos', 'Cocina', 'Decoración', 'Jardinería', 'Herramientas', 'Limpieza', 'Otro'],
-    'Deportes': ['Ciclismo', 'Fitness', 'Deportes de Equipo', 'Acuáticos', 'Pesca', 'Camping', 'Otro'],
+    'Deportes': ['Fútbol', 'Fútbol Americano', 'Baloncesto', 'Béisbol', 'Tenis', 'Pádel', 'Rugby', 'Voleibol', 'Golf', 'Natación', 'Surf', 'Ciclismo', 'Atletismo y Running', 'Boxeo y Artes Marciales', 'Fitness', 'Pesca', 'Camping', 'Otro'],
     'Moda': ['Ropa de Mujer', 'Ropa de Hombre', 'Ropa Infantil', 'Calzado', 'Accesorios', 'Bolsos', 'Joyería', 'Relojes', 'Otro'],
     'Salud y Belleza': ['Cuidado Personal', 'Maquillaje', 'Perfumes', 'Suplementos', 'Otro'],
     'Juguetes y Bebés': ['Juguetes', 'Bebés', 'Juegos de Mesa', 'Otro'],

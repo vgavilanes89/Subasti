@@ -108,11 +108,17 @@ const FITNESS_TYPE = {
     type: 'select',
     options: [opt('weights', 'Weights', 'Pesas'), opt('machine', 'Machine', 'Máquina'), opt('apparel', 'Apparel', 'Ropa'), opt('yoga', 'Yoga/Pilates', 'Yoga/Pilates')].concat(OTHER),
 };
-const TEAM_SPORT = {
-    key: 'sport',
-    label: label('Sport', 'Deporte'),
+// Shared by every sport subcategory (soccer, tennis, ...): what kind of gear
+// it is, plus brand. Cycling, fitness, fishing and camping have their own.
+const SPORT_ITEM_TYPE = {
+    key: 'itemType',
+    label: label('Type', 'Tipo'),
     type: 'select',
-    options: [opt('soccer', 'Soccer', 'Fútbol'), opt('basketball', 'Basketball', 'Baloncesto'), opt('baseball', 'Baseball', 'Béisbol'), opt('volleyball', 'Volleyball', 'Voleibol')].concat(OTHER),
+    options: [
+        opt('equipment', 'Equipment', 'Equipo'), opt('apparel', 'Apparel / Jersey', 'Ropa / Camiseta'),
+        opt('footwear', 'Footwear', 'Calzado'), opt('protective', 'Protective gear', 'Protección'),
+        opt('accessories', 'Accessories', 'Accesorios'),
+    ].concat(OTHER),
 };
 const FISHING_TYPE = {
     key: 'fishingType',
@@ -212,11 +218,10 @@ export const CATEGORY_ATTRIBUTES = {
         },
     },
     'Deportes': {
-        default: [],
+        default: [SPORT_ITEM_TYPE, BRAND()],
         subcategories: {
             'Ciclismo': [BIKE_TYPE, BRAND(BIKE_BRANDS), FRAME_SIZE],
             'Fitness': [FITNESS_TYPE],
-            'Deportes de Equipo': [TEAM_SPORT],
             'Pesca': [FISHING_TYPE],
             'Camping': [CAMPING_TYPE],
         },
