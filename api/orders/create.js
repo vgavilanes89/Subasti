@@ -42,6 +42,13 @@ export default async function handler(req, res) {
     resolved.push({ item, qty });
   }
 
+  // Sellers can't buy their own listings.
+  for (const { item } of resolved) {
+    if (item.sellerId === userId) {
+      return res.status(409).json({ error: 'OWN_ITEM', itemId: item.id });
+    }
+  }
+
   // The buyer can only pay a way the seller accepts for every item.
   const requestedMethod = paymentMethod || 'sinpe';
   for (const { item } of resolved) {

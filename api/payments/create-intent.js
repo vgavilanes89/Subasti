@@ -40,6 +40,13 @@ export default async function handler(req, res) {
     resolved.push({ item, qty });
   }
 
+  // Sellers can't buy their own listings.
+  for (const { item } of resolved) {
+    if (item.sellerId === userId) {
+      return res.status(409).json({ error: 'OWN_ITEM', itemId: item.id });
+    }
+  }
+
   for (const { item } of resolved) {
     if (!itemAcceptsMethod(item, 'card')) {
       return res.status(409).json({ error: 'PAYMENT_METHOD_NOT_ACCEPTED', itemId: item.id });

@@ -160,6 +160,7 @@ const ItemViewPage = ({ loc }) => {
         viewInProfile: 'View all messages in your profile',
         ownItemBuy: 'You cannot buy your own listing.',
         outOfStock: 'Out of stock',
+        yourListingNotice: "This is your listing, so you can't bid on it or buy it.",
         itemNumber: 'Item Number',
         returnPolicy: 'Return Policy',
         noReturnPolicy: 'This seller has not specified a return policy.',
@@ -210,6 +211,7 @@ const ItemViewPage = ({ loc }) => {
         viewInProfile: 'Ver todos los mensajes en tu perfil',
         ownItemBuy: 'No puedes comprar tu propio artículo.',
         outOfStock: 'Agotado',
+        yourListingNotice: 'Esta es tu publicación, así que no puedes pujar ni comprarla.',
         itemNumber: 'Número de Artículo',
         returnPolicy: 'Política de Devoluciones',
         noReturnPolicy: 'Este vendedor no ha especificado una política de devoluciones.',
@@ -219,16 +221,18 @@ const ItemViewPage = ({ loc }) => {
     const reserveMet = item.reservePrice ? item.currentBid >= item.reservePrice : true;
     const images = item.images && item.images.length > 0 ? item.images : [PLACEHOLDER_IMG];
 
+    const isOwn = !!user && user.id === item.sellerId;
+
     const handleAddToCart = () => {
         if(!user) { navigate('/login'); return; }
-        if (user.id === item.sellerId) { alert(L.ownItemBuy); return; }
+        if (isOwn) { alert(L.ownItemBuy); return; }
         addToCart(item.id, selectedQuantity);
     };
 
     const handleBuyNow = () => {
         if(!user) { navigate('/login'); return; }
-        if (user.id === item.sellerId) { alert(L.ownItemBuy); return; }
-        addToCart(item.id, selectedQuantity);
+        if (isOwn) { alert(L.ownItemBuy); return; }
+        if (!addToCart(item.id, selectedQuantity)) return;
         navigate('/cart');
     };
 
@@ -350,6 +354,9 @@ const ItemViewPage = ({ loc }) => {
                                             <p className="text-sm text-gray-500">{L.currentBid}</p>
                                             <p className="text-4xl font-extrabold text-gray-900">{CRC(item.currentBid, loc, currency)}</p>
                                             <p className="text-xs text-gray-500 mt-1">{L.bidCount}: {item.bids || 0}</p>
+                                            {isOwn ? (
+                                                <div className="mt-4 bg-gray-100 p-4 rounded-lg text-center text-gray-700">{L.yourListingNotice}</div>
+                                            ) : (
                                             <div className="mt-4 space-y-2">
                                                 <label className="block text-sm font-semibold text-gray-700">{L.yourBid}</label>
                                                 <input
@@ -374,6 +381,7 @@ const ItemViewPage = ({ loc }) => {
                                                     <button className="w-full bg-purple-600 text-white py-3 rounded-lg font-bold hover:bg-purple-700 transition-colors" onClick={handleBuyNow}>{L.buyNowFor} {CRC(item.buyNowPrice, loc, currency)}</button>
                                                 )}
                                             </div>
+                                            )}
                                             <div className="mt-4 bg-gray-50 p-4 rounded-lg">
                                                 <p className="font-semibold text-gray-700">{L.ends}</p>
                                                 <CountdownTimer targetDate={item.endAt} loc={loc} />
@@ -385,7 +393,7 @@ const ItemViewPage = ({ loc }) => {
                                 <div>
                                     <p className="text-sm text-gray-500">{L.price}</p>
                                     <p className="text-4xl font-extrabold text-gray-900">{CRC(item.price * selectedQuantity, loc, currency)}</p>
-                                    {item.quantity > 1 && (
+                                    {item.quantity > 1 && !isOwn && (
                                         <div className="mt-4 flex items-center gap-2">
                                             <button onClick={() => setSelectedQuantity(q => Math.max(1, q - 1))} className="w-10 h-10 border rounded-md font-bold">-</button>
                                             <input type="number" value={selectedQuantity} onChange={(e) => setSelectedQuantity(Math.max(1, Math.min(item.quantity, Number(e.target.value) || 1)))} className="w-16 text-center border rounded-md h-10" />
@@ -394,6 +402,8 @@ const ItemViewPage = ({ loc }) => {
                                     )}
                                     {item.quantity <= 0 ? (
                                         <p className="mt-6 text-red-600 font-bold">{L.outOfStock}</p>
+                                    ) : isOwn ? (
+                                        <div className="mt-6 bg-gray-100 p-4 rounded-lg text-center text-gray-700">{L.yourListingNotice}</div>
                                     ) : (
                                         <div className="mt-6 flex gap-4">
                                             <button className="flex-1 bg-purple-100 text-purple-700 py-3 rounded-lg font-bold hover:bg-purple-200" onClick={handleAddToCart}>{L.add}</button>

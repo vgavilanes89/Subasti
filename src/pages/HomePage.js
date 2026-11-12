@@ -87,6 +87,7 @@ const HomePage = ({ loc, categories }) => {
     auctionsFirst: 'Auctions first',
     buyFirst: 'Buy now first',
     outOfStock: 'Out of stock',
+    yourListing: 'Your listing',
   } : {
     newest: 'Más recientes', 
     pAsc: 'Precio: menor→mayor', 
@@ -111,6 +112,7 @@ const HomePage = ({ loc, categories }) => {
     auctionsFirst: 'Subastas primero',
     buyFirst: 'Compra primero',
     outOfStock: 'Agotado',
+    yourListing: 'Tu publicación',
   };
 
   const allCats = useMemo(() => ['*', ...Object.keys(categories)], [categories]);
@@ -171,7 +173,7 @@ const HomePage = ({ loc, categories }) => {
   // Handlers
   const handleBuyNow = (id) => {
     if (!user) { navigate('/login'); return; }
-    addToCart(id, 1);
+    if (!addToCart(id, 1)) return;
     navigate('/cart');
   };
 
@@ -244,7 +246,9 @@ const HomePage = ({ loc, categories }) => {
 
       {/* Action Buttons */}
       <div className="p-4 pt-0">
-        {it.saleType === 'auc' ? (
+        {user && it.sellerId === user.id ? (
+          <p className="text-center text-sm font-semibold text-gray-500 py-2">{L.yourListing}</p>
+        ) : it.saleType === 'auc' ? (
           <div className="flex items-center gap-2">
             <button className="w-full bg-indigo-100 text-indigo-700 py-2 rounded-lg font-semibold hover:bg-indigo-200 transition-colors" onClick={(e) => handleBidClick(e, it.id)}>
               {L.placeBid}
