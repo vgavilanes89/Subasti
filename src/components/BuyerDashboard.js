@@ -1,15 +1,68 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PLACEHOLDER_IMG, formatMoney, StatCard, ProfilePageItemList } from './Shared';
+import { PLACEHOLDER_IMG, formatMoney, StatCard, ProfilePageItemList, CountdownTimer } from './Shared';
 import { useMessages } from '../context/MessagesContext';
 import ChatPanel from './ChatPanel';
 import * as ordersApi from '../api/orders';
+import { fetchMyBids } from '../api/bids';
 import { buyerStatusLabel, orderStatusClass } from '../data/escrow';
 import EscrowPanel from './EscrowPanel';
 import PayOrderModal from './PayOrderModal';
 import { useEnsureUsers } from '../lib/useEnsureUsers';
 import { useRefreshOnNotification } from '../lib/useRefreshOnNotification';
 import { acceptedMethods } from '../data/paymentMethods';
+
+// Where an auction stands for this bidder. Ended auctions are judged from the
+// item's own endAt, so the badge flips the moment the clock runs out even
+// before the next refresh.
+export const bidStatus = (item, userId, now = Date.now()) => {
+    const ended = Boolean(item.endAt) && item.endAt < now;
+    const isTop = item.highestBidderId === userId;
+    if (!ended) return isTop ? 'winning' : 'outbid';
+    if (!isTop) return 'lost';
+    return !item.reservePrice || item.currentBid >= item.reservePrice ? 'won' : 'reserve';
+};
+
+const BID_BADGE = {
+    winning: 'seller-badge seller-badge--ok',
+    outbid: 'seller-badge seller-badge--danger',
+    won: 'seller-badge seller-badge--ok',
+    lost: 'seller-badge',
+    reserve: 'seller-badge seller-badge--warn',
+};
+
+const BidRow = ({ entry, status, loc, L, onOpenItem }) => {
+    const { item, myHighestBid } = entry;
+    const active = status === 'winning' || status === 'outbid';
+    return (
+        <div className="seller-order-card buyer-order-card">
+            <div className="seller-order-main">
+                <img src={item.image || PLACEHOLDER_IMG} alt="" />
+                <div className="seller-order-info">
+                    <button type="button" onClick={() => onOpenItem(item.id)} className="buyer-order-title">
+                        {item.title}
+                    </button>
+                    <p className="text-sm text-gray-600">
+                        {L.yourBid}: <span className="font-semibold">{formatMoney(myHighestBid, loc, item.currency)}</span>
+                        {' · '}{L.currentBid}: <span className="font-semibold">{formatMoney(item.currentBid ?? item.price, loc, item.currency)}</span>
+                        {' · '}{item.bids} {item.bids === 1 ? L.bidOne : L.bidsCount}
+                    </p>
+                    {active && item.endAt && (
+                        <div className="mt-1"><CountdownTimer targetDate={item.endAt} loc={loc} /></div>
+                    )}
+                    {status === 'won' && <p className="text-xs text-purple-600 font-semibold mt-1">{L.wonHint}</p>}
+                    {status === 'reserve' && <p className="text-xs text-gray-500 mt-1">{L.reserveHint}</p>}
+                </div>
+            </div>
+            <div className="bid-row-actions">
+                <span className={BID_BADGE[status]}>{L['bidStatus_' + status]}</span>
+                {status === 'outbid' && (
+                    <button type="button" className="seller-action-btn" onClick={() => onOpenItem(item.id)}>{L.bidAgain}</button>
+                )}
+            </div>
+        </div>
+    );
+};
 
 const BuyerOrderCard = ({
     order,
@@ -168,6 +221,7 @@ const BuyerDashboard = ({
     const navigate = useNavigate();
     const { buyerThreads, getOrCreateThread } = useMessages();
     const [orders, setOrders] = useState([]);
+    const [bids, setBids] = useState([]);
     const [loading, setLoading] = useState(true);
     const [claiming, setClaiming] = useState(null);
     const [payingOrder, setPayingOrder] = useState(null);
@@ -192,6 +246,23 @@ const BuyerDashboard = ({
         pickupScheduled: 'Pickups scheduled',
         notices: 'Action needed',
         payNotice: 'order(s) require payment to complete your purchase.',
+        myBids: 'My Bids',
+        noBids: "You haven't bid on any auctions yet.",
+        activeBidsHeading: 'Active auctions',
+        endedBidsHeading: 'Ended auctions',
+        yourBid: 'Your bid',
+        currentBid: 'Current bid',
+        bidsCount: 'bids',
+        bidOne: 'bid',
+        bidAgain: 'Bid again',
+        bidStatus_winning: "You're winning",
+        bidStatus_outbid: 'Outbid',
+        bidStatus_won: 'You won',
+        bidStatus_lost: 'Not won',
+        bidStatus_reserve: 'Reserve not met',
+        wonHint: 'Complete payment under "Awaiting payment" above.',
+        reserveHint: 'The reserve price was not reached, so there is no sale.',
+        outbidNotice: 'auction(s) where you have been outbid.',
         shipNotice: 'item(s) are on the way to you.',
         pickupNotice: 'pickup(s) ready to schedule with the seller.',
         noNotices: 'No urgent buyer actions right now.',
@@ -246,6 +317,23 @@ const BuyerDashboard = ({
         pickupScheduled: 'Recogidas programadas',
         notices: 'Acción requerida',
         payNotice: 'pedido(s) requieren pago para completar la compra.',
+        myBids: 'Mis Pujas',
+        noBids: 'Aún no has pujado en ninguna subasta.',
+        activeBidsHeading: 'Subastas activas',
+        endedBidsHeading: 'Subastas terminadas',
+        yourBid: 'Tu puja',
+        currentBid: 'Puja actual',
+        bidsCount: 'pujas',
+        bidOne: 'puja',
+        bidAgain: 'Pujar de nuevo',
+        bidStatus_winning: 'Vas ganando',
+        bidStatus_outbid: 'Te superaron',
+        bidStatus_won: 'Ganaste',
+        bidStatus_lost: 'No ganada',
+        bidStatus_reserve: 'Reserva no alcanzada',
+        wonHint: 'Completa el pago en "Esperando pago" arriba.',
+        reserveHint: 'No se alcanzó el precio de reserva, por lo que no hay venta.',
+        outbidNotice: 'subasta(s) donde te superaron la puja.',
         shipNotice: 'artículo(s) están en camino.',
         pickupNotice: 'recogida(s) listas para coordinar con el vendedor.',
         noNotices: 'No hay acciones urgentes por ahora.',
@@ -298,9 +386,13 @@ const BuyerDashboard = ({
         let cancelled = false;
         const load = async () => {
             setLoading(true);
-            const data = await ordersApi.fetchBuyerOrders(user.id);
+            const [data, myBids] = await Promise.all([
+                ordersApi.fetchBuyerOrders(user.id),
+                fetchMyBids().catch(() => []),
+            ]);
             if (!cancelled) {
                 setOrders(data);
+                setBids(myBids);
                 setLoading(false);
             }
         };
@@ -310,6 +402,8 @@ const BuyerDashboard = ({
 
     useRefreshOnNotification(() => {
         ordersApi.fetchBuyerOrders(user.id).then(setOrders).catch(() => {});
+        // An outbid notification arrives exactly when this list changes.
+        fetchMyBids().then(setBids).catch(() => {});
     });
 
     // Items/bids live only in the client (never persisted), so this is the
@@ -359,9 +453,18 @@ const BuyerDashboard = ({
         !['completed', 'cancelled', 'refunded'].includes(o.status)
     ).length;
 
+    const now = Date.now();
+    const bidRows = bids.map(entry => ({ entry, status: bidStatus(entry.item, user.id, now) }));
+    // Outbid first: those are the ones the buyer can still act on.
+    const activeBids = bidRows
+        .filter(r => r.status === 'outbid' || r.status === 'winning')
+        .sort((a, b) => (a.status === b.status ? a.entry.item.endAt - b.entry.item.endAt : a.status === 'outbid' ? -1 : 1));
+    const endedBids = bidRows.filter(r => r.status !== 'outbid' && r.status !== 'winning');
+    const outbidCount = activeBids.filter(r => r.status === 'outbid').length;
+
     const myFavorites = items.filter(i => favorites.includes(i.id));
 
-    const hasUrgent = pendingPayment.length > 0 || awaitingConfirmation.length > 0 || inTransit.length > 0;
+    const hasUrgent = pendingPayment.length > 0 || awaitingConfirmation.length > 0 || inTransit.length > 0 || outbidCount > 0;
 
     const handlePay = (orderId) => {
         const order = orders.find(o => o.id === orderId);
@@ -428,6 +531,7 @@ const BuyerDashboard = ({
     if (pendingPayment.length) noticeParts.push(`${pendingPayment.length} ${L.payNotice}`);
     if (awaitingConfirmation.length) noticeParts.push(`${awaitingConfirmation.length} ${L.escrowNotice}`);
     if (inTransit.length) noticeParts.push(`${inTransit.length} ${L.shipNotice}`);
+    if (outbidCount) noticeParts.push(`${outbidCount} ${L.outbidNotice}`);
 
     const renderOrderList = (list, emptyMsg) => (
         list.length === 0
@@ -491,6 +595,31 @@ const BuyerDashboard = ({
             <div className={`seller-notice ${hasUrgent ? 'seller-notice--warn' : 'seller-notice--ok'}`}>
                 <strong>{L.notices}:</strong>{' '}
                 {hasUrgent ? noticeParts.join(' ') : L.noNotices}
+            </div>
+
+            <div className="seller-section" id="buyer-bids">
+                <h4>{L.myBids}</h4>
+                {bidRows.length === 0 && <p className="text-sm text-gray-500">{L.noBids}</p>}
+                {activeBids.length > 0 && (
+                    <>
+                        <p className="text-xs font-semibold text-gray-500 uppercase mb-2">{L.activeBidsHeading}</p>
+                        <div className="seller-orders-list">
+                            {activeBids.map(r => (
+                                <BidRow key={r.entry.item.id} entry={r.entry} status={r.status} loc={loc} L={L} onOpenItem={handleOpenItem} />
+                            ))}
+                        </div>
+                    </>
+                )}
+                {endedBids.length > 0 && (
+                    <>
+                        <p className="text-xs font-semibold text-gray-500 uppercase mt-4 mb-2">{L.endedBidsHeading}</p>
+                        <div className="seller-orders-list">
+                            {endedBids.map(r => (
+                                <BidRow key={r.entry.item.id} entry={r.entry} status={r.status} loc={loc} L={L} onOpenItem={handleOpenItem} />
+                            ))}
+                        </div>
+                    </>
+                )}
             </div>
 
             <div className="seller-section">
