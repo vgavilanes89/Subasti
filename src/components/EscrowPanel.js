@@ -1,8 +1,33 @@
 import React, { useState } from 'react';
 import { escrowPolicySteps } from '../data/escrow.js';
 
+// Closing the panel hides it for the rest of the browser session (sessionStorage:
+// survives navigating between pages, reloads and logging in/out, but a brand
+// new tab/visit shows it again). The in-memory flag is a fallback for browsers
+// where sessionStorage is unavailable (private mode, blocked storage).
+const DISMISS_KEY = 'subasti_escrow_panel_dismissed';
+let dismissedInMemory = false;
+
+const wasDismissed = () => {
+    if (dismissedInMemory) return true;
+    try {
+        return window.sessionStorage.getItem(DISMISS_KEY) === '1';
+    } catch {
+        return false;
+    }
+};
+
+const rememberDismissed = () => {
+    dismissedInMemory = true;
+    try {
+        window.sessionStorage.setItem(DISMISS_KEY, '1');
+    } catch {
+        // storage unavailable — the in-memory flag still covers this page view
+    }
+};
+
 const EscrowPanel = ({ loc, compact = false }) => {
-    const [dismissed, setDismissed] = useState(false);
+    const [dismissed, setDismissed] = useState(wasDismissed);
     const steps = escrowPolicySteps(loc);
     const L = loc === 'en' ? {
         title: 'Subasti Secure Escrow',
@@ -22,7 +47,7 @@ const EscrowPanel = ({ loc, compact = false }) => {
         <button
             type="button"
             className="escrow-panel-close"
-            onClick={() => setDismissed(true)}
+            onClick={() => { rememberDismissed(); setDismissed(true); }}
             aria-label={L.close}
         >
             ×
