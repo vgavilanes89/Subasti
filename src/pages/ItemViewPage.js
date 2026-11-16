@@ -310,8 +310,8 @@ const ItemViewPage = ({ loc }) => {
             <div className="grid md:grid-cols-5 gap-8 mb-8">
                 {/* Image Gallery */}
                 <div className="md:col-span-3">
-                    <div className="relative group">
-                        <img src={images[currentImageIndex]} alt={item.title} className="w-full h-auto object-cover rounded-xl shadow-lg border border-gray-200 mb-4" />
+                    <div className="item-hero group">
+                        <img src={images[currentImageIndex]} alt={item.title} className="item-hero-img" />
                         {images.length > 1 && (
                             <div className="absolute top-1/2 w-full flex justify-between px-2 -translate-y-1/2">
                                 <button onClick={() => setCurrentImageIndex((currentImageIndex - 1 + images.length) % images.length)} className="bg-black bg-opacity-30 text-white rounded-full p-2 hover:bg-opacity-50 transition-all">←</button>
@@ -321,7 +321,7 @@ const ItemViewPage = ({ loc }) => {
                     </div>
                     <div className="flex gap-2 overflow-x-auto">
                         {images.map((img, index) => (
-                            <img key={index} src={img} alt="thumb" onClick={() => setCurrentImageIndex(index)} className={`w-20 h-20 object-cover rounded-md cursor-pointer border-2 ${currentImageIndex === index ? 'border-purple-600' : 'border-transparent hover:border-gray-300'}`} />
+                            <img key={index} src={img} alt="thumb" onClick={() => setCurrentImageIndex(index)} className={`w-20 h-20 flex-shrink-0 object-cover rounded-md cursor-pointer border-2 ${currentImageIndex === index ? 'border-purple-600' : 'border-transparent hover:border-gray-300'}`} />
                         ))}
                     </div>
                 </div>

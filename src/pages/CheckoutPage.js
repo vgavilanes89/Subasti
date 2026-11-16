@@ -566,7 +566,7 @@ const CheckoutFormBody = (props) => {
                             {cartWithDetails.map(item => (
                                 <div key={item.id} className="flex justify-between items-center text-sm">
                                     <div className="flex items-center">
-                                        <img src={item.image} className="w-12 h-12 rounded-md mr-3" alt={item.title}/>
+                                        <img src={item.image} className="w-12 h-12 flex-shrink-0 object-cover rounded-md mr-3" alt={item.title}/>
                                         <span>{item.title} <span className="text-gray-500">x{item.qty}</span></span>
                                     </div>
                                     <span className="font-semibold">{CRC((item.buyNowPrice || item.price) * item.qty, loc, itemCurrency(item))}</span>
