@@ -1229,30 +1229,76 @@ code {
   object-fit: contain;
 }
 
-/* Collapsible chat toggle bar (profile dashboards + Messages tab) */
-.chat-toggle {
+/* Collapsible conversations: every chat is its own box (profile page) */
+.chat-thread-list {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 0.5rem;
-  width: 100%;
-  padding: 0.625rem 0.875rem;
-  margin-bottom: 0.5rem;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #1f2937;
-  cursor: pointer;
-  text-align: left;
 }
 
-.chat-toggle:hover {
+.chat-thread-box {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background: #fff;
+  overflow: hidden;
+}
+
+.chat-thread-box--open {
+  border-color: #d1d5db;
+}
+
+.chat-thread-head {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  background: #f9fafb;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: #1f2937;
+  font-size: 0.875rem;
+}
+
+.chat-thread-head:hover {
   background: #f3f4f6;
 }
 
-.chat-toggle-label {
+.chat-thread-head-text {
   flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.0625rem;
+}
+
+.chat-thread-head-sub {
+  font-size: 0.75rem;
+  color: #6b7280;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-thread-head-preview {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-thread-body {
+  border-top: 1px solid #e5e7eb;
+}
+
+.chat-thread-body .chat-email-notice {
+  margin: 0.5rem 0.75rem 0;
+}
+
+.chat-thread-messages {
+  max-height: 20rem;
 }
 
 .chat-toggle-unread {
@@ -1267,9 +1313,11 @@ code {
   align-items: center;
   justify-content: center;
   padding: 0 0.35rem;
+  flex-shrink: 0;
 }
 
 .chat-toggle-chevron {
   font-size: 0.625rem;
   color: #6b7280;
+  flex-shrink: 0;
 }

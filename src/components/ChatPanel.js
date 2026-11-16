@@ -9,6 +9,97 @@ const displayName = (userId, users, loc, role) => {
     return users[userId]?.profileName || (loc === 'en' ? 'User' : 'Usuario');
 };
 
+// One conversation, as its own box that expands/collapses independently of
+// every other conversation. Messages are only marked read while it is open.
+const ThreadBox = ({ thread, open, onToggle, label, counterpart, unread, user, users, loc, role, L }) => {
+    const { sendMessage, markRead } = useMessages();
+    const [draft, setDraft] = useState('');
+    const [sending, setSending] = useState(false);
+    const endRef = useRef(null);
+    const messageCount = thread.messages.length;
+
+    useEffect(() => {
+        if (open) markRead(thread.id, role);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, messageCount, thread.id, role, markRead]);
+
+    useEffect(() => {
+        if (open) endRef.current?.scrollIntoView({ block: 'nearest' });
+    }, [open, messageCount]);
+
+    const handleSend = async (e) => {
+        e.preventDefault();
+        if (!draft.trim() || sending) return;
+        setSending(true);
+        try {
+            await sendMessage(thread.id, draft);
+            setDraft('');
+        } catch {
+            // ignore
+        } finally {
+            setSending(false);
+        }
+    };
+
+    const last = thread.messages[messageCount - 1];
+
+    return (
+        <div className={`chat-thread-box ${open ? 'chat-thread-box--open' : ''}`} data-thread-id={thread.id}>
+            <button type="button" className="chat-thread-head" aria-expanded={open} onClick={onToggle}>
+                <Avatar name={label} src={counterpart?.avatarUrl} size={32} />
+                <span className="chat-thread-head-text">
+                    <strong>{role === 'buyer' ? `${L.withSeller} ${label}` : label}</strong>
+                    <span className="chat-thread-head-sub">{L.about}: {thread.itemTitle}</span>
+                    {!open && last && (
+                        <span className="chat-thread-head-preview">
+                            {last.from === user.id ? `${L.you}: ` : ''}{last.text}
+                        </span>
+                    )}
+                </span>
+                {!open && unread > 0 && <span className="chat-toggle-unread">{unread}</span>}
+                <span className="chat-toggle-chevron" aria-hidden>{open ? '▲' : '▼'}</span>
+            </button>
+            {open && (
+                <div className="chat-thread-body">
+                    <p className="chat-email-notice">
+                        <span className="chat-email-notice-icon" aria-hidden>✉</span>
+                        {L.emailNotify}
+                    </p>
+                    <div className="seller-chat-messages chat-thread-messages">
+                        {thread.messages.map(msg => {
+                            const isMe = msg.from === user.id;
+                            return (
+                                <div
+                                    key={msg.id}
+                                    className={`seller-chat-bubble ${isMe ? 'seller-chat-bubble--me' : 'seller-chat-bubble--them'}`}
+                                >
+                                    <p className="seller-chat-meta">
+                                        {isMe ? L.you : displayName(msg.from, users, loc, role === 'seller' ? 'buyer' : 'seller')}
+                                    </p>
+                                    <p>{msg.text}</p>
+                                </div>
+                            );
+                        })}
+                        <div ref={endRef} />
+                    </div>
+                    <form onSubmit={handleSend} className="seller-chat-compose">
+                        <input
+                            type="text"
+                            value={draft}
+                            onChange={e => setDraft(e.target.value)}
+                            placeholder={L.typeMessage}
+                            className="seller-input seller-input--grow"
+                        />
+                        <button type="submit" className="seller-action-btn" disabled={!draft.trim() || sending}>
+                            {L.send}
+                        </button>
+                    </form>
+                </div>
+            )}
+        </div>
+    );
+};
+
 const ChatPanel = ({
     loc,
     user,
@@ -18,25 +109,30 @@ const ChatPanel = ({
     activeThreadId,
     onSelectThread,
     compact = false,
-    // collapsible: show a toggle bar so the chat doesn't take over the page.
-    // defaultOpen: start expanded (e.g. the page was opened from a message link).
+    // collapsible: render every conversation as its own box that expands and
+    // collapses independently (all start collapsed). Used by the profile page.
+    // initialOpenThreadId: a conversation to start expanded, e.g. when the page
+    // was opened from a message link.
     collapsible = false,
-    defaultOpen = false,
+    initialOpenThreadId = null,
 }) => {
     const { sendMessage, markRead } = useMessages();
-    const [open, setOpen] = useState(() => {
-        return !collapsible || defaultOpen;
-    });
-
-    // Other parts of the page (e.g. "Message seller") can ask for the chat to open.
-    useEffect(() => {
-        const openIt = () => setOpen(true);
-        window.addEventListener('subasti:open-chat', openIt);
-        return () => window.removeEventListener('subasti:open-chat', openIt);
-    }, []);
     const [messageDraft, setMessageDraft] = useState('');
     const [sending, setSending] = useState(false);
     const chatEndRef = useRef(null);
+    const [openIds, setOpenIds] = useState(() => new Set(initialOpenThreadId ? [initialOpenThreadId] : []));
+
+    // Other parts of the page (e.g. "Message seller") can ask for one
+    // conversation to be opened: window event 'subasti:open-chat' with
+    // { detail: { threadId } }.
+    useEffect(() => {
+        const openIt = (e) => {
+            const id = e.detail?.threadId;
+            if (id) setOpenIds(prev => new Set(prev).add(id));
+        };
+        window.addEventListener('subasti:open-chat', openIt);
+        return () => window.removeEventListener('subasti:open-chat', openIt);
+    }, []);
 
     // 'mixed' (the unified Messages tab) shows both buyer and seller threads
     // together, so the buyer/seller perspective is derived per-thread from
@@ -57,8 +153,6 @@ const ChatPanel = ({
         emailNotify: "You'll get an email whenever someone sends you a new message.",
         withSeller: 'with seller',
         about: 'About',
-        show: 'Show conversations',
-        hide: 'Hide conversations',
     } : {
         you: 'Tú',
         typeMessage: 'Escribe un mensaje…',
@@ -71,8 +165,6 @@ const ChatPanel = ({
         emailNotify: 'Recibirás un correo cada vez que alguien te envíe un mensaje nuevo.',
         withSeller: 'con el vendedor',
         about: 'Sobre',
-        show: 'Mostrar conversaciones',
-        hide: 'Ocultar conversaciones',
     };
 
     const activeThread = threads.find(t => t.id === activeThreadId);
@@ -90,14 +182,15 @@ const ChatPanel = ({
     const unreadCount = (thread) =>
         roleFor(thread) === 'seller' ? (thread.unreadForSeller || 0) : (thread.unreadForBuyer || 0);
 
+    // Classic single-panel mode only (collapsible mode marks read per box).
     useEffect(() => {
-        if (open && activeThreadId && activeThread) markRead(activeThreadId, roleFor(activeThread));
+        if (!collapsible && activeThreadId && activeThread) markRead(activeThreadId, roleFor(activeThread));
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [open, activeThreadId, activeThread?.messages?.length, role, markRead]);
+    }, [collapsible, activeThreadId, activeThread?.messages?.length, role, markRead]);
 
     useEffect(() => {
-        if (open) chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [open, activeThread?.messages?.length, activeThreadId]);
+        if (!collapsible) chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [collapsible, activeThread?.messages?.length, activeThreadId]);
 
     const handleSend = async (e) => {
         e.preventDefault();
@@ -117,25 +210,40 @@ const ChatPanel = ({
         return <p className="text-sm text-gray-500">{L.noThreads}</p>;
     }
 
-    const totalUnread = threads.reduce((sum, t) => sum + unreadCount(t), 0);
+    if (collapsible) {
+        const toggle = (thread) => {
+            const willOpen = !openIds.has(thread.id);
+            setOpenIds(prev => {
+                const next = new Set(prev);
+                if (willOpen) next.add(thread.id); else next.delete(thread.id);
+                return next;
+            });
+            if (willOpen) onSelectThread?.(thread.id);
+        };
+        return (
+            <div className="chat-thread-list">
+                {threads.map(thread => (
+                    <ThreadBox
+                        key={thread.id}
+                        thread={thread}
+                        open={openIds.has(thread.id)}
+                        onToggle={() => toggle(thread)}
+                        label={threadLabel(thread)}
+                        counterpart={counterpartOf(thread)}
+                        unread={unreadCount(thread)}
+                        user={user}
+                        users={users}
+                        loc={loc}
+                        role={roleFor(thread)}
+                        L={L}
+                    />
+                ))}
+            </div>
+        );
+    }
 
     return (
         <div className={`seller-chat-wrap ${compact ? 'seller-chat-wrap--compact' : ''}`}>
-        {collapsible && (
-            <button
-                type="button"
-                className="chat-toggle"
-                aria-expanded={open}
-                onClick={() => setOpen(o => !o)}
-            >
-                <span className="chat-toggle-label">
-                    {open ? L.hide : `${L.show} (${threads.length})`}
-                </span>
-                {!open && totalUnread > 0 && <span className="chat-toggle-unread">{totalUnread}</span>}
-                <span className="chat-toggle-chevron" aria-hidden>{open ? '▲' : '▼'}</span>
-            </button>
-        )}
-        {open && (
         <div className={`seller-chat ${compact ? 'seller-chat--compact' : ''}`}>
             {!compact && threads.length > 1 && (
                 <div className="seller-chat-threads">
@@ -204,7 +312,6 @@ const ChatPanel = ({
                 </div>
             )}
         </div>
-        )}
         </div>
     );
 };

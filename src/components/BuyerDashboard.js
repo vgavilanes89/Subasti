@@ -217,7 +217,7 @@ const BuyerDashboard = ({
     isFav,
     activeThreadId,
     onSelectThread,
-    chatDefaultOpen = false,
+    chatOpenThreadId = null,
 }) => {
     const navigate = useNavigate();
     const { buyerThreads, getOrCreateThread } = useMessages();
@@ -228,16 +228,6 @@ const BuyerDashboard = ({
     const [payingOrder, setPayingOrder] = useState(null);
 
     useEnsureUsers(orders.map(o => o.sellerId));
-
-    // Without this, a buyer with exactly one conversation (the common case
-    // for a first admin support message) sees a blank message panel: the
-    // thread switcher only appears once there's more than one thread, and
-    // nothing auto-selects the lone one otherwise.
-    useEffect(() => {
-        if (!activeThreadId && buyerThreads.length > 0) {
-            onSelectThread(buyerThreads[0].id);
-        }
-    }, [activeThreadId, buyerThreads, onSelectThread]);
 
     const L = loc === 'en' ? {
         dashboard: 'Buying Dashboard',
@@ -517,7 +507,7 @@ const BuyerDashboard = ({
             buyerId: user.id,
         });
         onSelectThread(thread.id);
-        window.dispatchEvent(new Event('subasti:open-chat'));
+        window.dispatchEvent(new CustomEvent('subasti:open-chat', { detail: { threadId: thread.id } }));
         document.getElementById('buyer-messages')?.scrollIntoView({ behavior: 'smooth' });
     };
 
@@ -667,7 +657,7 @@ const BuyerDashboard = ({
                     threads={buyerThreads}
                     role="buyer"
                     collapsible
-                    defaultOpen={chatDefaultOpen}
+                    initialOpenThreadId={chatOpenThreadId}
                     activeThreadId={activeThreadId}
                     onSelectThread={onSelectThread}
                     userEmail={user.email}
