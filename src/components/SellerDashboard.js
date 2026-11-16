@@ -491,6 +491,7 @@ const SellerDashboard = ({ user, users, items, loc }) => {
                     users={users}
                     threads={sellerThreads}
                     role="seller"
+                    collapsible
                     activeThreadId={activeThreadId}
                     onSelectThread={setActiveThreadId}
                     userEmail={user.email}

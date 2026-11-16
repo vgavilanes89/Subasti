@@ -217,6 +217,7 @@ const BuyerDashboard = ({
     isFav,
     activeThreadId,
     onSelectThread,
+    chatDefaultOpen = false,
 }) => {
     const navigate = useNavigate();
     const { buyerThreads, getOrCreateThread } = useMessages();
@@ -516,6 +517,7 @@ const BuyerDashboard = ({
             buyerId: user.id,
         });
         onSelectThread(thread.id);
+        window.dispatchEvent(new Event('subasti:open-chat'));
         document.getElementById('buyer-messages')?.scrollIntoView({ behavior: 'smooth' });
     };
 
@@ -664,6 +666,8 @@ const BuyerDashboard = ({
                     users={users}
                     threads={buyerThreads}
                     role="buyer"
+                    collapsible
+                    defaultOpen={chatDefaultOpen}
                     activeThreadId={activeThreadId}
                     onSelectThread={onSelectThread}
                     userEmail={user.email}

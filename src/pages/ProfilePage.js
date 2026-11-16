@@ -35,6 +35,10 @@ const ProfilePage = ({ loc }) => {
     const [searchParams, setSearchParams] = useSearchParams();
     const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'account');
     const [buyerThreadId, setBuyerThreadId] = useState(searchParams.get('thread') || null);
+    // Only a page LOAD that already carries ?thread= (a message link or notification)
+    // should open the collapsed chat — the dashboards also write ?thread= themselves
+    // when they auto-select a conversation, which must not count.
+    const [openedFromThreadLink] = useState(() => Boolean(searchParams.get('thread')));
     const [messagesThreadId, setMessagesThreadId] = useState(searchParams.get('thread') || null);
     const [buyerOrders, setBuyerOrders] = useState([]);
     const [sellerOrders, setSellerOrders] = useState([]);
@@ -521,6 +525,7 @@ const ProfilePage = ({ loc }) => {
                         toggleFav={toggleFav}
                         isFav={isFav}
                         activeThreadId={buyerThreadId}
+                        chatDefaultOpen={openedFromThreadLink}
                         onSelectThread={handleBuyerThreadSelect}
                     />
                 </div>
@@ -575,6 +580,8 @@ const ProfilePage = ({ loc }) => {
                             users={users}
                             threads={threads}
                             role="mixed"
+                            collapsible
+                            defaultOpen
                             activeThreadId={messagesThreadId}
                             onSelectThread={handleMessagesThreadSelect}
                         />

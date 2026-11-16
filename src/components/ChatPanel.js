@@ -18,8 +18,22 @@ const ChatPanel = ({
     activeThreadId,
     onSelectThread,
     compact = false,
+    // collapsible: show a toggle bar so the chat doesn't take over the page.
+    // defaultOpen: start expanded (e.g. the page was opened from a message link).
+    collapsible = false,
+    defaultOpen = false,
 }) => {
     const { sendMessage, markRead } = useMessages();
+    const [open, setOpen] = useState(() => {
+        return !collapsible || defaultOpen;
+    });
+
+    // Other parts of the page (e.g. "Message seller") can ask for the chat to open.
+    useEffect(() => {
+        const openIt = () => setOpen(true);
+        window.addEventListener('subasti:open-chat', openIt);
+        return () => window.removeEventListener('subasti:open-chat', openIt);
+    }, []);
     const [messageDraft, setMessageDraft] = useState('');
     const [sending, setSending] = useState(false);
     const chatEndRef = useRef(null);
@@ -43,6 +57,8 @@ const ChatPanel = ({
         emailNotify: "You'll get an email whenever someone sends you a new message.",
         withSeller: 'with seller',
         about: 'About',
+        show: 'Show conversations',
+        hide: 'Hide conversations',
     } : {
         you: 'Tú',
         typeMessage: 'Escribe un mensaje…',
@@ -55,6 +71,8 @@ const ChatPanel = ({
         emailNotify: 'Recibirás un correo cada vez que alguien te envíe un mensaje nuevo.',
         withSeller: 'con el vendedor',
         about: 'Sobre',
+        show: 'Mostrar conversaciones',
+        hide: 'Ocultar conversaciones',
     };
 
     const activeThread = threads.find(t => t.id === activeThreadId);
@@ -73,13 +91,13 @@ const ChatPanel = ({
         roleFor(thread) === 'seller' ? (thread.unreadForSeller || 0) : (thread.unreadForBuyer || 0);
 
     useEffect(() => {
-        if (activeThreadId && activeThread) markRead(activeThreadId, roleFor(activeThread));
+        if (open && activeThreadId && activeThread) markRead(activeThreadId, roleFor(activeThread));
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeThreadId, activeThread?.messages?.length, role, markRead]);
+    }, [open, activeThreadId, activeThread?.messages?.length, role, markRead]);
 
     useEffect(() => {
-        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [activeThread?.messages?.length, activeThreadId]);
+        if (open) chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [open, activeThread?.messages?.length, activeThreadId]);
 
     const handleSend = async (e) => {
         e.preventDefault();
@@ -99,8 +117,25 @@ const ChatPanel = ({
         return <p className="text-sm text-gray-500">{L.noThreads}</p>;
     }
 
+    const totalUnread = threads.reduce((sum, t) => sum + unreadCount(t), 0);
+
     return (
         <div className={`seller-chat-wrap ${compact ? 'seller-chat-wrap--compact' : ''}`}>
+        {collapsible && (
+            <button
+                type="button"
+                className="chat-toggle"
+                aria-expanded={open}
+                onClick={() => setOpen(o => !o)}
+            >
+                <span className="chat-toggle-label">
+                    {open ? L.hide : `${L.show} (${threads.length})`}
+                </span>
+                {!open && totalUnread > 0 && <span className="chat-toggle-unread">{totalUnread}</span>}
+                <span className="chat-toggle-chevron" aria-hidden>{open ? '▲' : '▼'}</span>
+            </button>
+        )}
+        {open && (
         <div className={`seller-chat ${compact ? 'seller-chat--compact' : ''}`}>
             {!compact && threads.length > 1 && (
                 <div className="seller-chat-threads">
@@ -169,6 +204,7 @@ const ChatPanel = ({
                 </div>
             )}
         </div>
+        )}
         </div>
     );
 };
