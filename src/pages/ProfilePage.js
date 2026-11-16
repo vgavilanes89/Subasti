@@ -87,7 +87,7 @@ const ProfilePage = ({ loc }) => {
         memberSince: 'Member since',
         yourActivity: 'Your Activity',
         totalPurchases: 'Total Purchases',
-        totalSpent: 'Total Spent',
+        itemsSold: 'Items Sold',
         auctionsWon: 'Auctions Won',
         watching: 'Watchlist',
         sellingActivity: 'Selling Activity',
@@ -142,7 +142,7 @@ const ProfilePage = ({ loc }) => {
         memberSince: 'Miembro desde',
         yourActivity: 'Tu Actividad',
         totalPurchases: 'Compras Totales',
-        totalSpent: 'Total Gastado',
+        itemsSold: 'Artículos Vendidos',
         auctionsWon: 'Subastas Ganadas',
         watching: 'Lista de Seguimiento',
         sellingActivity: 'Actividad de Venta',
@@ -251,12 +251,12 @@ const ProfilePage = ({ loc }) => {
     ).length, [buyerOrders]);
 
     const stats = useMemo(() => {
-        const netBuyerOrders = buyerOrders.filter(o => NET_STATUSES.includes(o.status));
         const myItems = items.filter(i => i.sellerId === user?.id);
         const completedSales = sellerOrders.filter(o => o.status === ORDER_STATUS.COMPLETED);
         return {
             totalPurchases: buyerOrders.length,
-            spentByCurrency: sumByCurrency(netBuyerOrders),
+            // Paid sales only: not awaiting payment, cancelled or refunded.
+            itemsSold: sellerOrders.filter(o => NET_STATUSES.includes(o.status)).length,
             auctionsWon: buyerOrders.filter(o => o.orderType === 'auction_won').length,
             itemsListed: myItems.length,
             activeListings: myItems.filter(isActiveListing).length,
@@ -440,7 +440,7 @@ const ProfilePage = ({ loc }) => {
                         <h3 className="text-lg font-bold text-gray-800 mb-4">{L.yourActivity}</h3>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                             <StatCard label={L.totalPurchases} value={stats.totalPurchases} />
-                            <StatCard label={L.totalSpent} value={formatMoneyTotals(stats.spentByCurrency, loc) || '—'} />
+                            <StatCard label={L.itemsSold} value={stats.itemsSold} />
                             <StatCard label={L.auctionsWon} value={stats.auctionsWon} />
                             <StatCard label={L.watching} value={favorites.length} />
                         </div>
