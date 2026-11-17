@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-const TOPIC_KEYS = ['order', 'selling', 'account', 'payments', 'other'];
+const TOPIC_KEYS = ['order', 'selling', 'account', 'payments', 'complaint', 'other'];
 
 const ContactPage = ({ loc }) => {
     const { user } = useAuth();
@@ -14,7 +14,7 @@ const ContactPage = ({ loc }) => {
         name: 'Your name',
         email: 'Your email',
         topic: 'What is it about?',
-        topics: { order: 'An order', selling: 'Selling on Subasti', account: 'My account', payments: 'Payments', other: 'Something else' },
+        topics: { order: 'An order', selling: 'Selling on Subasti', account: 'My account', payments: 'Payments', complaint: 'A complaint', other: 'Something else' },
         reference: 'Order or item number (optional)',
         referenceHint: 'Helps us find it faster, e.g. ITM-12345678',
         message: 'Message',
@@ -48,7 +48,7 @@ const ContactPage = ({ loc }) => {
         name: 'Tu nombre',
         email: 'Tu correo',
         topic: '¿Sobre qué es?',
-        topics: { order: 'Un pedido', selling: 'Vender en Subasti', account: 'Mi cuenta', payments: 'Pagos', other: 'Otro tema' },
+        topics: { order: 'Un pedido', selling: 'Vender en Subasti', account: 'Mi cuenta', payments: 'Pagos', complaint: 'Una queja', other: 'Otro tema' },
         reference: 'Número de pedido o artículo (opcional)',
         referenceHint: 'Nos ayuda a encontrarlo más rápido, ej. ITM-12345678',
         message: 'Mensaje',

@@ -8,12 +8,13 @@ import { createRateLimiter, getClientIp } from './_lib/rateLimit.js';
 // NOT email the sender back (that would let anyone make us email arbitrary
 // addresses). It only ever reports success when the email was really handed
 // to the mail service — never a fake "sent".
-const TOPICS = ['order', 'selling', 'account', 'payments', 'other'];
+const TOPICS = ['order', 'selling', 'account', 'payments', 'complaint', 'other'];
 const TOPIC_LABELS = {
   order: 'Un pedido / An order',
   selling: 'Vender / Selling',
   account: 'Mi cuenta / My account',
   payments: 'Pagos / Payments',
+  complaint: 'Queja / Complaint',
   other: 'Otro / Other',
 };
 const MAX_MESSAGE = 2000;
