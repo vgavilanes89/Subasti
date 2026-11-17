@@ -48,7 +48,7 @@ const ContactPage = ({ loc }) => {
         name: 'Tu nombre',
         email: 'Tu correo',
         topic: '¿Sobre qué es?',
-        topics: { order: 'Un pedido', selling: 'Vender en Subasti', account: 'Mi cuenta', payments: 'Pagos', complaint: 'Una queja', other: 'Otro tema' },
+        topics: { order: 'Un pedido', selling: 'Vender en Subasti', account: 'Mi cuenta', payments: 'Pagos', complaint: 'Un reclamo', other: 'Otro tema' },
         reference: 'Número de pedido o artículo (opcional)',
         referenceHint: 'Nos ayuda a encontrarlo más rápido, ej. ITM-12345678',
         message: 'Mensaje',

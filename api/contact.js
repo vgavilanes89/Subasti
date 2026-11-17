@@ -14,7 +14,7 @@ const TOPIC_LABELS = {
   selling: 'Vender / Selling',
   account: 'Mi cuenta / My account',
   payments: 'Pagos / Payments',
-  complaint: 'Queja / Complaint',
+  complaint: 'Reclamo / Complaint',
   other: 'Otro / Other',
 };
 const MAX_MESSAGE = 2000;
