@@ -9,7 +9,7 @@ import { randomUUID } from 'crypto';
 
 const RESEND_API_URL = 'https://api.resend.com/emails';
 
-export async function sendEmail({ to, subject, html }) {
+export async function sendEmail({ to, subject, html, replyTo }) {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     console.log('Outbid email skipped: RESEND_API_KEY not configured');
@@ -19,7 +19,7 @@ export async function sendEmail({ to, subject, html }) {
   const res = await fetch(RESEND_API_URL, {
     method: 'POST',
     headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from, to, subject, html }),
+    body: JSON.stringify({ from, to, subject, html, ...(replyTo ? { reply_to: replyTo } : {}) }),
   });
   if (!res.ok) {
     const body = await res.text().catch(() => '');
