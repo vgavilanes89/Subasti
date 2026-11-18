@@ -1,8 +1,8 @@
 import { getSql } from '../_lib/db.js';
 import { getUserIdFromRequest } from '../_lib/session.js';
-import { toPublicOrder, generateOrderId, sanitizeShippingAddress } from '../_lib/orders.js';
+import { toPublicOrder, generateOrderId, generatePaymentReference, sanitizeShippingAddress } from '../_lib/orders.js';
 import { getItemById } from '../_lib/items.js';
-import { notifySellerOfSale } from '../_lib/notify.js';
+import { getSinpeNumber } from '../_lib/settings.js';
 import { itemAcceptsMethod } from '../../src/data/paymentMethods.js';
 import { parseSinpePhone } from '../_lib/wallet.js';
 import { ESCROW_WINDOW_MS, ORDER_STATUS } from '../../src/data/escrow.js';
@@ -25,6 +25,14 @@ export default async function handler(req, res) {
   const shippingAddress = fulfillment === 'ship' ? sanitizeShippingAddress(body.shippingAddress) : null;
   // SINPE Móvil: the number the buyer pays from, so the transfer can be matched to them.
   const sinpePhone = parseSinpePhone(body.sinpePhone);
+
+  // This endpoint only creates SINPE Móvil orders, which wait for an admin to
+  // verify the transfer. Card purchases are created by the Stripe webhook once
+  // Stripe confirms the charge — never here, or anyone could create a "paid"
+  // order without paying.
+  if (paymentMethod !== 'sinpe') {
+    return res.status(400).json({ error: 'INVALID_PAYMENT_METHOD' });
+  }
 
   if (cart.length === 0) {
     return res.status(400).json({ error: 'Cart is empty' });
@@ -60,8 +68,12 @@ export default async function handler(req, res) {
     }
   }
 
-  if (requestedMethod === 'sinpe' && !sinpePhone) {
+  if (!sinpePhone) {
     return res.status(400).json({ error: 'SINPE_PHONE_REQUIRED' });
+  }
+  // Without Subasti's own SINPE number there is nowhere to send the transfer.
+  if (!(await getSinpeNumber(sql))) {
+    return res.status(503).json({ error: 'SINPE_UNAVAILABLE' });
   }
 
   // An auction can only be bought outright through its Buy Now price, and
@@ -113,30 +125,32 @@ export default async function handler(req, res) {
   }
 
   const now = Date.now();
+  // One reference for the whole checkout: the buyer makes a single transfer.
+  const paymentReference = generatePaymentReference();
   const inserted = [];
   for (const { item, qty } of resolved) {
     const unitPrice = item.buyNowPrice || item.price;
     const id = generateOrderId();
     const amount = unitPrice * qty;
     const shippingCost = fulfillment === 'ship' ? (item.shippingCost || 0) : 0;
-    const shipByAt = now + ESCROW_WINDOW_MS;
+    const payByAt = now + ESCROW_WINDOW_MS;
 
     const rows = await sql`
       INSERT INTO orders (
         id, buyer_id, seller_id, item_id, item_title, image, amount, currency,
         shipping_cost, status, fulfillment, order_type, payment_method,
-        purchased_at, escrow_held_at, ship_by_at, shipping_address, sinpe_phone
+        purchased_at, payment_due_at, shipping_address, sinpe_phone, payment_reference, quantity
       ) VALUES (
         ${id}, ${userId}, ${item.sellerId}, ${item.id}, ${item.title}, ${item.image},
-        ${amount}, ${item.currency || 'CRC'}, ${shippingCost}, ${ORDER_STATUS.ESCROW_HELD},
-        ${fulfillment}, 'buy_now', ${paymentMethod},
-        to_timestamp(${now} / 1000.0), to_timestamp(${now} / 1000.0), to_timestamp(${shipByAt} / 1000.0),
-        ${shippingAddress ? JSON.stringify(shippingAddress) : null}, ${requestedMethod === 'sinpe' ? sinpePhone : null}
+        ${amount}, ${item.currency || 'CRC'}, ${shippingCost}, ${ORDER_STATUS.PENDING_PAYMENT},
+        ${fulfillment}, 'buy_now', 'sinpe',
+        to_timestamp(${now} / 1000.0), to_timestamp(${payByAt} / 1000.0),
+        ${shippingAddress ? JSON.stringify(shippingAddress) : null}, ${sinpePhone}, ${paymentReference}, ${qty}
       )
       RETURNING *
     `;
     inserted.push(toPublicOrder(rows[0]));
-    await notifySellerOfSale({ sql, sellerId: item.sellerId, itemTitle: item.title, quantity: qty });
+    // The seller is told about the sale once an admin confirms the transfer arrived.
   }
 
   return res.status(201).json(inserted);

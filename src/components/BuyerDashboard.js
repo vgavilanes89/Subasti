@@ -150,7 +150,7 @@ const BuyerOrderCard = ({
                         onClick={() => onPay(order.id)}
                         className="seller-action-btn"
                     >
-                        {L.payNow}
+                        {order.paymentReportedAt ? L.paymentDetails : L.payNow}
                     </button>
                 )}
                 {order.status === 'shipped' && (
@@ -269,6 +269,8 @@ const BuyerDashboard = ({
         seller: 'Seller',
         purchased: 'Purchased',
         payNow: 'Pay now',
+        paymentDetails: 'Payment details',
+        sinpeReported: 'Thanks! Subasti is verifying your SINPE transfer. We will notify you as soon as it is confirmed.',
         payBy: 'Pay by',
         estDelivery: 'Est. delivery',
         pickupBy: 'Pickup by',
@@ -340,6 +342,8 @@ const BuyerDashboard = ({
         seller: 'Vendedor',
         purchased: 'Comprado',
         payNow: 'Pagar ahora',
+        paymentDetails: 'Datos del pago',
+        sinpeReported: '¡Gracias! Subasti está verificando tu transferencia SINPE. Te avisaremos apenas se confirme.',
         payBy: 'Pagar antes de',
         estDelivery: 'Entrega est.',
         pickupBy: 'Recoger antes de',
@@ -460,6 +464,18 @@ const BuyerDashboard = ({
     const handlePay = (orderId) => {
         const order = orders.find(o => o.id === orderId);
         if (order) setPayingOrder(order);
+    };
+
+    // A SINPE transfer was reported: the order stays unpaid until an admin confirms it,
+    // so refresh instead of marking anything paid.
+    const handleSinpeReported = async () => {
+        try {
+            setOrders(await ordersApi.fetchBuyerOrders(user.id));
+        } catch {
+            // the list refreshes on the next notification anyway
+        }
+        setPayingOrder(null);
+        alert(L.sinpeReported);
     };
 
     const handlePaid = (updatedOrder) => {
@@ -684,6 +700,7 @@ const BuyerDashboard = ({
                     methods={acceptedMethods(items.find(i => i.id === payingOrder.itemId))}
                     onClose={() => setPayingOrder(null)}
                     onPaid={handlePaid}
+                    onReported={handleSinpeReported}
                 />
             )}
         </div>

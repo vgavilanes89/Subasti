@@ -47,6 +47,10 @@ export const buyerStatusLabel = (order, loc) => {
         completed: 'Completado',
         cancelled: 'Cancelado',
     };
+    // A SINPE transfer the buyer says they made, waiting for an admin to confirm it.
+    if (status === 'pending_payment' && order.paymentReportedAt) {
+        return loc === 'en' ? 'Verifying your SINPE payment' : 'Verificando tu pago SINPE';
+    }
     return (loc === 'en' ? en : es)[status] || status;
 };
 
@@ -72,6 +76,9 @@ export const sellerStatusLabel = (order, loc) => {
         completed: 'Fondos liberados',
         cancelled: 'Cancelado',
     };
+    if (status === 'pending_payment' && order.paymentReportedAt) {
+        return loc === 'en' ? 'Buyer reported payment — Subasti is verifying' : 'El comprador reportó el pago — Subasti lo está verificando';
+    }
     return (loc === 'en' ? en : es)[status] || status;
 };
 

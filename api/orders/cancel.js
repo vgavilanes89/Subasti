@@ -43,6 +43,15 @@ export default async function handler(req, res) {
     return res.status(409).json({ error: 'CANNOT_CANCEL' });
   }
 
+  // The units were reserved when the order was placed; an unpaid order that is
+  // cancelled puts them back on the shelf. (Auctions are one-off lots — nothing to restock.)
+  if (order.order_type === 'buy_now') {
+    await sql`
+      UPDATE items SET quantity = quantity + ${order.quantity || 1}
+      WHERE id = ${order.item_id} AND sale_type = 'buy'
+    `.catch((err) => console.error('Restock after cancel failed:', err.message));
+  }
+
   const buyer = await getUserContact(sql, order.buyer_id);
   if (buyer) {
     await createNotification({

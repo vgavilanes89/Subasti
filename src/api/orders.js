@@ -34,8 +34,21 @@ export const fetchBuyerOrders = async () => {
 export const createCheckoutOrders = async ({ items, fulfillment, paymentMethod, shippingAddress, sinpePhone }) =>
     postAction('create', { items, fulfillment, paymentMethod, shippingAddress, sinpePhone });
 
-export const payBuyerOrder = (orderId, paymentMethod = 'card', sinpePhone) =>
-    postAction('pay', { orderId, paymentMethod, sinpePhone });
+// SINPE Móvil: instructions (Subasti's number + payment reference), then "I've transferred it".
+// Nothing here marks an order paid — an admin confirms the money arrived.
+// target: { orderId } for one order, or { reference } for a whole checkout.
+export const getSinpeInstructions = (target) => postAction('sinpe', { action: 'prepare', ...target });
+export const reportSinpePayment = (target, sinpePhone) => postAction('sinpe', { action: 'report', sinpePhone, ...target });
+
+export const fetchSinpeAvailability = async () => {
+    try {
+        const res = await fetch('/api/payments/sinpe-info');
+        if (!res.ok) return false;
+        return Boolean((await res.json()).available);
+    } catch {
+        return false;
+    }
+};
 
 export const markOrderShipped = (orderId, { trackingNumber = '', shippingTimeframe = '' } = {}) =>
     postAction('ship', { orderId, trackingNumber, shippingTimeframe });

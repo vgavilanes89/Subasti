@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto';
+import { randomUUID, randomInt } from 'crypto';
 
 // The frontend (BuyerDashboard, SellerDashboard, escrow.js) does plain
 // millisecond arithmetic on these fields (e.g. `Date.now() > order.paymentDueAt`),
@@ -37,6 +37,10 @@ export function toPublicOrder(row) {
     refundedAt: toMs(row.refunded_at),
     resolvedBy: row.resolved_by,
     shippingAddress: row.shipping_address || null,
+    quantity: row.quantity || 1,
+    paymentReference: row.payment_reference || null,
+    paymentReportedAt: toMs(row.payment_reported_at),
+    paymentVerifiedAt: toMs(row.payment_verified_at),
   };
 }
 
@@ -52,6 +56,15 @@ export function sanitizeShippingAddress(raw) {
     clean[key] = typeof value === 'string' ? value.trim().slice(0, 200) : '';
   }
   return clean.address ? clean : null;
+}
+
+// Short, easy-to-type code a buyer puts in the SINPE description, e.g. SUB-7K3Q9X.
+// No 0/O/1/I so it can be read aloud or retyped without mistakes.
+const REFERENCE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+export function generatePaymentReference() {
+  let code = '';
+  for (let i = 0; i < 6; i += 1) code += REFERENCE_ALPHABET[randomInt(REFERENCE_ALPHABET.length)];
+  return `SUB-${code}`;
 }
 
 export function generateOrderId() {

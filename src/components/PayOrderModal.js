@@ -2,9 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { getStripePromise } from '../lib/stripe';
 import { formatMoney } from './Shared';
-import { payBuyerOrder } from '../api/orders';
+import SinpePaymentPanel from './SinpePaymentPanel';
 import * as walletApi from '../api/wallet';
-import { cardBrandName, formatSinpePhone } from '../lib/walletFormat';
+import { cardBrandName } from '../lib/walletFormat';
 import { PAYMENT_METHODS } from '../data/paymentMethods';
 
 async function waitForPaidOrder(paymentIntentId, attempts = 8, delayMs = 800) {
@@ -125,11 +125,10 @@ const CardPaymentForm = ({ order, loc, L, onPaid, onClose }) => {
 };
 
 // `methods`: the payment methods the seller accepts for this item.
-const PayOrderModal = ({ order, loc, onClose, onPaid, methods = PAYMENT_METHODS }) => {
+const PayOrderModal = ({ order, loc, onClose, onPaid, onReported, methods = PAYMENT_METHODS }) => {
     const [tab, setTab] = useState(methods[0] || 'card');
     const [clientSecret, setClientSecret] = useState(null);
     const [error, setError] = useState('');
-    const [sinpeSubmitting, setSinpeSubmitting] = useState(false);
     const fetchedIntent = useRef(false);
     const [savedCards, setSavedCards] = useState([]);
     const [selectedCardId, setSelectedCardId] = useState(null); // null = a new card
@@ -213,26 +212,6 @@ const PayOrderModal = ({ order, loc, onClose, onPaid, methods = PAYMENT_METHODS 
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [tab]);
 
-    const handleSinpeConfirm = async () => {
-        setSinpeSubmitting(true);
-        try {
-            const digits = sinpePhone.replace(/\D/g, '');
-            if (digits.length !== 8) {
-                setError(L.sinpePhoneRequired);
-                return;
-            }
-            const updated = await payBuyerOrder(order.id, 'sinpe', digits);
-            if (!savedSinpe.some(n => n.phone === digits)) {
-                walletApi.addSinpeNumber({ phone: digits }).catch(() => {});
-            }
-            onPaid(updated);
-        } catch {
-            setError(L.payError);
-        } finally {
-            setSinpeSubmitting(false);
-        }
-    };
-
     return (
         <div className="pay-order-modal-overlay" onClick={onClose}>
             <div className="pay-order-modal" onClick={(e) => e.stopPropagation()}>
@@ -292,49 +271,16 @@ const PayOrderModal = ({ order, loc, onClose, onPaid, methods = PAYMENT_METHODS 
                 )}
 
                 {tab === 'sinpe' && (
-                    <div className="space-y-4">
-                        <div className="bg-gray-50 p-4 rounded-lg text-center">
-                            <p className="text-sm text-gray-600">{L.sinpeInstructions}</p>
-                            <p className="text-2xl font-bold text-gray-800 my-2">8888-8888</p>
-                        </div>
-                        <div className="text-left">
-                            <label className="block text-sm font-semibold text-gray-700 mb-1">{L.sinpeFrom}</label>
-                            {savedSinpe.length > 0 && (
-                                <div className="flex flex-wrap gap-2 mb-2">
-                                    {savedSinpe.map(n => (
-                                        <button
-                                            key={n.id}
-                                            type="button"
-                                            onClick={() => setSinpePhone(n.phone)}
-                                            className={`px-3 py-1 rounded-full border text-sm font-mono ${sinpePhone.replace(/\D/g, '') === n.phone ? 'border-purple-600 bg-purple-50 text-purple-700' : 'border-gray-300 text-gray-700'}`}
-                                        >{formatSinpePhone(n.phone)}</button>
-                                    ))}
-                                </div>
-                            )}
-                            <input
-                                type="tel"
-                                value={sinpePhone}
-                                onChange={(e) => setSinpePhone(e.target.value)}
-                                placeholder="8888-8888"
-                                maxLength={12}
-                                className="w-full p-3 border rounded-lg font-mono"
-                                autoComplete="tel-national"
-                            />
-                        </div>
-                        <div className="flex gap-3">
-                            <button type="button" onClick={onClose} className="flex-1 py-2 rounded-lg border font-semibold text-gray-600">
-                                {L.cancel}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={handleSinpeConfirm}
-                                disabled={sinpeSubmitting}
-                                className="flex-1 py-2 rounded-lg bg-purple-600 text-white font-semibold disabled:opacity-60"
-                            >
-                                {sinpeSubmitting ? L.placing : L.sinpeConfirm}
-                            </button>
-                        </div>
-                    </div>
+                    <SinpePaymentPanel
+                        key={savedSinpe.length}
+                        loc={loc}
+                        target={{ orderId: order.id }}
+                        defaultPhone={sinpePhone}
+                        savedNumbers={savedSinpe}
+                        onReported={onReported}
+                        onClose={onClose}
+                        closeLabel={L.cancel}
+                    />
                 )}
             </div>
         </div>

@@ -10,6 +10,7 @@ import ChatPanel from '../components/ChatPanel';
 import AdminUserDetailModal from '../components/AdminUserDetailModal';
 import AdminItemEditModal from '../components/AdminItemEditModal';
 import AdminCreateUserModal from '../components/AdminCreateUserModal';
+import AdminSinpePayments from '../components/AdminSinpePayments';
 
 const money = (amount, currency, loc) => CRC(amount, loc, currency);
 
@@ -93,7 +94,10 @@ const AdminPage = ({ loc }) => {
     const { items, removeItem, replaceItem } = useItems();
     const { threads, getOrCreateAdminThread } = useMessages();
 
-    const [tab, setTab] = useState('overview');
+    const [tab, setTab] = useState(() => {
+        const wanted = new URLSearchParams(window.location.search).get('tab');
+        return ['overview', 'users', 'items', 'orders', 'analytics', 'payouts', 'sinpe'].includes(wanted) ? wanted : 'overview';
+    });
     const [allUsers, setAllUsers] = useState([]);
     const [loadingUsers, setLoadingUsers] = useState(true);
     const [orders, setOrders] = useState([]);
@@ -125,6 +129,9 @@ const AdminPage = ({ loc }) => {
         tabOrders: 'Orders & Logistics',
         tabAnalytics: 'Analytics',
         tabPayouts: 'Payouts',
+        tabSinpe: 'SINPE Payments',
+        releaseToSeller: 'Release funds to seller',
+        confirmRelease: 'Release the held funds to the seller for this order? Do this once the item was received, or when the buyer and seller have settled it between themselves.',
         userManagement: 'User Management',
         itemManagement: 'Item Management',
         accountNumber: 'Account #',
@@ -241,6 +248,9 @@ const AdminPage = ({ loc }) => {
         tabOrders: 'Pedidos y Logística',
         tabAnalytics: 'Analítica',
         tabPayouts: 'Pagos a Vendedores',
+        tabSinpe: 'Pagos SINPE',
+        releaseToSeller: 'Liberar fondos al vendedor',
+        confirmRelease: '¿Liberar al vendedor los fondos retenidos de este pedido? Hazlo cuando el artículo fue recibido, o cuando comprador y vendedor lo arreglaron entre ellos.',
         userManagement: 'Gestión de Usuarios',
         itemManagement: 'Gestión de Artículos',
         accountNumber: 'N° de Cuenta',
@@ -525,6 +535,26 @@ const AdminPage = ({ loc }) => {
         }
     };
 
+    const handleReleaseFunds = async (order) => {
+        if (!window.confirm(L.confirmRelease)) return;
+        setActionError('');
+        setResolvingClaim(order.id);
+        try {
+            const res = await fetch('/api/admin/release-order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ orderId: order.id }),
+            });
+            if (!res.ok) throw new Error('RELEASE_FAILED');
+            const updated = await res.json();
+            setOrders(prev => prev.map(o => (o.id === updated.id ? { ...o, ...updated } : o)));
+        } catch {
+            setActionError(L.actionFailed);
+        } finally {
+            setResolvingClaim(null);
+        }
+    };
+
     const handleRecordPayout = async ({ sellerId, currency, amount, note }) => {
         const res = await fetch('/api/admin/payouts-record', {
             method: 'POST',
@@ -588,6 +618,7 @@ const AdminPage = ({ loc }) => {
         ['orders', L.tabOrders],
         ['analytics', L.tabAnalytics],
         ['payouts', L.tabPayouts],
+        ['sinpe', L.tabSinpe],
     ];
 
     return (
@@ -863,6 +894,15 @@ const AdminPage = ({ loc }) => {
                                             <td className="px-4 py-3">{o.fulfillment}</td>
                                             <td className="px-4 py-3">{o.trackingNumber || '—'}</td>
                                             <td className="px-4 py-3">
+                                                {['escrow_held', 'shipped', 'awaiting_confirmation'].includes(o.status) && (
+                                                    <button
+                                                        onClick={() => handleReleaseFunds(o)}
+                                                        disabled={resolvingClaim === o.id}
+                                                        className="font-medium text-purple-600 hover:underline text-left disabled:opacity-50"
+                                                    >
+                                                        {resolvingClaim === o.id ? L.resolving : L.releaseToSeller}
+                                                    </button>
+                                                )}
                                                 {o.status === 'claim_pending' && (
                                                     <div className="flex flex-col gap-1">
                                                         <button
@@ -1062,6 +1102,8 @@ const AdminPage = ({ loc }) => {
                         )}
                     </div>
                 )}
+
+                {tab === 'sinpe' && <AdminSinpePayments loc={loc} />}
 
                 {tab === 'payouts' && (
                     <div className="space-y-6">

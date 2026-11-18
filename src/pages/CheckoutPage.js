@@ -7,7 +7,8 @@ import { useItems } from '../context/ItemsContext';
 import { COSTA_RICA_LOCATIONS } from '../data/Constants';
 import { CRC, itemCurrency, formatMoneyTotals } from '../components/Shared';
 import EscrowPanel from '../components/EscrowPanel';
-import { createCheckoutOrders } from '../api/orders';
+import { createCheckoutOrders, fetchSinpeAvailability } from '../api/orders';
+import SinpePaymentPanel from '../components/SinpePaymentPanel';
 import * as walletApi from '../api/wallet';
 import { useWallet } from '../lib/useWallet';
 import { cardBrandName, formatSinpePhone } from '../lib/walletFormat';
@@ -75,6 +76,8 @@ const CheckoutPage = ({ loc }) => {
         saveSinpeNumber: 'Save this number for next time',
         sinpePhoneRequired: 'Enter the 8-digit SINPE Móvil number you will pay from.',
         defaultTag: 'Default',
+        sinpeCheckoutNote: 'After you place the order you will see the SINPE Móvil number of Subasti and your payment reference. Your order is paid once Subasti confirms the transfer.',
+        payLater: 'Pay later — go to my orders',
         escrowNote: 'Your payment is held securely by Subasti until you receive the item and confirm satisfaction (or 48 hours pass).',
         orderSuccess: 'Payment secured in Subasti escrow. Track your order in Buying.',
         placing: 'Securing payment…',
@@ -123,6 +126,8 @@ const CheckoutPage = ({ loc }) => {
         saveSinpeNumber: 'Guardar este número para la próxima vez',
         sinpePhoneRequired: 'Escribe el número de SINPE Móvil de 8 dígitos desde el que pagarás.',
         defaultTag: 'Predeterminada',
+        sinpeCheckoutNote: 'Al hacer el pedido verás el número de SINPE Móvil de Subasti y tu referencia de pago. Tu pedido se considera pagado cuando Subasti confirma la transferencia.',
+        payLater: 'Pagar después — ir a mis pedidos',
         escrowNote: 'Su pago queda retenido de forma segura por Subasti hasta que reciba el artículo y confirme conformidad (o pasen 48 horas).',
         orderSuccess: 'Pago asegurado en depósito Subasti. Rastree su pedido en Compras.',
         placing: 'Asegurando pago…',
@@ -171,6 +176,8 @@ const CheckoutPage = ({ loc }) => {
     const [saveCard, setSaveCard] = useState(false);
     const [sinpePhone, setSinpePhone] = useState('');
     const [saveSinpe, setSaveSinpe] = useState(true);
+    // Set once a SINPE order is placed: shows the payment instructions.
+    const [sinpeCheckout, setSinpeCheckout] = useState(null);
     const paymentPrefilled = useRef(false);
     const [placing, setPlacing] = useState(false);
     const [resumingRedirect, setResumingRedirect] = useState(() => searchParams.get('redirect_status') === 'succeeded');
@@ -229,7 +236,15 @@ const CheckoutPage = ({ loc }) => {
     const cardTotal = cardCurrency ? totalsByCurrency[cardCurrency] : 0;
 
     // Only methods every seller in the cart accepts can be offered.
-    const payOptions = useMemo(() => commonPaymentMethods(cartWithDetails), [cartWithDetails]);
+    // SINPE Móvil needs an admin to have set Subasti's receiving number; hide it until then.
+    const [sinpeAvailable, setSinpeAvailable] = useState(null);
+    useEffect(() => {
+        fetchSinpeAvailability().then(setSinpeAvailable);
+    }, []);
+    const payOptions = useMemo(
+        () => commonPaymentMethods(cartWithDetails).filter(m => m !== 'sinpe' || sinpeAvailable !== false),
+        [cartWithDetails, sinpeAvailable]
+    );
     useEffect(() => {
         if (payOptions.length > 0 && !payOptions.includes(paymentMethod)) {
             setPaymentMethod(payOptions[0]);
@@ -306,7 +321,7 @@ const CheckoutPage = ({ loc }) => {
     const sinpeDigits = sinpePhone.replace(/\D/g, '');
 
     const handleSinpeSubmit = async () => {
-        await createCheckoutOrders({
+        const orders = await createCheckoutOrders({
             items: cartWithDetails.map(item => ({ ...item, qty: item.qty })),
             fulfillment: deliveryMethod,
             paymentMethod: 'sinpe',
@@ -316,10 +331,25 @@ const CheckoutPage = ({ loc }) => {
         if (saveSinpe && !wallet.payments.sinpe.some(n => n.phone === sinpeDigits)) {
             walletApi.addSinpeNumber({ phone: sinpeDigits }).then(wallet.setPayments).catch(() => {});
         }
+        // The orders exist (stock is reserved) but are NOT paid yet: show how to pay.
         clearCart();
-        alert(L.orderSuccess);
-        navigate('/profile?tab=buying');
+        setSinpeCheckout({ reference: orders[0].paymentReference, phone: sinpeDigits });
     };
+
+    if (sinpeCheckout) {
+        return (
+            <div className="max-w-xl mx-auto bg-white p-6 rounded-lg shadow-md border">
+                <SinpePaymentPanel
+                    loc={loc}
+                    target={{ reference: sinpeCheckout.reference }}
+                    defaultPhone={sinpeCheckout.phone}
+                    savedNumbers={wallet.payments.sinpe}
+                    onClose={() => navigate('/profile?tab=buying')}
+                    closeLabel={L.payLater}
+                />
+            </div>
+        );
+    }
 
     if (!user) {
         return (
@@ -631,8 +661,7 @@ const CheckoutFormBody = (props) => {
                         {payOptions.length > 0 && paymentMethod === 'sinpe' && (
                             <>
                             <div className="bg-gray-50 p-4 rounded-lg text-center">
-                                <p className="text-sm text-gray-600">{L.sinpeInstructions}</p>
-                                <p className="text-2xl font-bold text-gray-800 my-2">8888-8888</p>
+                                <p className="text-sm text-gray-600">{L.sinpeCheckoutNote}</p>
                             </div>
                             <div className="mt-4 text-left">
                                 <label className="block text-sm font-semibold text-gray-700 mb-1">{L.sinpeFrom}</label>
