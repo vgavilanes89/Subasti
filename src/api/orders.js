@@ -31,11 +31,11 @@ export const fetchBuyerOrders = async () => {
     return res.json();
 };
 
-export const createCheckoutOrders = async ({ items, fulfillment, paymentMethod, shippingAddress }) =>
-    postAction('create', { items, fulfillment, paymentMethod, shippingAddress });
+export const createCheckoutOrders = async ({ items, fulfillment, paymentMethod, shippingAddress, sinpePhone }) =>
+    postAction('create', { items, fulfillment, paymentMethod, shippingAddress, sinpePhone });
 
-export const payBuyerOrder = (orderId, paymentMethod = 'card') =>
-    postAction('pay', { orderId, paymentMethod });
+export const payBuyerOrder = (orderId, paymentMethod = 'card', sinpePhone) =>
+    postAction('pay', { orderId, paymentMethod, sinpePhone });
 
 export const markOrderShipped = (orderId, { trackingNumber = '', shippingTimeframe = '' } = {}) =>
     postAction('ship', { orderId, trackingNumber, shippingTimeframe });

@@ -5,6 +5,7 @@ import { getOrderById } from '../_lib/orders.js';
 import { ORDER_STATUS } from '../../src/data/escrow.js';
 import { getItemById } from '../_lib/items.js';
 import { itemAcceptsMethod } from '../../src/data/paymentMethods.js';
+import { savedCardIntentOptions } from '../_lib/wallet.js';
 
 // Pays off an EXISTING pending_payment order (an auction win) — unlike
 // create-intent.js, there's no cart to resolve; the order already has the
@@ -37,6 +38,9 @@ export default async function handler(req, res) {
     return res.status(409).json({ error: 'PAYMENT_METHOD_NOT_ACCEPTED' });
   }
 
+  const saved = await savedCardIntentOptions(sql, userId, body);
+  if (saved.error) return res.status(saved.status).json({ error: saved.error });
+
   const total = Number(order.amount) + Number(order.shipping_cost);
   const stripe = getStripe();
   const intent = await stripe.paymentIntents.create({
@@ -44,6 +48,7 @@ export default async function handler(req, res) {
     currency: order.currency.toLowerCase(),
     automatic_payment_methods: { enabled: true },
     metadata: { orderId: order.id, buyerId: userId },
+    ...saved.params,
   });
 
   return res.status(200).json({ clientSecret: intent.client_secret, paymentIntentId: intent.id });

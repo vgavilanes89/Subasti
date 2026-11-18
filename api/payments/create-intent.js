@@ -3,6 +3,7 @@ import { getUserIdFromRequest } from '../_lib/session.js';
 import { getStripe, toStripeAmount } from '../_lib/stripe.js';
 import { getItemById } from '../_lib/items.js';
 import { sanitizeShippingAddress } from '../_lib/orders.js';
+import { savedCardIntentOptions } from '../_lib/wallet.js';
 import { itemAcceptsMethod } from '../../src/data/paymentMethods.js';
 
 export default async function handler(req, res) {
@@ -95,12 +96,16 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid order total' });
   }
 
+  const saved = await savedCardIntentOptions(sql, userId, body);
+  if (saved.error) return res.status(saved.status).json({ error: saved.error });
+
   const stripe = getStripe();
   const intent = await stripe.paymentIntents.create({
     amount: toStripeAmount(total, currency),
     currency: currency.toLowerCase(),
     automatic_payment_methods: { enabled: true },
     metadata: { buyerId: userId },
+    ...saved.params,
   });
 
   await sql`

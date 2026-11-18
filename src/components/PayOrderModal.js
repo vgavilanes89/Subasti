@@ -3,6 +3,8 @@ import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-
 import { getStripePromise } from '../lib/stripe';
 import { formatMoney } from './Shared';
 import { payBuyerOrder } from '../api/orders';
+import * as walletApi from '../api/wallet';
+import { cardBrandName, formatSinpePhone } from '../lib/walletFormat';
 import { PAYMENT_METHODS } from '../data/paymentMethods';
 
 async function waitForPaidOrder(paymentIntentId, attempts = 8, delayMs = 800) {
@@ -16,6 +18,59 @@ async function waitForPaidOrder(paymentIntentId, attempts = 8, delayMs = 800) {
     }
     return null;
 }
+
+const SavedCardPayForm = ({ order, L, cardId, onPaid, onClose }) => {
+    const stripe = useStripe();
+    const [submitting, setSubmitting] = useState(false);
+    const [error, setError] = useState('');
+
+    const handlePay = async () => {
+        if (!stripe || submitting) return;
+        setSubmitting(true);
+        setError('');
+        try {
+            const res = await fetch('/api/payments/create-intent-for-order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ orderId: order.id, paymentMethodId: cardId }),
+            });
+            if (!res.ok) throw new Error('CREATE_INTENT_FAILED');
+            const { clientSecret } = await res.json();
+            const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, { payment_method: cardId });
+            if (confirmError) {
+                setError(confirmError.message || L.payError);
+                return;
+            }
+            if (paymentIntent && paymentIntent.status === 'succeeded') {
+                const updated = await waitForPaidOrder(paymentIntent.id);
+                onPaid(updated || { ...order, status: 'escrow_held' });
+            }
+        } catch {
+            setError(L.payError);
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    return (
+        <div className="space-y-3">
+            {error && <p className="text-sm text-red-500">{error}</p>}
+            <div className="flex gap-3">
+                <button type="button" onClick={onClose} className="flex-1 py-2 rounded-lg border font-semibold text-gray-600">
+                    {L.cancel}
+                </button>
+                <button
+                    type="button"
+                    onClick={handlePay}
+                    disabled={submitting || !stripe}
+                    className="flex-1 py-2 rounded-lg bg-purple-600 text-white font-semibold disabled:opacity-60"
+                >
+                    {submitting ? L.placing : L.confirmPay}
+                </button>
+            </div>
+        </div>
+    );
+};
 
 const CardPaymentForm = ({ order, loc, L, onPaid, onClose }) => {
     const stripe = useStripe();
@@ -76,6 +131,26 @@ const PayOrderModal = ({ order, loc, onClose, onPaid, methods = PAYMENT_METHODS 
     const [error, setError] = useState('');
     const [sinpeSubmitting, setSinpeSubmitting] = useState(false);
     const fetchedIntent = useRef(false);
+    const [savedCards, setSavedCards] = useState([]);
+    const [selectedCardId, setSelectedCardId] = useState(null); // null = a new card
+    const [savedSinpe, setSavedSinpe] = useState([]);
+    const [sinpePhone, setSinpePhone] = useState('');
+
+    // Offer the buyer's saved cards and SINPE number, defaulting to their preferred one.
+    useEffect(() => {
+        let cancelled = false;
+        walletApi.fetchPaymentMethods().then((p) => {
+            if (cancelled) return;
+            setSavedCards(p.cards || []);
+            setSavedSinpe(p.sinpe || []);
+            const def = p.defaultPayment || '';
+            const card = (p.cards || []).find(c => def === `card:${c.id}`) || (p.cards || [])[0];
+            if (card) setSelectedCardId(card.id);
+            const num = (p.sinpe || []).find(n => def === `sinpe:${n.id}`) || (p.sinpe || [])[0];
+            if (num) setSinpePhone(num.phone);
+        }).catch(() => {});
+        return () => { cancelled = true; };
+    }, []);
 
     const total = order.amount + (order.shippingCost || 0);
 
@@ -89,6 +164,11 @@ const PayOrderModal = ({ order, loc, onClose, onPaid, methods = PAYMENT_METHODS 
         payError: 'Payment failed. Please try again.',
         sinpeInstructions: 'Please transfer the total amount to the following number using SINPE Móvil. Use your Order ID as the transfer description.',
         sinpeConfirm: 'I already transferred it',
+        savedCards: 'Your saved cards',
+        useNewCard: 'Use a different card',
+        expires: 'exp',
+        sinpeFrom: 'Your SINPE Móvil number (the number you pay from)',
+        sinpePhoneRequired: 'Enter the 8-digit SINPE Móvil number you are paying from.',
         total: 'Total',
     } : {
         title: 'Completar Pago',
@@ -100,6 +180,11 @@ const PayOrderModal = ({ order, loc, onClose, onPaid, methods = PAYMENT_METHODS 
         payError: 'El pago falló. Intente de nuevo.',
         sinpeInstructions: 'Por favor, transfiera el monto total al siguiente número usando SINPE Móvil. Use el ID de su orden como descripción de la transferencia.',
         sinpeConfirm: 'Ya lo transferí',
+        savedCards: 'Tus tarjetas guardadas',
+        useNewCard: 'Usar otra tarjeta',
+        expires: 'vence',
+        sinpeFrom: 'Tu número de SINPE Móvil (el número desde el que pagas)',
+        sinpePhoneRequired: 'Escribe el número de SINPE Móvil de 8 dígitos desde el que pagas.',
         total: 'Total',
     };
 
@@ -131,7 +216,15 @@ const PayOrderModal = ({ order, loc, onClose, onPaid, methods = PAYMENT_METHODS 
     const handleSinpeConfirm = async () => {
         setSinpeSubmitting(true);
         try {
-            const updated = await payBuyerOrder(order.id, 'sinpe');
+            const digits = sinpePhone.replace(/\D/g, '');
+            if (digits.length !== 8) {
+                setError(L.sinpePhoneRequired);
+                return;
+            }
+            const updated = await payBuyerOrder(order.id, 'sinpe', digits);
+            if (!savedSinpe.some(n => n.phone === digits)) {
+                walletApi.addSinpeNumber({ phone: digits }).catch(() => {});
+            }
             onPaid(updated);
         } catch {
             setError(L.payError);
@@ -165,7 +258,30 @@ const PayOrderModal = ({ order, loc, onClose, onPaid, methods = PAYMENT_METHODS 
 
                 {error && <p className="text-sm text-red-500 mb-2">{error}</p>}
 
-                {tab === 'card' && (
+                {tab === 'card' && savedCards.length > 0 && (
+                    <div className="space-y-2 mb-4">
+                        <p className="text-sm font-semibold text-gray-700">{L.savedCards}</p>
+                        {savedCards.map(c => (
+                            <label key={c.id} className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                                <input type="radio" name="payOrderCard" checked={selectedCardId === c.id} onChange={() => setSelectedCardId(c.id)} className="h-4 w-4" />
+                                <span className="ml-3 font-semibold">{cardBrandName(c.brand)} •••• {c.last4}</span>
+                                {c.expMonth && <span className="ml-2 text-sm text-gray-500">{L.expires} {String(c.expMonth).padStart(2, '0')}/{String(c.expYear).slice(-2)}</span>}
+                            </label>
+                        ))}
+                        <label className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                            <input type="radio" name="payOrderCard" checked={selectedCardId === null} onChange={() => setSelectedCardId(null)} className="h-4 w-4" />
+                            <span className="ml-3 font-semibold">{L.useNewCard}</span>
+                        </label>
+                    </div>
+                )}
+
+                {tab === 'card' && selectedCardId && (
+                    <Elements stripe={getStripePromise()}>
+                        <SavedCardPayForm order={order} L={L} cardId={selectedCardId} onPaid={onPaid} onClose={onClose} />
+                    </Elements>
+                )}
+
+                {tab === 'card' && !selectedCardId && (
                     clientSecret ? (
                         <Elements stripe={getStripePromise()} options={{ clientSecret }}>
                             <CardPaymentForm order={order} loc={loc} L={L} onPaid={onPaid} onClose={onClose} />
@@ -180,6 +296,30 @@ const PayOrderModal = ({ order, loc, onClose, onPaid, methods = PAYMENT_METHODS 
                         <div className="bg-gray-50 p-4 rounded-lg text-center">
                             <p className="text-sm text-gray-600">{L.sinpeInstructions}</p>
                             <p className="text-2xl font-bold text-gray-800 my-2">8888-8888</p>
+                        </div>
+                        <div className="text-left">
+                            <label className="block text-sm font-semibold text-gray-700 mb-1">{L.sinpeFrom}</label>
+                            {savedSinpe.length > 0 && (
+                                <div className="flex flex-wrap gap-2 mb-2">
+                                    {savedSinpe.map(n => (
+                                        <button
+                                            key={n.id}
+                                            type="button"
+                                            onClick={() => setSinpePhone(n.phone)}
+                                            className={`px-3 py-1 rounded-full border text-sm font-mono ${sinpePhone.replace(/\D/g, '') === n.phone ? 'border-purple-600 bg-purple-50 text-purple-700' : 'border-gray-300 text-gray-700'}`}
+                                        >{formatSinpePhone(n.phone)}</button>
+                                    ))}
+                                </div>
+                            )}
+                            <input
+                                type="tel"
+                                value={sinpePhone}
+                                onChange={(e) => setSinpePhone(e.target.value)}
+                                placeholder="8888-8888"
+                                maxLength={12}
+                                className="w-full p-3 border rounded-lg font-mono"
+                                autoComplete="tel-national"
+                            />
                         </div>
                         <div className="flex gap-3">
                             <button type="button" onClick={onClose} className="flex-1 py-2 rounded-lg border font-semibold text-gray-600">

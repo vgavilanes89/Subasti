@@ -6,6 +6,9 @@ import { useMessages } from '../context/MessagesContext';
 import { useNotifications } from '../context/NotificationsContext';
 import SellerDashboard from '../components/SellerDashboard';
 import BuyerDashboard from '../components/BuyerDashboard';
+import SavedAddressesSection from '../components/SavedAddressesSection';
+import SavedPaymentsSection from '../components/SavedPaymentsSection';
+import { useWallet } from '../lib/useWallet';
 import ChatPanel from '../components/ChatPanel';
 import Avatar from '../components/Avatar';
 import { prepareAvatar } from '../lib/prepareAvatar';
@@ -32,6 +35,7 @@ const ProfilePage = ({ loc }) => {
     const { threads, unreadBuyerCount, unreadSellerCount } = useMessages();
     const { notifications, unreadCount: unreadNotificationCount, markRead: markNotificationRead, markAllRead: markAllNotificationsRead } = useNotifications();
     const navigate = useNavigate();
+    const wallet = useWallet(user);
     const [searchParams, setSearchParams] = useSearchParams();
     const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'account');
     const [buyerThreadId, setBuyerThreadId] = useState(searchParams.get('thread') || null);
@@ -66,6 +70,7 @@ const ProfilePage = ({ loc }) => {
         },
         tabAccount: 'Overview',
         tabBuying: 'Buying',
+        tabWallet: 'Addresses & Payments',
         tabSelling: 'Selling',
         tabMessages: 'Messages',
         notifications: 'Notifications',
@@ -121,6 +126,7 @@ const ProfilePage = ({ loc }) => {
         },
         tabAccount: 'Resumen',
         tabBuying: 'Compras',
+        tabWallet: 'Direcciones y Pagos',
         tabSelling: 'Ventas',
         tabMessages: 'Mensajes',
         notifications: 'Notificaciones',
@@ -339,6 +345,7 @@ const ProfilePage = ({ loc }) => {
     const tabs = [
         { id: 'account', label: L.tabAccount },
         { id: 'buying', label: L.tabBuying, badge: buyingBadge },
+        { id: 'wallet', label: L.tabWallet },
         { id: 'selling', label: L.tabSelling },
         { id: 'messages', label: L.tabMessages, badge: messagesBadge },
     ];
@@ -528,6 +535,13 @@ const ProfilePage = ({ loc }) => {
                         chatOpenThreadId={linkedThreadId}
                         onSelectThread={handleBuyerThreadSelect}
                     />
+                </div>
+            )}
+
+            {activeTab === 'wallet' && (
+                <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                    <SavedAddressesSection loc={loc} user={user} wallet={wallet} />
+                    <SavedPaymentsSection loc={loc} wallet={wallet} />
                 </div>
             )}
 

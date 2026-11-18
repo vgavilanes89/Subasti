@@ -5,6 +5,7 @@ import { ESCROW_WINDOW_MS, ORDER_STATUS } from '../../src/data/escrow.js';
 import { createNotification, getUserContact } from '../_lib/notify.js';
 import { getItemById } from '../_lib/items.js';
 import { itemAcceptsMethod } from '../../src/data/paymentMethods.js';
+import { parseSinpePhone } from '../_lib/wallet.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -30,6 +31,10 @@ export default async function handler(req, res) {
   }
 
   const paymentMethod = typeof body.paymentMethod === 'string' ? body.paymentMethod : 'card';
+  const sinpePhone = parseSinpePhone(body.sinpePhone);
+  if (paymentMethod === 'sinpe' && !sinpePhone) {
+    return res.status(400).json({ error: 'SINPE_PHONE_REQUIRED' });
+  }
   // Only a way the seller accepts for this item. (A deleted item can't be
   // checked, so it falls back to allowing payment rather than stranding the order.)
   const orderItem = await getItemById(sql, order.item_id);
@@ -43,6 +48,7 @@ export default async function handler(req, res) {
     UPDATE orders SET
       status = ${ORDER_STATUS.ESCROW_HELD},
       payment_method = ${paymentMethod},
+      sinpe_phone = ${paymentMethod === 'sinpe' ? sinpePhone : null},
       payment_due_at = NULL,
       escrow_held_at = to_timestamp(${now} / 1000.0),
       ship_by_at = to_timestamp(${now + ESCROW_WINDOW_MS} / 1000.0)

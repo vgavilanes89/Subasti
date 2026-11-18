@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { useAuth } from '../context/AuthContext';
@@ -8,6 +8,9 @@ import { COSTA_RICA_LOCATIONS } from '../data/Constants';
 import { CRC, itemCurrency, formatMoneyTotals } from '../components/Shared';
 import EscrowPanel from '../components/EscrowPanel';
 import { createCheckoutOrders } from '../api/orders';
+import * as walletApi from '../api/wallet';
+import { useWallet } from '../lib/useWallet';
+import { cardBrandName, formatSinpePhone } from '../lib/walletFormat';
 import { getStripePromise } from '../lib/stripe';
 import { commonPaymentMethods, acceptedMethods, paymentMethodLabel } from '../data/paymentMethods';
 
@@ -24,7 +27,7 @@ async function waitForOrders(paymentIntentId, attempts = 8, delayMs = 800) {
 }
 
 const CheckoutPage = ({ loc }) => {
-    const { user, saveAddress } = useAuth();
+    const { user } = useAuth();
     const { cart, clearCart } = useCart();
     const { items } = useItems();
     const navigate = useNavigate();
@@ -63,6 +66,15 @@ const CheckoutPage = ({ loc }) => {
         standardShipping: 'Standard Shipping',
         collectFromSeller: 'Collect from seller',
         addressAlias: 'Address',
+        savedCards: 'Your saved cards',
+        useNewCard: 'Use a different card',
+        saveCardForLater: 'Save this card for next time',
+        expires: 'exp',
+        sinpeFrom: 'Your SINPE Móvil number (the number you pay from)',
+        sinpeFromHelp: 'So we can match your transfer to this order.',
+        saveSinpeNumber: 'Save this number for next time',
+        sinpePhoneRequired: 'Enter the 8-digit SINPE Móvil number you will pay from.',
+        defaultTag: 'Default',
         escrowNote: 'Your payment is held securely by Subasti until you receive the item and confirm satisfaction (or 48 hours pass).',
         orderSuccess: 'Payment secured in Subasti escrow. Track your order in Buying.',
         placing: 'Securing payment…',
@@ -102,6 +114,15 @@ const CheckoutPage = ({ loc }) => {
         standardShipping: 'Envío Estándar',
         collectFromSeller: 'Recoger del vendedor',
         addressAlias: 'Dirección',
+        savedCards: 'Tus tarjetas guardadas',
+        useNewCard: 'Usar otra tarjeta',
+        saveCardForLater: 'Guardar esta tarjeta para la próxima vez',
+        expires: 'vence',
+        sinpeFrom: 'Tu número de SINPE Móvil (el número desde el que pagas)',
+        sinpeFromHelp: 'Para identificar tu transferencia con este pedido.',
+        saveSinpeNumber: 'Guardar este número para la próxima vez',
+        sinpePhoneRequired: 'Escribe el número de SINPE Móvil de 8 dígitos desde el que pagarás.',
+        defaultTag: 'Predeterminada',
         escrowNote: 'Su pago queda retenido de forma segura por Subasti hasta que reciba el artículo y confirme conformidad (o pasen 48 horas).',
         orderSuccess: 'Pago asegurado en depósito Subasti. Rastree su pedido en Compras.',
         placing: 'Asegurando pago…',
@@ -117,55 +138,51 @@ const CheckoutPage = ({ loc }) => {
 
     const [deliveryMethod, setDeliveryMethod] = useState(isShippingAvailable ? 'ship' : 'pickup');
 
-    const [selectedAddressId, setSelectedAddressId] = useState(user?.defaultAddressId || 'new');
+    const wallet = useWallet(user);
+    const [selectedAddressId, setSelectedAddressId] = useState('new');
     const [saveNewAddress, setSaveNewAddress] = useState(true);
+    const addressTouched = useRef(false);
 
-    const [shippingData, setShippingData] = useState(() => {
-        const defaultAddress = user?.savedAddresses?.find(a => a.id === user.defaultAddressId);
-        if (defaultAddress) {
-            return {
-                fullName: user.realName || '',
-                address: defaultAddress.address,
-                city: defaultAddress.city,
-                province: defaultAddress.province,
-                postalCode: defaultAddress.postalCode,
-                country: 'Costa Rica',
-            };
-        }
-        return { fullName: user?.realName || '', address: '', city: '', province: '', postalCode: '', country: 'Costa Rica' };
-    });
+    const blankAddress = () => ({ fullName: user?.realName || '', address: '', city: '', province: '', postalCode: '', country: 'Costa Rica' });
+    const [shippingData, setShippingData] = useState(blankAddress);
+
+    const applySavedAddress = (a) => {
+        setSelectedAddressId(a.id);
+        setShippingData({
+            fullName: a.fullName || user?.realName || '',
+            address: a.address,
+            city: a.city,
+            province: a.province,
+            postalCode: a.postalCode,
+            country: a.country || 'Costa Rica',
+        });
+    };
+
+    // Once the saved addresses load, start with the default one (unless the
+    // shopper already picked something).
+    useEffect(() => {
+        if (addressTouched.current || wallet.addresses.length === 0) return;
+        applySavedAddress(wallet.addresses.find(a => a.isDefault) || wallet.addresses[0]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [wallet.addresses]);
 
     const [paymentMethod, setPaymentMethod] = useState('card');
-    const [showPaymentPrompt, setShowPaymentPrompt] = useState(true);
+    const [selectedCardId, setSelectedCardId] = useState(null); // null = a new card
+    const [saveCard, setSaveCard] = useState(false);
+    const [sinpePhone, setSinpePhone] = useState('');
+    const [saveSinpe, setSaveSinpe] = useState(true);
+    const paymentPrefilled = useRef(false);
     const [placing, setPlacing] = useState(false);
     const [resumingRedirect, setResumingRedirect] = useState(() => searchParams.get('redirect_status') === 'succeeded');
 
-    const defaultPayment = useMemo(() => user?.savedPayments?.find(p => p.id === user.defaultPaymentId), [user]);
-
     const handleAddressSelection = (addressId) => {
-        setSelectedAddressId(addressId);
+        addressTouched.current = true;
         if (addressId === 'new') {
-            setShippingData({ fullName: user?.realName || '', address: '', city: '', province: '', country: 'Costa Rica', postalCode: '' });
+            setSelectedAddressId('new');
+            setShippingData(blankAddress());
         } else {
-            const selectedAddress = user.savedAddresses.find(addr => addr.id === addressId);
-            if (selectedAddress) {
-                setShippingData({
-                    fullName: user.realName || '',
-                    address: selectedAddress.address,
-                    city: selectedAddress.city,
-                    province: selectedAddress.province,
-                    postalCode: selectedAddress.postalCode,
-                    country: 'Costa Rica'
-                });
-            }
-        }
-    };
-
-    const handleUseDefaultPayment = () => {
-        if (defaultPayment) {
-            const wanted = defaultPayment.type === 'sinpe' ? 'sinpe' : 'card';
-            if (payOptions.includes(wanted)) setPaymentMethod(wanted);
-            setShowPaymentPrompt(false);
+            const selected = wallet.addresses.find(addr => addr.id === addressId);
+            if (selected) applySavedAddress(selected);
         }
     };
 
@@ -219,6 +236,24 @@ const CheckoutPage = ({ loc }) => {
         }
     }, [payOptions, paymentMethod]);
 
+    // Start with the buyer's default saved payment method (a saved card, or the
+    // SINPE Móvil number to pay from), once, after their wallet loads.
+    useEffect(() => {
+        if (paymentPrefilled.current || wallet.loading || payOptions.length === 0) return;
+        paymentPrefilled.current = true;
+        const { cards, sinpe, defaultPayment } = wallet.payments;
+        if (sinpe.length > 0) {
+            const preferred = sinpe.find(n => defaultPayment === `sinpe:${n.id}`) || sinpe[0];
+            setSinpePhone(preferred.phone);
+        }
+        if (defaultPayment && defaultPayment.startsWith('sinpe:') && payOptions.includes('sinpe')) {
+            setPaymentMethod('sinpe');
+        } else if (cards.length > 0 && payOptions.includes('card')) {
+            const preferred = cards.find(c => defaultPayment === `card:${c.id}`) || cards[0];
+            setSelectedCardId(preferred.id);
+        }
+    }, [wallet.loading, wallet.payments, payOptions]);
+
     const stripeOptions = useMemo(() => ({
         mode: 'payment',
         // This only hints to Stripe.js which payment-method UIs to offer (e.g.
@@ -249,19 +284,26 @@ const CheckoutPage = ({ loc }) => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const saveShippingAddressIfNeeded = () => {
-        if (deliveryMethod === 'ship' && selectedAddressId === 'new' && saveNewAddress) {
-            if (shippingData.address && shippingData.province && shippingData.city && shippingData.postalCode) {
-                saveAddress({
-                    alias: `${L.addressAlias} (${shippingData.address.substring(0, 15)}...)`,
-                    address: shippingData.address,
-                    city: shippingData.city,
-                    province: shippingData.province,
-                    postalCode: shippingData.postalCode,
-                });
-            }
+    const saveShippingAddressIfNeeded = async () => {
+        if (deliveryMethod !== 'ship' || selectedAddressId !== 'new' || !saveNewAddress) return;
+        if (!(shippingData.address && shippingData.province && shippingData.city && shippingData.postalCode)) return;
+        try {
+            const result = await walletApi.createAddress({
+                alias: '',
+                fullName: shippingData.fullName,
+                address: shippingData.address,
+                city: shippingData.city,
+                province: shippingData.province,
+                postalCode: shippingData.postalCode,
+                makeDefault: wallet.addresses.length === 0,
+            });
+            wallet.setAddresses(result.addresses);
+        } catch {
+            // Saving the address is a convenience; never block the purchase on it.
         }
     };
+
+    const sinpeDigits = sinpePhone.replace(/\D/g, '');
 
     const handleSinpeSubmit = async () => {
         await createCheckoutOrders({
@@ -269,7 +311,11 @@ const CheckoutPage = ({ loc }) => {
             fulfillment: deliveryMethod,
             paymentMethod: 'sinpe',
             shippingAddress: deliveryMethod === 'ship' ? shippingData : null,
+            sinpePhone: sinpeDigits,
         });
+        if (saveSinpe && !wallet.payments.sinpe.some(n => n.phone === sinpeDigits)) {
+            walletApi.addSinpeNumber({ phone: sinpeDigits }).then(wallet.setPayments).catch(() => {});
+        }
         clearCart();
         alert(L.orderSuccess);
         navigate('/profile?tab=buying');
@@ -311,9 +357,10 @@ const CheckoutPage = ({ loc }) => {
     const sharedProps = {
         loc, L, user, cartWithDetails, deliveryMethod, setDeliveryMethod, isShippingAvailable, isPickupAvailable,
         selectedAddressId, handleAddressSelection, shippingData, handleFormChange, setShippingData, saveNewAddress,
-        setSaveNewAddress, provinces, cities, paymentMethod, setPaymentMethod, defaultPayment, showPaymentPrompt,
-        handleUseDefaultPayment, subtotalsByCurrency, shippingByCurrency, totalsByCurrency, placing, setPlacing,
+        setSaveNewAddress, provinces, cities, paymentMethod, setPaymentMethod,
+        subtotalsByCurrency, shippingByCurrency, totalsByCurrency, placing, setPlacing,
         cardCurrency, cardTotal, saveShippingAddressIfNeeded, handleSinpeSubmit, navigate, clearCart, payOptions,
+        wallet, selectedCardId, setSelectedCardId, saveCard, setSaveCard, sinpePhone, setSinpePhone, sinpeDigits, saveSinpe, setSaveSinpe,
     };
 
     return (
@@ -327,9 +374,10 @@ const CheckoutFormBody = (props) => {
     const {
         loc, L, cartWithDetails, deliveryMethod, setDeliveryMethod, isShippingAvailable, isPickupAvailable,
         selectedAddressId, handleAddressSelection, shippingData, handleFormChange, setShippingData, saveNewAddress,
-        setSaveNewAddress, provinces, cities, paymentMethod, setPaymentMethod, defaultPayment, showPaymentPrompt,
-        handleUseDefaultPayment, subtotalsByCurrency, shippingByCurrency, totalsByCurrency, placing, setPlacing,
+        setSaveNewAddress, provinces, cities, paymentMethod, setPaymentMethod,
+        subtotalsByCurrency, shippingByCurrency, totalsByCurrency, placing, setPlacing,
         cardCurrency, saveShippingAddressIfNeeded, handleSinpeSubmit, navigate, user, clearCart, payOptions,
+        wallet, selectedCardId, setSelectedCardId, saveCard, setSaveCard, sinpePhone, setSinpePhone, sinpeDigits, saveSinpe, setSaveSinpe,
     } = props;
 
     const stripe = useStripe();
@@ -349,6 +397,10 @@ const CheckoutFormBody = (props) => {
         setPlacing(true);
         try {
             if (paymentMethod === 'sinpe') {
+                if (sinpeDigits.length !== 8) {
+                    alert(L.sinpePhoneRequired);
+                    return;
+                }
                 await handleSinpeSubmit();
                 return;
             }
@@ -357,15 +409,18 @@ const CheckoutFormBody = (props) => {
                 alert(L.mixedCurrency);
                 return;
             }
-            if (!stripe || !elements) {
+            const useSaved = Boolean(selectedCardId);
+            if (!stripe || (!useSaved && !elements)) {
                 alert(L.cardUnavailable);
                 return;
             }
 
-            const submitResult = await elements.submit();
-            if (submitResult.error) {
-                alert(submitResult.error.message || L.cardUnavailable);
-                return;
+            if (!useSaved) {
+                const submitResult = await elements.submit();
+                if (submitResult.error) {
+                    alert(submitResult.error.message || L.cardUnavailable);
+                    return;
+                }
             }
 
             const intentRes = await fetch('/api/payments/create-intent', {
@@ -375,6 +430,7 @@ const CheckoutFormBody = (props) => {
                     items: cartWithDetails.map(item => ({ id: item.id, qty: item.qty })),
                     fulfillment: deliveryMethod,
                     shippingAddress: deliveryMethod === 'ship' ? shippingData : null,
+                    ...(useSaved ? { paymentMethodId: selectedCardId } : { saveCard }),
                 }),
             });
             if (!intentRes.ok) {
@@ -383,12 +439,14 @@ const CheckoutFormBody = (props) => {
             }
             const { clientSecret, paymentIntentId } = await intentRes.json();
 
-            const { error, paymentIntent } = await stripe.confirmPayment({
-                elements,
-                clientSecret,
-                confirmParams: { return_url: window.location.href.split('?')[0] },
-                redirect: 'if_required',
-            });
+            const { error, paymentIntent } = useSaved
+                ? await stripe.confirmCardPayment(clientSecret, { payment_method: selectedCardId })
+                : await stripe.confirmPayment({
+                    elements,
+                    clientSecret,
+                    confirmParams: { return_url: window.location.href.split('?')[0] },
+                    redirect: 'if_required',
+                });
 
             if (error) {
                 alert(error.message || (loc === 'en' ? 'Payment failed. Please try again.' : 'El pago falló. Intente de nuevo.'));
@@ -442,7 +500,7 @@ const CheckoutFormBody = (props) => {
                         <div className="bg-white p-6 rounded-lg shadow-md border">
                             <h2 className="text-xl font-bold mb-4">{L.shippingInfo}</h2>
                             <div className="space-y-2 mb-4">
-                                {user?.savedAddresses?.map(addr => (
+                                {wallet.addresses.map(addr => (
                                     <label key={addr.id} className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
                                         <input
                                             type="radio"
@@ -453,7 +511,7 @@ const CheckoutFormBody = (props) => {
                                             className="h-4 w-4 text-purple-600 focus:ring-purple-500"
                                         />
                                         <div className="ml-3">
-                                            <p className="font-bold">{addr.alias}</p>
+                                            <p className="font-bold">{addr.alias}{addr.isDefault && <span className="ml-2 text-xs font-semibold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">{L.defaultTag}</span>}</p>
                                             <p className="text-sm text-gray-600">{addr.address}, {addr.city}</p>
                                         </div>
                                     </label>
@@ -514,12 +572,6 @@ const CheckoutFormBody = (props) => {
                     {/* Payment Info */}
                     <div className="bg-white p-6 rounded-lg shadow-md border">
                         <h2 className="text-xl font-bold mb-4">{L.paymentInfo}</h2>
-                        {defaultPayment && showPaymentPrompt && (
-                            <div className="bg-purple-50 p-3 rounded-lg flex justify-between items-center mb-4">
-                                <p className="text-sm text-purple-800"><b>{L.useDefaultPayment}</b> "{defaultPayment.alias}"</p>
-                                <button type="button" onClick={handleUseDefaultPayment} className="text-sm font-bold bg-purple-200 text-purple-800 px-3 py-1 rounded-md hover:bg-purple-300">{L.useThis}</button>
-                            </div>
-                        )}
                         {payOptions.length === 0 ? (
                             <div className="bg-red-50 text-red-700 p-4 rounded-lg text-sm space-y-2">
                                 <p className="font-semibold">{L.noCommonPayment}</p>
@@ -545,16 +597,75 @@ const CheckoutFormBody = (props) => {
                         )}
                         {payOptions.length > 0 && paymentMethod === 'card' && (
                             cardCurrency ? (
-                                <PaymentElement />
+                                <div className="space-y-3">
+                                    {wallet.payments.cards.length > 0 && (
+                                        <div className="space-y-2">
+                                            <p className="text-sm font-semibold text-gray-700">{L.savedCards}</p>
+                                            {wallet.payments.cards.map(c => (
+                                                <label key={c.id} className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                                                    <input type="radio" name="savedCard" checked={selectedCardId === c.id} onChange={() => setSelectedCardId(c.id)} className="h-4 w-4 text-purple-600 focus:ring-purple-500" />
+                                                    <span className="ml-3 font-semibold">{cardBrandName(c.brand)} •••• {c.last4}</span>
+                                                    {c.expMonth && <span className="ml-2 text-sm text-gray-500">{L.expires} {String(c.expMonth).padStart(2, '0')}/{String(c.expYear).slice(-2)}</span>}
+                                                </label>
+                                            ))}
+                                            <label className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                                                <input type="radio" name="savedCard" checked={selectedCardId === null} onChange={() => setSelectedCardId(null)} className="h-4 w-4 text-purple-600 focus:ring-purple-500" />
+                                                <span className="ml-3 font-semibold">{L.useNewCard}</span>
+                                            </label>
+                                        </div>
+                                    )}
+                                    {!selectedCardId && (
+                                        <>
+                                            <PaymentElement />
+                                            <label className="flex items-center">
+                                                <input type="checkbox" checked={saveCard} onChange={(e) => setSaveCard(e.target.checked)} className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded" />
+                                                <span className="ml-2 text-sm text-gray-600">{L.saveCardForLater}</span>
+                                            </label>
+                                        </>
+                                    )}
+                                </div>
                             ) : (
                                 <p className="text-sm text-red-600 bg-red-50 p-3 rounded-lg">{L.mixedCurrency}</p>
                             )
                         )}
                         {payOptions.length > 0 && paymentMethod === 'sinpe' && (
+                            <>
                             <div className="bg-gray-50 p-4 rounded-lg text-center">
                                 <p className="text-sm text-gray-600">{L.sinpeInstructions}</p>
-                                <p className="text-2xl font-bold text-gray-800 my-2">{defaultPayment?.type === 'sinpe' ? defaultPayment.phone : '8888-8888'}</p>
+                                <p className="text-2xl font-bold text-gray-800 my-2">8888-8888</p>
                             </div>
+                            <div className="mt-4 text-left">
+                                <label className="block text-sm font-semibold text-gray-700 mb-1">{L.sinpeFrom}</label>
+                                {wallet.payments.sinpe.length > 0 && (
+                                    <div className="flex flex-wrap gap-2 mb-2">
+                                        {wallet.payments.sinpe.map(n => (
+                                            <button
+                                                key={n.id}
+                                                type="button"
+                                                onClick={() => setSinpePhone(n.phone)}
+                                                className={`px-3 py-1 rounded-full border text-sm font-mono ${sinpeDigits === n.phone ? 'border-purple-600 bg-purple-50 text-purple-700' : 'border-gray-300 text-gray-700'}`}
+                                            >{formatSinpePhone(n.phone)}{n.alias ? ` · ${n.alias}` : ''}</button>
+                                        ))}
+                                    </div>
+                                )}
+                                <input
+                                    type="tel"
+                                    value={sinpePhone}
+                                    onChange={(e) => setSinpePhone(e.target.value)}
+                                    placeholder="8888-8888"
+                                    maxLength={12}
+                                    className="w-full p-3 border rounded-lg font-mono"
+                                    autoComplete="tel-national"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">{L.sinpeFromHelp}</p>
+                                {!wallet.payments.sinpe.some(n => n.phone === sinpeDigits) && (
+                                    <label className="flex items-center mt-2">
+                                        <input type="checkbox" checked={saveSinpe} onChange={(e) => setSaveSinpe(e.target.checked)} className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded" />
+                                        <span className="ml-2 text-sm text-gray-600">{L.saveSinpeNumber}</span>
+                                    </label>
+                                )}
+                            </div>
+                            </>
                         )}
                     </div>
                 </div>

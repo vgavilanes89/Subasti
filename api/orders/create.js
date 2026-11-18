@@ -4,6 +4,7 @@ import { toPublicOrder, generateOrderId, sanitizeShippingAddress } from '../_lib
 import { getItemById } from '../_lib/items.js';
 import { notifySellerOfSale } from '../_lib/notify.js';
 import { itemAcceptsMethod } from '../../src/data/paymentMethods.js';
+import { parseSinpePhone } from '../_lib/wallet.js';
 import { ESCROW_WINDOW_MS, ORDER_STATUS } from '../../src/data/escrow.js';
 
 export default async function handler(req, res) {
@@ -22,6 +23,8 @@ export default async function handler(req, res) {
   const fulfillment = body.fulfillment === 'pickup' ? 'pickup' : 'ship';
   const paymentMethod = typeof body.paymentMethod === 'string' ? body.paymentMethod : null;
   const shippingAddress = fulfillment === 'ship' ? sanitizeShippingAddress(body.shippingAddress) : null;
+  // SINPE Móvil: the number the buyer pays from, so the transfer can be matched to them.
+  const sinpePhone = parseSinpePhone(body.sinpePhone);
 
   if (cart.length === 0) {
     return res.status(400).json({ error: 'Cart is empty' });
@@ -55,6 +58,10 @@ export default async function handler(req, res) {
     if (!itemAcceptsMethod(item, requestedMethod)) {
       return res.status(409).json({ error: 'PAYMENT_METHOD_NOT_ACCEPTED', itemId: item.id });
     }
+  }
+
+  if (requestedMethod === 'sinpe' && !sinpePhone) {
+    return res.status(400).json({ error: 'SINPE_PHONE_REQUIRED' });
   }
 
   // An auction can only be bought outright through its Buy Now price, and
@@ -118,13 +125,13 @@ export default async function handler(req, res) {
       INSERT INTO orders (
         id, buyer_id, seller_id, item_id, item_title, image, amount, currency,
         shipping_cost, status, fulfillment, order_type, payment_method,
-        purchased_at, escrow_held_at, ship_by_at, shipping_address
+        purchased_at, escrow_held_at, ship_by_at, shipping_address, sinpe_phone
       ) VALUES (
         ${id}, ${userId}, ${item.sellerId}, ${item.id}, ${item.title}, ${item.image},
         ${amount}, ${item.currency || 'CRC'}, ${shippingCost}, ${ORDER_STATUS.ESCROW_HELD},
         ${fulfillment}, 'buy_now', ${paymentMethod},
         to_timestamp(${now} / 1000.0), to_timestamp(${now} / 1000.0), to_timestamp(${shipByAt} / 1000.0),
-        ${shippingAddress ? JSON.stringify(shippingAddress) : null}
+        ${shippingAddress ? JSON.stringify(shippingAddress) : null}, ${requestedMethod === 'sinpe' ? sinpePhone : null}
       )
       RETURNING *
     `;

@@ -1745,3 +1745,70 @@ code {
   color: #6b7280;
   line-height: 1.4;
 }
+
+/* Saved addresses & payment methods (profile) */
+.wallet-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.wallet-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 0.75rem 0.875rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background: #fafafa;
+}
+
+.wallet-item--default {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+
+.wallet-item-main {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+.wallet-item-main p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.wallet-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+}
+
+.wallet-subheading {
+  font-weight: 700;
+  color: var(--brand-navy);
+  margin: 1.25rem 0 0.5rem;
+  font-size: 0.9375rem;
+}
+
+.wallet-form-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .wallet-form-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .wallet-postal {
+    max-width: 14rem;
+  }
+}
+
+#saved-addresses {
+  margin-bottom: 2rem;
+}
