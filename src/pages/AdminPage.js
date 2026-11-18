@@ -416,6 +416,13 @@ const AdminPage = ({ loc }) => {
     useEffect(() => { loadOrders(); }, [loadOrders]);
     useEffect(() => { loadAnalytics(); }, [loadAnalytics]);
     useEffect(() => { loadPayouts(); }, [loadPayouts]);
+    // Statuses change while this page is open (e.g. an admin confirms a SINPE payment
+    // in its own tab), so refresh whenever these tabs are opened.
+    useEffect(() => {
+        if (tab === 'orders') loadOrders();
+        if (tab === 'payouts') loadPayouts();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [tab]);
 
     // Includes every real user the admin can see, not just the ones this
     // session happened to log in/sign up (which is all AuthContext's mock
