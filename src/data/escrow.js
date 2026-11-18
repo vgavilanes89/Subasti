@@ -16,13 +16,13 @@ export const escrowPolicySteps = (loc) => (loc === 'en' ? [
     { title: 'Seller ships within 48 hours', text: 'Once payment is secured, the seller must ship (or prepare pickup) within 48 hours and post the expected delivery timeframe.' },
     { title: 'You receive the item', text: 'Track your order. When it arrives, confirm receipt in your Buying portal or via the email Subasti sends.' },
     { title: '48-hour protection window', text: 'After receipt you have 48 hours to release funds or file a claim if the item was not as described or was fraudulent.' },
-    { title: 'Funds released', text: 'Release funds when satisfied, or funds auto-release to the seller if no response. Approved claims are refunded to you.' },
+    { title: 'Funds released', text: 'Release funds when satisfied. If you do not respond within the window, Subasti releases them to the seller. Approved claims are refunded to you.' },
 ] : [
     { title: 'Pago seguro', text: 'Su pago queda retenido de forma segura por Subasti — aún no se envía al vendedor.' },
     { title: 'El vendedor envía en 48 horas', text: 'Una vez asegurado el pago, el vendedor debe enviar (o preparar recogida) en 48 horas e indicar el plazo estimado de entrega.' },
     { title: 'Usted recibe el artículo', text: 'Rastree su pedido. Al recibirlo, confirme en su portal de Compras o por el correo que envía Subasti.' },
     { title: 'Ventana de protección de 48 horas', text: 'Después de recibir el artículo tiene 48 horas para liberar fondos o presentar un reclamo si no coincide con la descripción o hay fraude.' },
-    { title: 'Fondos liberados', text: 'Libere los fondos si está conforme, o se liberan automáticamente al vendedor sin respuesta. Reclamos aprobados se reembolsan.' },
+    { title: 'Fondos liberados', text: 'Libere los fondos si está conforme. Si no responde dentro del plazo, Subasti los libera al vendedor. Los reclamos aprobados se reembolsan.' },
 ]);
 
 export const buyerStatusLabel = (order, loc) => {
