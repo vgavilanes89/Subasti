@@ -343,6 +343,18 @@ export const HELP_TOPICS = [
                 kw: T('reset password login', 'restablecer contrasena iniciar sesion'),
             },
             {
+                id: 'acc-change-password',
+                q: T('How do I change my password?', '¿Cómo cambio mi contraseña?'),
+                a: [
+                    T('Go to Profile → Overview → Password and choose Change password. Enter your current password, then your new one twice. We email you to confirm the change.',
+                      'Ve a Perfil → Resumen → Contraseña y elige Cambiar contraseña. Escribe tu contraseña actual y luego la nueva dos veces. Te enviamos un correo para confirmar el cambio.'),
+                    T('A good password has at least 10 characters, including a letter and a number. It cannot be a common password (like "password123") or contain your name, email or ID number. Longer is better: a few unrelated words work well.',
+                      'Una buena contraseña tiene al menos 10 caracteres, con una letra y un número. No puede ser una contraseña común (como "password123") ni contener tu nombre, correo o cédula. Mientras más larga, mejor: varias palabras sin relación funcionan bien.'),
+                ],
+                links: [{ to: '/profile', label: T('Change my password', 'Cambiar mi contraseña') }],
+                kw: T('password change update security strong requirements', 'contrasena cambiar actualizar seguridad requisitos segura'),
+            },
+            {
                 id: 'acc-logout',
                 q: T('Why was I signed out?', '¿Por qué se cerró mi sesión?'),
                 a: [

@@ -7,6 +7,7 @@ import { useNotifications } from '../context/NotificationsContext';
 import SellerDashboard from '../components/SellerDashboard';
 import BuyerDashboard from '../components/BuyerDashboard';
 import SavedAddressesSection from '../components/SavedAddressesSection';
+import ChangePasswordSection from '../components/ChangePasswordSection';
 import SavedPaymentsSection from '../components/SavedPaymentsSection';
 import { useWallet } from '../lib/useWallet';
 import ChatPanel from '../components/ChatPanel';
@@ -441,6 +442,8 @@ const ProfilePage = ({ loc }) => {
                             </div>
                         )}
                     </div>
+
+                    <ChangePasswordSection loc={loc} user={user} />
 
                     {/* Buying stats */}
                     <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">

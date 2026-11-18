@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import PasswordChecklist, { PASSWORD_PROBLEM_TEXT } from '../components/PasswordChecklist';
+import { checkPassword } from '../lib/passwordPolicy';
 import { Link, useSearchParams } from 'react-router-dom';
 
 const ResetPasswordPage = ({ loc }) => {
@@ -13,13 +15,13 @@ const ResetPasswordPage = ({ loc }) => {
         title: 'Choose a new password',
         pass: 'New password',
         confirm: 'Confirm new password',
-        hint: 'At least 8 characters.',
+        hint: '',
         submit: 'Change password',
         saving: 'Saving…',
         done: 'Your password was changed. You can now log in with it.',
         login: 'Log in',
         mismatch: "The two passwords don't match.",
-        weak: 'Password must be at least 8 characters.',
+        weak: 'That password does not meet the requirements.',
         invalid: 'This link is invalid or has expired. Request a new one.',
         newLink: 'Request a new link',
         failed: 'Something went wrong. Please try again.',
@@ -28,13 +30,13 @@ const ResetPasswordPage = ({ loc }) => {
         title: 'Elige una nueva contraseña',
         pass: 'Nueva contraseña',
         confirm: 'Confirmar nueva contraseña',
-        hint: 'Al menos 8 caracteres.',
+        hint: '',
         submit: 'Cambiar contraseña',
         saving: 'Guardando…',
         done: 'Tu contraseña fue cambiada. Ya puedes iniciar sesión con ella.',
         login: 'Iniciar sesión',
         mismatch: 'Las dos contraseñas no coinciden.',
-        weak: 'La contraseña debe tener al menos 8 caracteres.',
+        weak: 'Esa contraseña no cumple los requisitos.',
         invalid: 'Este enlace no es válido o ya venció. Solicita uno nuevo.',
         newLink: 'Solicitar un enlace nuevo',
         failed: 'Algo salió mal. Intenta de nuevo.',
@@ -46,7 +48,8 @@ const ResetPasswordPage = ({ loc }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
-        if (password.length < 8) { setError(L.weak); return; }
+        const policy = checkPassword(password);
+        if (!policy.ok) { setError(PASSWORD_PROBLEM_TEXT[loc][policy.problems[0]]); return; }
         if (password !== confirm) { setError(L.mismatch); return; }
         setStatus('saving');
         try {
@@ -68,7 +71,7 @@ const ResetPasswordPage = ({ loc }) => {
             if (body.error === 'INVALID_OR_EXPIRED_LINK') {
                 setLinkInvalid(true);
             } else if (body.error === 'WEAK_PASSWORD') {
-                setError(L.weak);
+                setError(PASSWORD_PROBLEM_TEXT[loc][(body.problems || [])[0]] || L.weak);
             } else {
                 setError(L.failed);
             }
@@ -99,12 +102,12 @@ const ResetPasswordPage = ({ loc }) => {
                         <form onSubmit={handleSubmit} className="space-y-6">
                             <div>
                                 <label className="text-sm font-bold text-gray-700 block mb-2">{L.pass}</label>
-                                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} maxLength={200} autoComplete="new-password" className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" />
-                                <p className="text-xs text-gray-500 mt-1">{L.hint}</p>
+                                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required maxLength={200} autoComplete="new-password" className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" />
+                                <PasswordChecklist password={password} loc={loc} />
                             </div>
                             <div>
                                 <label className="text-sm font-bold text-gray-700 block mb-2">{L.confirm}</label>
-                                <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required minLength={8} maxLength={200} autoComplete="new-password" className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" />
+                                <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required maxLength={200} autoComplete="new-password" className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" />
                             </div>
                             <button type="submit" disabled={status === 'saving'} className="w-full bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors disabled:opacity-60">
                                 {status === 'saving' ? L.saving : L.submit}

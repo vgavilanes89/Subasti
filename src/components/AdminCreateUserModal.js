@@ -99,7 +99,7 @@ const AdminCreateUserModal = ({ loc, onClose, onCreated }) => {
                     </div>
                     <div>
                         <label className="text-xs font-semibold text-gray-500 block mb-1">{L.password}</label>
-                        <input type="password" value={form.password} onChange={set('password')} className="w-full p-2 border rounded-lg text-sm" required minLength={8} />
+                        <input type="password" value={form.password} onChange={set('password')} className="w-full p-2 border rounded-lg text-sm" required minLength={10} maxLength={200} />
                     </div>
                     <label className="flex items-center gap-2 text-sm text-gray-700">
                         <input type="checkbox" checked={form.isAdmin} onChange={set('isAdmin')} />

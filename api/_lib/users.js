@@ -1,3 +1,4 @@
+import { checkPassword } from '../../src/lib/passwordPolicy.js';
 export function toPublicUser(row) {
   return {
     id: String(row.id),
@@ -78,6 +79,8 @@ export function validateProfileFields(fields) {
 export function validateSignupInput(fields) {
   const profileError = validateProfileFields(fields);
   if (profileError) return profileError;
-  if (fields.password.length < 8 || fields.password.length > 200) return 'Password must be at least 8 characters';
+  // The site-wide password policy (src/lib/passwordPolicy.js); `password` is checked
+  // against this person's own details too.
+  if (!checkPassword(fields.password, fields).ok) return 'WEAK_PASSWORD';
   return null;
 }

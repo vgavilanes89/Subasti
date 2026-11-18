@@ -1,10 +1,13 @@
 import React, { useState, useMemo, useRef } from 'react';
+import PasswordChecklist, { PASSWORD_PROBLEM_TEXT } from '../components/PasswordChecklist';
+import { checkPassword } from '../lib/passwordPolicy';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { COSTA_RICA_LOCATIONS, COUNTRY_CODES } from '../data/Constants';
 
 const SignupPage = ({loc}) => {
     const { signup } = useAuth();
+    const [passwordError, setPasswordError] = useState('');
     const navigate = useNavigate();
     const [formData, setFormData] = useState({ cedula: '', realName: '', profileName: '', email: '', password: '', countryCode: '+506', phone: '', province: '', city: ''});
     const [isFetchingCedula, setIsFetchingCedula] = useState(false);
@@ -71,10 +74,19 @@ const SignupPage = ({loc}) => {
             setProfileNameError(error);
             return;
         }
+        const policy = checkPassword(formData.password, formData);
+        if (!policy.ok) {
+            setPasswordError(PASSWORD_PROBLEM_TEXT[loc][policy.problems[0]]);
+            return;
+        }
         try {
             await signup(formData);
             navigate('/');
         } catch (err) {
+            if (err.message === 'WEAK_PASSWORD') {
+                setPasswordError(PASSWORD_PROBLEM_TEXT[loc].TOO_COMMON);
+                return;
+            }
             alert(loc === 'en' ? 'Error creating account' : 'Error al crear la cuenta');
         }
     };
@@ -181,7 +193,9 @@ const SignupPage = ({loc}) => {
                     </div>
                     <div>
                         <label className="text-sm font-bold text-gray-700 block mb-2">{L.pass}</label>
-                        <input type="password" name="password" value={formData.password} onChange={handleChange} required className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500"/>
+                        <input type="password" name="password" value={formData.password} onChange={(e) => { setPasswordError(''); handleChange(e); }} required maxLength={200} autoComplete="new-password" className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500"/>
+                        <PasswordChecklist password={formData.password} context={formData} loc={loc} />
+                        {passwordError && <p className="text-xs text-red-500 mt-1">{passwordError}</p>}
                     </div>
                     <div>
                         <label className="text-sm font-bold text-gray-700 block mb-2">{L.phone}</label>

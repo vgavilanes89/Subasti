@@ -3,6 +3,7 @@ import { getSql } from '../_lib/db.js';
 import { createRateLimiter, getClientIp } from '../_lib/rateLimit.js';
 import { verifyResetToken, fingerprintMatches } from '../_lib/passwordReset.js';
 import { createNotification, getUserContact } from '../_lib/notify.js';
+import { checkPassword } from '../../src/lib/passwordPolicy.js';
 
 const RATE_LIMIT = 10;
 const RATE_WINDOW_MS = 60 * 1000;
@@ -23,9 +24,11 @@ export default async function handler(req, res) {
   const token = typeof body.token === 'string' ? body.token : '';
   const password = typeof body.password === 'string' ? body.password : '';
 
-  // Same rule as signup (api/_lib/users.js).
-  if (password.length < 8 || password.length > 200) {
-    return res.status(400).json({ error: 'WEAK_PASSWORD' });
+  // Same policy as signup (src/lib/passwordPolicy.js). Checked first without the
+  // account's details (cheap), and again below with them.
+  const basicCheck = checkPassword(password);
+  if (!basicCheck.ok) {
+    return res.status(400).json({ error: 'WEAK_PASSWORD', problems: basicCheck.problems });
   }
 
   const verified = verifyResetToken(token);
@@ -41,6 +44,13 @@ export default async function handler(req, res) {
     // password has changed, the hash no longer matches.
     if (!row || row.is_suspended || !fingerprintMatches(row, verified.fingerprint)) {
       return res.status(400).json({ error: 'INVALID_OR_EXPIRED_LINK' });
+    }
+
+    const personalCheck = checkPassword(password, {
+      email: row.email, profileName: row.profile_name, realName: row.real_name, cedula: row.cedula,
+    });
+    if (!personalCheck.ok) {
+      return res.status(400).json({ error: 'WEAK_PASSWORD', problems: personalCheck.problems });
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
