@@ -11,6 +11,8 @@ import AdminUserDetailModal from '../components/AdminUserDetailModal';
 import AdminItemEditModal from '../components/AdminItemEditModal';
 import AdminCreateUserModal from '../components/AdminCreateUserModal';
 import AdminSinpePayments from '../components/AdminSinpePayments';
+import AdminOverdueReviews from '../components/AdminOverdueReviews';
+import { overdueReviews } from '../lib/reviewWindow';
 
 const money = (amount, currency, loc) => CRC(amount, loc, currency);
 
@@ -96,7 +98,7 @@ const AdminPage = ({ loc }) => {
 
     const [tab, setTab] = useState(() => {
         const wanted = new URLSearchParams(window.location.search).get('tab');
-        return ['overview', 'users', 'items', 'orders', 'analytics', 'payouts', 'sinpe'].includes(wanted) ? wanted : 'overview';
+        return ['overview', 'users', 'items', 'orders', 'analytics', 'payouts', 'sinpe', 'review'].includes(wanted) ? wanted : 'overview';
     });
     const [allUsers, setAllUsers] = useState([]);
     const [loadingUsers, setLoadingUsers] = useState(true);
@@ -130,6 +132,7 @@ const AdminPage = ({ loc }) => {
         tabAnalytics: 'Analytics',
         tabPayouts: 'Payouts',
         tabSinpe: 'SINPE Payments',
+        tabReview: 'Overdue Reviews',
         releaseToSeller: 'Release funds to seller',
         confirmRelease: 'Release the held funds to the seller for this order? Do this once the item was received, or when the buyer and seller have settled it between themselves.',
         userManagement: 'User Management',
@@ -249,6 +252,7 @@ const AdminPage = ({ loc }) => {
         tabAnalytics: 'Analítica',
         tabPayouts: 'Pagos a Vendedores',
         tabSinpe: 'Pagos SINPE',
+        tabReview: 'Revisiones Vencidas',
         releaseToSeller: 'Liberar fondos al vendedor',
         confirmRelease: '¿Liberar al vendedor los fondos retenidos de este pedido? Hazlo cuando el artículo fue recibido, o cuando comprador y vendedor lo arreglaron entre ellos.',
         userManagement: 'Gestión de Usuarios',
@@ -419,7 +423,7 @@ const AdminPage = ({ loc }) => {
     // Statuses change while this page is open (e.g. an admin confirms a SINPE payment
     // in its own tab), so refresh whenever these tabs are opened.
     useEffect(() => {
-        if (tab === 'orders') loadOrders();
+        if (tab === 'orders' || tab === 'review') loadOrders();
         if (tab === 'payouts') loadPayouts();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [tab]);
@@ -557,6 +561,8 @@ const AdminPage = ({ loc }) => {
             setOrders(prev => prev.map(o => (o.id === updated.id ? { ...o, ...updated } : o)));
         } catch {
             setActionError(L.actionFailed);
+            // The order probably changed (e.g. the buyer just filed a claim): show it as it is now.
+            loadOrders();
         } finally {
             setResolvingClaim(null);
         }
@@ -626,6 +632,7 @@ const AdminPage = ({ loc }) => {
         ['analytics', L.tabAnalytics],
         ['payouts', L.tabPayouts],
         ['sinpe', L.tabSinpe],
+        ['review', L.tabReview],
     ];
 
     return (
@@ -694,6 +701,9 @@ const AdminPage = ({ loc }) => {
                             className={`px-4 py-2 rounded-lg text-sm font-semibold ${tab === key ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                         >
                             {label}
+                            {key === 'review' && overdueReviews(orders).length > 0 && (
+                                <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5">{overdueReviews(orders).length}</span>
+                            )}
                             {key === 'orders' && claimPendingOrders.length > 0 && (
                                 <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5">{claimPendingOrders.length}</span>
                             )}
@@ -1111,6 +1121,10 @@ const AdminPage = ({ loc }) => {
                 )}
 
                 {tab === 'sinpe' && <AdminSinpePayments loc={loc} />}
+
+                {tab === 'review' && (
+                    <AdminOverdueReviews loc={loc} orders={orders} loading={loadingOrders} busyId={resolvingClaim} onRelease={handleReleaseFunds} />
+                )}
 
                 {tab === 'payouts' && (
                     <div className="space-y-6">
