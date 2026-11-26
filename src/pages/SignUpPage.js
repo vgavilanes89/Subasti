@@ -4,6 +4,7 @@ import { checkPassword } from '../lib/passwordPolicy';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { COSTA_RICA_LOCATIONS, COUNTRY_CODES } from '../data/Constants';
+import PasswordInput from '../components/PasswordInput';
 
 const SignupPage = ({loc}) => {
     const { signup } = useAuth();
@@ -193,7 +194,7 @@ const SignupPage = ({loc}) => {
                     </div>
                     <div>
                         <label className="text-sm font-bold text-gray-700 block mb-2">{L.pass}</label>
-                        <input type="password" name="password" value={formData.password} onChange={(e) => { setPasswordError(''); handleChange(e); }} required maxLength={200} autoComplete="new-password" className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500"/>
+                        <PasswordInput loc={loc} name="password" value={formData.password} onChange={(e) => { setPasswordError(''); handleChange(e); }} required maxLength={200} autoComplete="new-password" className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500"/>
                         <PasswordChecklist password={formData.password} context={formData} loc={loc} />
                         {passwordError && <p className="text-xs text-red-500 mt-1">{passwordError}</p>}
                     </div>

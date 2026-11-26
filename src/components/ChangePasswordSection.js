@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import PasswordChecklist, { PASSWORD_PROBLEM_TEXT } from './PasswordChecklist';
 import { checkPassword, PASSWORD_MAX } from '../lib/passwordPolicy';
+import PasswordInput from './PasswordInput';
 
 // "Change password" for a logged-in user (Profile → Overview). Needs the
 // current password; the new one follows the site-wide policy.
@@ -105,16 +106,16 @@ const ChangePasswordSection = ({ loc, user }) => {
                 <form onSubmit={handleSubmit} className="mt-4 space-y-3 text-sm max-w-md">
                     <div>
                         <label className="block font-semibold text-gray-700 mb-1">{L.current}</label>
-                        <input type="password" value={form.current} onChange={set('current')} className="seller-input w-full" autoComplete="current-password" required />
+                        <PasswordInput loc={loc} value={form.current} onChange={set('current')} className="seller-input w-full" autoComplete="current-password" required />
                     </div>
                     <div>
                         <label className="block font-semibold text-gray-700 mb-1">{L.next}</label>
-                        <input type="password" value={form.next} onChange={set('next')} className="seller-input w-full" autoComplete="new-password" maxLength={PASSWORD_MAX} required />
+                        <PasswordInput loc={loc} value={form.next} onChange={set('next')} className="seller-input w-full" autoComplete="new-password" maxLength={PASSWORD_MAX} required />
                         <PasswordChecklist password={form.next} context={context} loc={loc} />
                     </div>
                     <div>
                         <label className="block font-semibold text-gray-700 mb-1">{L.confirm}</label>
-                        <input type="password" value={form.confirm} onChange={set('confirm')} className="seller-input w-full" autoComplete="new-password" maxLength={PASSWORD_MAX} required />
+                        <PasswordInput loc={loc} value={form.confirm} onChange={set('confirm')} className="seller-input w-full" autoComplete="new-password" maxLength={PASSWORD_MAX} required />
                     </div>
                     {error && <p className="text-red-600" role="alert">{error}</p>}
                     <div className="flex gap-3">

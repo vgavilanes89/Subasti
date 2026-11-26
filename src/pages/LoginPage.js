@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import PasswordInput from '../components/PasswordInput';
 
 const LoginPage = ({loc}) => {
     const [email, setEmail] = useState('');
@@ -39,7 +40,7 @@ const LoginPage = ({loc}) => {
                     </div>
                     <div>
                         <label className="text-sm font-bold text-gray-700 block mb-2">{L.pass}</label>
-                        <input type="password" value={password} onChange={e => setPassword(e.target.value)} required className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500"/>
+                        <PasswordInput loc={loc} value={password} onChange={e => setPassword(e.target.value)} required className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500"/>
                         <div className="text-right mt-2">
                             <Link to="/forgot-password" className="text-sm font-semibold text-purple-600 hover:underline">{L.forgot}</Link>
                         </div>

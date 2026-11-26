@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import PasswordChecklist, { PASSWORD_PROBLEM_TEXT } from '../components/PasswordChecklist';
 import { checkPassword } from '../lib/passwordPolicy';
 import { Link, useSearchParams } from 'react-router-dom';
+import PasswordInput from '../components/PasswordInput';
 
 const ResetPasswordPage = ({ loc }) => {
     const [searchParams] = useSearchParams();
@@ -102,12 +103,12 @@ const ResetPasswordPage = ({ loc }) => {
                         <form onSubmit={handleSubmit} className="space-y-6">
                             <div>
                                 <label className="text-sm font-bold text-gray-700 block mb-2">{L.pass}</label>
-                                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required maxLength={200} autoComplete="new-password" className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" />
+                                <PasswordInput loc={loc} value={password} onChange={(e) => setPassword(e.target.value)} required maxLength={200} autoComplete="new-password" className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" />
                                 <PasswordChecklist password={password} loc={loc} />
                             </div>
                             <div>
                                 <label className="text-sm font-bold text-gray-700 block mb-2">{L.confirm}</label>
-                                <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required maxLength={200} autoComplete="new-password" className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" />
+                                <PasswordInput loc={loc} value={confirm} onChange={(e) => setConfirm(e.target.value)} required maxLength={200} autoComplete="new-password" className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" />
                             </div>
                             <button type="submit" disabled={status === 'saving'} className="w-full bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors disabled:opacity-60">
                                 {status === 'saving' ? L.saving : L.submit}
