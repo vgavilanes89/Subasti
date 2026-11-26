@@ -81,6 +81,12 @@ const BuyerOrderCard = ({
     const [showClaimForm, setShowClaimForm] = useState(false);
     const seller = users[order.sellerId];
     const total = order.amount + (order.shippingCost || 0);
+    // Claims are only accepted for 48 hours after the item is marked received.
+    const claimOpen = !order.confirmationDueAt || Date.now() <= order.confirmationDueAt;
+
+    const formatDateTime = (ts) => new Date(ts).toLocaleString(loc === 'en' ? 'en-US' : 'es-CR', {
+        month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+    });
 
     const formatDate = (ts) => {
         if (!ts) return '—';
@@ -119,7 +125,7 @@ const BuyerOrderCard = ({
                             <> · {L.estDelivery} {formatDate(order.estimatedDelivery)}</>
                         )}
                         {order.status === 'awaiting_confirmation' && order.confirmationDueAt && (
-                            <> · {L.claimBy} {formatDate(order.confirmationDueAt)}</>
+                            <> · {Date.now() <= order.confirmationDueAt ? `${L.claimBy} ${formatDateTime(order.confirmationDueAt)}` : `${L.claimEnded} ${formatDateTime(order.confirmationDueAt)}`}</>
                         )}
                     </p>
                     <p className="text-sm font-bold text-purple-700 mt-1">
@@ -167,14 +173,18 @@ const BuyerOrderCard = ({
                         <button type="button" onClick={() => onReleaseFunds(order.id)} className="seller-action-btn">
                             {L.releaseFunds}
                         </button>
-                        <button
-                            type="button"
-                            onClick={() => setShowClaimForm(s => !s)}
-                            className="buyer-order-link-btn"
-                        >
-                            {L.fileClaim}
-                        </button>
-                        {showClaimForm && (
+                        {claimOpen ? (
+                            <button
+                                type="button"
+                                onClick={() => setShowClaimForm(s => !s)}
+                                className="buyer-order-link-btn"
+                            >
+                                {L.fileClaim}
+                            </button>
+                        ) : (
+                            <p className="text-xs text-gray-500 max-w-[14rem] text-right">{L.claimClosed}</p>
+                        )}
+                        {claimOpen && showClaimForm && (
                             <div className="buyer-claim-form">
                                 <textarea
                                     value={claimDraft}
@@ -293,6 +303,10 @@ const BuyerDashboard = ({
         submitClaim: 'Submit claim',
         claimPlaceholder: 'Describe how the item differs from the listing or suspected fraud…',
         claimBy: 'Claim or release by',
+        claimEnded: 'Claim window ended',
+        claimClosed: 'The 48-hour claim window has closed.',
+        claimFailed: 'We could not send your claim. Please try again.',
+        releaseFailed: 'We could not release the funds. The order may have changed; please check it and try again.',
         shipTimeframe: 'Est. delivery',
         escrowHeld: 'Payment secured in Subasti escrow',
         escrowSection: 'Confirm or claim',
@@ -366,6 +380,10 @@ const BuyerDashboard = ({
         submitClaim: 'Enviar reclamo',
         claimPlaceholder: 'Describa en qué difiere el artículo de la publicación o el fraude…',
         claimBy: 'Reclamar o liberar antes de',
+        claimEnded: 'El plazo de reclamo venció',
+        claimClosed: 'El plazo de 48 horas para reclamar ya venció.',
+        claimFailed: 'No pudimos enviar tu reclamo. Inténtalo de nuevo.',
+        releaseFailed: 'No pudimos liberar los fondos. El pedido pudo haber cambiado; revísalo e inténtalo de nuevo.',
         shipTimeframe: 'Entrega est.',
         escrowHeld: 'Pago asegurado en depósito Subasti',
         escrowSection: 'Confirmar o reclamar',
@@ -491,9 +509,14 @@ const BuyerDashboard = ({
     };
 
     const handleReleaseFunds = async (orderId) => {
-        const updated = await ordersApi.releaseFundsToSeller(orderId);
-        setOrders(prev => prev.map(o => (o.id === orderId ? updated : o)));
-        alert(L.releaseSuccess);
+        try {
+            const updated = await ordersApi.releaseFundsToSeller(orderId);
+            setOrders(prev => prev.map(o => (o.id === orderId ? updated : o)));
+            alert(L.releaseSuccess);
+        } catch {
+            alert(L.releaseFailed);
+            ordersApi.fetchBuyerOrders(user.id).then(setOrders).catch(() => {});
+        }
     };
 
     const handleSubmitClaim = async (orderId, reason, onDone) => {
@@ -503,8 +526,10 @@ const BuyerDashboard = ({
             setOrders(prev => prev.map(o => (o.id === orderId ? updated : o)));
             alert(L.claimSuccess);
             onDone?.();
-        } catch {
-            // ignore
+        } catch (err) {
+            alert(err.message === 'CLAIM_WINDOW_CLOSED' ? L.claimClosed : L.claimFailed);
+            // Show the order as it really is now.
+            ordersApi.fetchBuyerOrders(user.id).then(setOrders).catch(() => {});
         } finally {
             setClaiming(null);
         }

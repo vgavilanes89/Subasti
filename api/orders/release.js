@@ -31,9 +31,13 @@ export default async function handler(req, res) {
     UPDATE orders SET
       status = ${ORDER_STATUS.COMPLETED},
       funds_released_at = to_timestamp(${Date.now()} / 1000.0)
-    WHERE id = ${order.id}
+    WHERE id = ${order.id} AND status = ${ORDER_STATUS.AWAITING_CONFIRMATION}
     RETURNING *
   `;
+  // A claim (or another release) got there first.
+  if (!rows[0]) {
+    return res.status(409).json({ error: 'NOT_READY' });
+  }
 
   const seller = await getUserContact(sql, order.seller_id);
   // Only used for a reminder in the notification — never let it block the release.

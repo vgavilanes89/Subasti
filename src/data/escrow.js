@@ -51,6 +51,9 @@ export const buyerStatusLabel = (order, loc) => {
     if (status === 'pending_payment' && order.paymentReportedAt) {
         return loc === 'en' ? 'Verifying your SINPE payment' : 'Verificando tu pago SINPE';
     }
+    if (status === 'awaiting_confirmation' && order.confirmationDueAt && Date.now() > order.confirmationDueAt) {
+        return loc === 'en' ? 'Claim window closed' : 'Plazo de reclamo vencido';
+    }
     return (loc === 'en' ? en : es)[status] || status;
 };
 
@@ -78,6 +81,9 @@ export const sellerStatusLabel = (order, loc) => {
     };
     if (status === 'pending_payment' && order.paymentReportedAt) {
         return loc === 'en' ? 'Buyer reported payment — Subasti is verifying' : 'El comprador reportó el pago — Subasti lo está verificando';
+    }
+    if (status === 'awaiting_confirmation' && order.confirmationDueAt && Date.now() > order.confirmationDueAt) {
+        return loc === 'en' ? 'Review period ended — awaiting release' : 'Terminó la revisión — falta liberar';
     }
     return (loc === 'en' ? en : es)[status] || status;
 };

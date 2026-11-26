@@ -26,6 +26,11 @@ export default async function handler(req, res) {
   if (order.status !== ORDER_STATUS.AWAITING_CONFIRMATION) {
     return res.status(409).json({ error: 'CLAIM_WINDOW_CLOSED' });
   }
+  // The buyer has 48 hours from marking the item received. After that the sale
+  // is final: no more claims, even if the money has not been released yet.
+  if (order.confirmation_due_at && Date.now() > new Date(order.confirmation_due_at).getTime()) {
+    return res.status(409).json({ error: 'CLAIM_WINDOW_CLOSED' });
+  }
 
   const reason = typeof body.reason === 'string' ? body.reason.trim() : '';
   if (!reason) {
@@ -38,8 +43,15 @@ export default async function handler(req, res) {
       claim_reason = ${reason},
       claim_filed_at = to_timestamp(${Date.now()} / 1000.0)
     WHERE id = ${order.id}
+      AND status = ${ORDER_STATUS.AWAITING_CONFIRMATION}
+      AND (confirmation_due_at IS NULL OR confirmation_due_at >= now())
     RETURNING *
   `;
+  // Guarded in the UPDATE too: a release (or the deadline) landing at the same
+  // moment must win, rather than this claim reopening a completed order.
+  if (!rows[0]) {
+    return res.status(409).json({ error: 'CLAIM_WINDOW_CLOSED' });
+  }
 
   const seller = await getUserContact(sql, order.seller_id);
   if (seller) {

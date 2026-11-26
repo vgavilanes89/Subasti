@@ -11,7 +11,7 @@ const AdminOverdueReviews = ({ loc, orders, loading, busyId, onRelease }) => {
 
     const L = loc === 'en' ? {
         title: 'Orders past their review window',
-        intro: 'The buyer marked these as received more than 48 hours ago and has neither released the funds nor filed a claim. Nothing releases them automatically. Releasing adds the money to the seller\'s balance in Payouts.',
+        intro: 'The buyer marked these as received more than 48 hours ago and did not release the funds or file a claim in time. They can no longer file one. Nothing releases the money automatically. Releasing adds the money to the seller\'s balance in Payouts.',
         none: 'No orders are past their review window.',
         stillOpen: (n) => `${n} ${n === 1 ? 'order is' : 'orders are'} still inside the 48-hour window.`,
         loading: 'Loading…',
@@ -26,7 +26,7 @@ const AdminOverdueReviews = ({ loc, orders, loading, busyId, onRelease }) => {
         working: 'Releasing…',
     } : {
         title: 'Pedidos con la ventana de revisión vencida',
-        intro: 'El comprador marcó estos pedidos como recibidos hace más de 48 horas y no ha liberado los fondos ni presentado un reclamo. Nada los libera automáticamente. Al liberar, el dinero se suma al saldo del vendedor en Pagos a Vendedores.',
+        intro: 'El comprador marcó estos pedidos como recibidos hace más de 48 horas y no liberó los fondos ni presentó un reclamo a tiempo. Ya no puede presentarlo. Nada libera el dinero automáticamente. Al liberar, el dinero se suma al saldo del vendedor en Pagos a Vendedores.',
         none: 'No hay pedidos con la ventana de revisión vencida.',
         stillOpen: (n) => `${n} ${n === 1 ? 'pedido sigue' : 'pedidos siguen'} dentro de la ventana de 48 horas.`,
         loading: 'Cargando…',
