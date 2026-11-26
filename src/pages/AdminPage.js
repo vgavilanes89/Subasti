@@ -12,7 +12,7 @@ import AdminItemEditModal from '../components/AdminItemEditModal';
 import AdminCreateUserModal from '../components/AdminCreateUserModal';
 import AdminSinpePayments from '../components/AdminSinpePayments';
 import AdminOverdueReviews from '../components/AdminOverdueReviews';
-import { overdueReviews } from '../lib/reviewWindow';
+import { overdueReviews, overdueDeliveries, DEFAULT_GRACE_DAYS } from '../lib/reviewWindow';
 
 const money = (amount, currency, loc) => CRC(amount, loc, currency);
 
@@ -112,6 +112,7 @@ const AdminPage = ({ loc }) => {
     const [messagingThreadId, setMessagingThreadId] = useState(null);
     const [payoutTarget, setPayoutTarget] = useState(null);
     const [resolvingClaim, setResolvingClaim] = useState(null);
+    const [graceDays, setGraceDays] = useState(DEFAULT_GRACE_DAYS);
     const [userQuery, setUserQuery] = useState('');
     const [userStatusFilter, setUserStatusFilter] = useState('all');
     const [userSort, setUserSort] = useState('newest');
@@ -132,7 +133,8 @@ const AdminPage = ({ loc }) => {
         tabAnalytics: 'Analytics',
         tabPayouts: 'Payouts',
         tabSinpe: 'SINPE Payments',
-        tabReview: 'Overdue Reviews',
+        tabReview: 'Overdue Orders',
+        confirmReleaseUnconfirmed: 'The buyer has NOT confirmed they received this item. Release the funds only if you have checked that it arrived (tracking, or the buyer told you). This cannot be undone.',
         releaseToSeller: 'Release funds to seller',
         confirmRelease: 'Release the held funds to the seller for this order? Do this once the item was received, or when the buyer and seller have settled it between themselves.',
         userManagement: 'User Management',
@@ -252,7 +254,8 @@ const AdminPage = ({ loc }) => {
         tabAnalytics: 'Analítica',
         tabPayouts: 'Pagos a Vendedores',
         tabSinpe: 'Pagos SINPE',
-        tabReview: 'Revisiones Vencidas',
+        tabReview: 'Pedidos Vencidos',
+        confirmReleaseUnconfirmed: 'El comprador NO ha confirmado que recibió este artículo. Libera los fondos solo si verificaste que llegó (rastreo, o el comprador te lo dijo). Esto no se puede deshacer.',
         releaseToSeller: 'Liberar fondos al vendedor',
         confirmRelease: '¿Liberar al vendedor los fondos retenidos de este pedido? Hazlo cuando el artículo fue recibido, o cuando comprador y vendedor lo arreglaron entre ellos.',
         userManagement: 'Gestión de Usuarios',
@@ -547,7 +550,8 @@ const AdminPage = ({ loc }) => {
     };
 
     const handleReleaseFunds = async (order) => {
-        if (!window.confirm(L.confirmRelease)) return;
+        // Stronger warning when nobody has confirmed the item ever arrived.
+        if (!window.confirm(order.status === 'shipped' ? L.confirmReleaseUnconfirmed : L.confirmRelease)) return;
         setActionError('');
         setResolvingClaim(order.id);
         try {
@@ -701,8 +705,8 @@ const AdminPage = ({ loc }) => {
                             className={`px-4 py-2 rounded-lg text-sm font-semibold ${tab === key ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                         >
                             {label}
-                            {key === 'review' && overdueReviews(orders).length > 0 && (
-                                <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5">{overdueReviews(orders).length}</span>
+                            {key === 'review' && overdueReviews(orders).length + overdueDeliveries(orders, graceDays).length > 0 && (
+                                <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5">{overdueReviews(orders).length + overdueDeliveries(orders, graceDays).length}</span>
                             )}
                             {key === 'orders' && claimPendingOrders.length > 0 && (
                                 <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5">{claimPendingOrders.length}</span>
@@ -1123,7 +1127,16 @@ const AdminPage = ({ loc }) => {
                 {tab === 'sinpe' && <AdminSinpePayments loc={loc} />}
 
                 {tab === 'review' && (
-                    <AdminOverdueReviews loc={loc} orders={orders} loading={loadingOrders} busyId={resolvingClaim} onRelease={handleReleaseFunds} />
+                    <AdminOverdueReviews
+                        loc={loc}
+                        orders={orders}
+                        loading={loadingOrders}
+                        busyId={resolvingClaim}
+                        onRelease={handleReleaseFunds}
+                        onMessage={(userId) => handleOpenMessage({ id: userId })}
+                        graceDays={graceDays}
+                        onGraceDaysChange={setGraceDays}
+                    />
                 )}
 
                 {tab === 'payouts' && (

@@ -297,6 +297,21 @@ export const HELP_TOPICS = [
                 kw: T('claim refund problem not as described fraud dispute', 'reclamo reembolso problema fraude disputa'),
             },
             {
+                id: 'esc-missing',
+                q: T('My item never arrived. What should I do?', 'Mi artículo nunca llegó. ¿Qué hago?'),
+                a: [
+                    { steps: [
+                        T('Do not mark the order as received.', 'No marques el pedido como recibido.'),
+                        T('Message the seller and check the tracking number, if there is one.', 'Escríbele al vendedor y revisa el número de rastreo, si hay uno.'),
+                        T('If it still has not arrived, contact us and include your order details. Choose "A complaint" as the topic.', 'Si aún no llega, contáctanos e incluye los datos de tu pedido. Elige "Un reclamo" como tema.'),
+                    ] },
+                    T('Your money stays in escrow in the meantime. If an item is not marked as received, Subasti may review the order before releasing the funds, which can include contacting you and the seller.',
+                      'Mientras tanto, tu dinero sigue en depósito. Si un artículo no se marca como recibido, Subasti puede revisar el pedido antes de liberar los fondos, lo que puede incluir contactarte a ti y al vendedor.'),
+                ],
+                links: [{ to: '/contact', label: T('Contact us', 'Contáctanos') }, { to: '/profile?tab=buying', label: T('My purchases', 'Mis compras') }],
+                kw: T('not arrived missing lost never received delivery late', 'no llego perdido nunca recibi entrega atrasada'),
+            },
+            {
                 id: 'esc-return',
                 q: T('What is the return policy?', '¿Cuál es la política de devoluciones?'),
                 a: [
