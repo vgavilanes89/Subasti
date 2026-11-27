@@ -473,7 +473,11 @@ const BuyerDashboard = ({
     ).length;
 
     const now = Date.now();
-    const bidRows = bids.map(entry => ({ entry, status: bidStatus(entry.item, user.id, now) }));
+    // Having a live order for it means they got it — including an accepted second-chance offer.
+    const bidRows = bids.map(entry => ({
+        entry,
+        status: orders.some(o => o.itemId === entry.item.id && o.status !== 'cancelled') ? 'won' : bidStatus(entry.item, user.id, now),
+    }));
     // Outbid first: those are the ones the buyer can still act on.
     const activeBids = bidRows
         .filter(r => r.status === 'outbid' || r.status === 'winning')

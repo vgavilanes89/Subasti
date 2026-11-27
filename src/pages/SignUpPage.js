@@ -1,10 +1,11 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import PasswordChecklist, { PASSWORD_PROBLEM_TEXT } from '../components/PasswordChecklist';
 import { checkPassword } from '../lib/passwordPolicy';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { COSTA_RICA_LOCATIONS, COUNTRY_CODES } from '../data/Constants';
 import PasswordInput from '../components/PasswordInput';
+import TurnstileWidget from '../components/TurnstileWidget';
 
 const SignupPage = ({loc}) => {
     const { signup } = useAuth();
@@ -12,6 +13,26 @@ const SignupPage = ({loc}) => {
     // Set only when the lookup returned a name for the number now in the box.
     const [verification, setVerification] = useState(null);
     const [cedulaError, setCedulaError] = useState('');
+    // Bot check before a lookup (only when the server has it switched on).
+    const [siteKey, setSiteKey] = useState(null);
+    const botToken = useRef('');
+    const botWidget = useRef(null);
+    const waitingForBotCheck = useRef(false);
+    const lookupRef = useRef(null);
+    useEffect(() => {
+        fetch('/api/cedula?config=1')
+            .then(res => (res.ok ? res.json() : null))
+            .then(config => setSiteKey(config?.turnstileSiteKey || null))
+            .catch(() => {});
+    }, []);
+    const handleBotToken = (token) => {
+        botToken.current = token;
+        if (token && waitingForBotCheck.current) {
+            waitingForBotCheck.current = false;
+            setCedulaError('');
+            lookupRef.current?.();
+        }
+    };
     const navigate = useNavigate();
     const [formData, setFormData] = useState({ cedula: '', realName: '', profileName: '', email: '', password: '', countryCode: '+506', phone: '', province: '', city: ''});
     const [isFetchingCedula, setIsFetchingCedula] = useState(false);
@@ -25,8 +46,8 @@ const SignupPage = ({loc}) => {
 
 
     const L = loc === 'en' 
-        ? {title:'Create Your Account', cedula: 'ID Number (Cédula)', fetching: 'Fetching...', realName: 'Full Name', profileName: 'Profile Name (public)', email:'Email', pass:'Password', phone:'Phone Number', province:'Province', city: 'City', submit:'Create Account', switch:'Already have an account?', link:'Log in', cedulaNotFound: 'We could not find a name for this ID number, so an account cannot be created with it. If you are not a Costa Rican national, another way to register is coming.', nameFromId: 'Filled in from your ID number', verifyFirst: 'Enter your ID number so we can verify your name before creating the account.', verifyAgain: 'Your ID verification expired. Click into the ID number box and out again to verify it.', profileNameInvalid: 'Profile name can only contain letters and numbers.', profileNameSameAsReal: 'Profile name cannot be the same as your full name.', select: 'Select...', profileNameHint: 'Letters and numbers only, no spaces.'}
-        : {title:'Crea Tu Cuenta', cedula: 'Número de Cédula', fetching: 'Consultando...', realName: 'Nombre Completo', profileName: 'Nombre de Perfil (público)', email:'Correo', pass:'Contraseña', phone:'Número de Teléfono', province:'Provincia', city: 'Cantón', submit:'Crear Cuenta', switch:'¿Ya tienes una cuenta?', link:'Inicia sesión', cedulaNotFound: 'No encontramos un nombre para esta cédula, así que no se puede crear una cuenta con ella. Si no eres costarricense, pronto habrá otra forma de registrarte.', nameFromId: 'Se completa con tu cédula', verifyFirst: 'Escribe tu cédula para verificar tu nombre antes de crear la cuenta.', verifyAgain: 'La verificación de tu cédula venció. Entra en la casilla de cédula y sal de nuevo para verificarla.', profileNameInvalid: 'El nombre de perfil solo puede contener letras y números.', profileNameSameAsReal: 'El nombre de perfil no puede ser igual a su nombre completo.', select: 'Seleccionar...', profileNameHint: 'Solo letras y números, sin espacios.'};
+        ? {title:'Create Your Account', cedula: 'ID Number (Cédula)', fetching: 'Fetching...', realName: 'Full Name', profileName: 'Profile Name (public)', email:'Email', pass:'Password', phone:'Phone Number', province:'Province', city: 'City', submit:'Create Account', switch:'Already have an account?', link:'Log in', cedulaNotFound: 'We could not find a name for this ID number, so an account cannot be created with it. If you are not a Costa Rican national, another way to register is coming.', nameFromId: 'Filled in from your ID number', botCheckWait: 'Complete the security check below to verify your ID.', botCheckFailed: 'The security check did not pass. Try it again, then click into the ID box and out.', alreadyRegistered: 'An account already exists for this ID number. Log in, or reset your password if you forgot it.', lookupLimit: 'Too many ID lookups from your connection. Please try again later.', verifyFirst: 'Enter your ID number so we can verify your name before creating the account.', verifyAgain: 'Your ID verification expired. Click into the ID number box and out again to verify it.', profileNameInvalid: 'Profile name can only contain letters and numbers.', profileNameSameAsReal: 'Profile name cannot be the same as your full name.', select: 'Select...', profileNameHint: 'Letters and numbers only, no spaces.'}
+        : {title:'Crea Tu Cuenta', cedula: 'Número de Cédula', fetching: 'Consultando...', realName: 'Nombre Completo', profileName: 'Nombre de Perfil (público)', email:'Correo', pass:'Contraseña', phone:'Número de Teléfono', province:'Provincia', city: 'Cantón', submit:'Crear Cuenta', switch:'¿Ya tienes una cuenta?', link:'Inicia sesión', cedulaNotFound: 'No encontramos un nombre para esta cédula, así que no se puede crear una cuenta con ella. Si no eres costarricense, pronto habrá otra forma de registrarte.', nameFromId: 'Se completa con tu cédula', botCheckWait: 'Completa la verificación de seguridad de abajo para verificar tu cédula.', botCheckFailed: 'La verificación de seguridad no pasó. Inténtalo de nuevo y luego entra y sal de la casilla de cédula.', alreadyRegistered: 'Ya existe una cuenta para esta cédula. Inicia sesión, o restablece tu contraseña si la olvidaste.', lookupLimit: 'Demasiadas consultas de cédula desde tu conexión. Inténtalo más tarde.', verifyFirst: 'Escribe tu cédula para verificar tu nombre antes de crear la cuenta.', verifyAgain: 'La verificación de tu cédula venció. Entra en la casilla de cédula y sal de nuevo para verificarla.', profileNameInvalid: 'El nombre de perfil solo puede contener letras y números.', profileNameSameAsReal: 'El nombre de perfil no puede ser igual a su nombre completo.', select: 'Seleccionar...', profileNameHint: 'Solo letras y números, sin espacios.'};
     
     const selectedCountry = useMemo(() => COUNTRY_CODES.find(c => c.code === formData.countryCode), [formData.countryCode]);
 
@@ -134,11 +155,29 @@ const SignupPage = ({loc}) => {
             return;
         }
 
+        // Wait for the bot check; the lookup then runs by itself.
+        if (siteKey && !botToken.current) {
+            waitingForBotCheck.current = true;
+            setCedulaError(L.botCheckWait);
+            return;
+        }
+
         setIsFetchingCedula(true);
         setVerification(null);
         setCedulaError('');
         try {
-            const res = await fetch(`/api/cedula?cedula=${encodeURIComponent(formData.cedula)}`);
+            const res = await fetch(`/api/cedula?cedula=${encodeURIComponent(formData.cedula)}`, {
+                headers: botToken.current ? { 'x-turnstile-token': botToken.current } : {},
+            });
+            if (res.status === 403) {
+                setCedulaError(L.botCheckFailed);
+                return;
+            }
+            if (res.status === 409) {
+                setFormData((prev) => ({ ...prev, realName: '' }));
+                setCedulaError(L.alreadyRegistered);
+                return;
+            }
             if (res.status === 404) {
                 cedulaLookupCache.current = { cedula: formData.cedula, result: 'not_found' };
                 setFormData((prev) => ({ ...prev, realName: '' }));
@@ -146,7 +185,7 @@ const SignupPage = ({loc}) => {
                 return;
             }
             if (res.status === 429) {
-                alert(loc === 'en' ? 'Too many attempts. Please wait a moment and try again.' : 'Demasiados intentos. Espere un momento e intente de nuevo.');
+                setCedulaError(L.lookupLimit);
                 return;
             }
             if (res.status === 503) {
@@ -175,8 +214,14 @@ const SignupPage = ({loc}) => {
             alert(loc === 'en' ? 'Could not look up ID number.' : 'No se pudo consultar la cédula.');
         } finally {
             setIsFetchingCedula(false);
+            // A bot-check token only works once.
+            if (siteKey) {
+                botToken.current = '';
+                botWidget.current?.reset();
+            }
         }
     };
+    lookupRef.current = handleFetchCedulaData;
 
     return (
         <div className="max-w-md mx-auto mt-8">
@@ -199,6 +244,9 @@ const SignupPage = ({loc}) => {
                             className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 disabled:bg-gray-100"
                         />
                         {cedulaError && <p className="text-xs text-red-600 mt-1" role="alert">{cedulaError}</p>}
+                        {siteKey && (
+                            <TurnstileWidget ref={botWidget} siteKey={siteKey} loc={loc} onToken={handleBotToken} onError={() => setCedulaError(L.botCheckFailed)} />
+                        )}
                     </div>
                     <div>
                         <label className="text-sm font-bold text-gray-700 block mb-2">{L.realName}</label>
