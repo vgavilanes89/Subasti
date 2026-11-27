@@ -11,5 +11,6 @@ export default async function handler(req, res) {
   const sql = getSql();
   const rows = await sql`SELECT * FROM items ORDER BY created_at DESC`;
   const canSee = await reserveViewer(sql, getUserIdFromRequest(req));
-  return res.status(200).json(rows.map((row) => toPublicItem(row, { includeReserve: canSee(row) })));
+  // Filtered here, not in SQL, so this works before sql/025 adds the column.
+  return res.status(200).json(rows.filter((row) => !row.removed_at).map((row) => toPublicItem(row, { includeReserve: canSee(row) })));
 }

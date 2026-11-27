@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useItems } from '../context/ItemsContext';
+import { useSellerReviews } from '../lib/useSellerReviews';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { PLACEHOLDER_IMG, CRC, CountdownTimer, StarRating, calculateAverageRating, useCountdown, itemCurrency } from '../components/Shared';
+import { PLACEHOLDER_IMG, CRC, CountdownTimer, StarRating, useCountdown, itemCurrency } from '../components/Shared';
 import { tCategory, tSubCategory, formatCondition } from '../data/i18n';
 import { getAttributeFields, fieldLabel, optionLabel } from '../data/categoryAttributes';
 import { getMinBid, fetchItem } from '../api/items';
@@ -98,10 +99,7 @@ const ItemViewPage = ({ loc }) => {
         const timer = setTimeout(() => { fetchItem(itemId).then(replaceItem).catch(() => {}); }, 2000);
         return () => clearTimeout(timer);
     }, [item, isFinished, replaceItem]);
-    const averageRating = useMemo(
-        () => calculateAverageRating(seller ? seller.reviews : []),
-        [seller]
-    );
+    const { average: averageRating, count: reviewCount } = useSellerReviews(item?.sellerId);
     const attributeFields = useMemo(
         () => (item ? getAttributeFields(item.category, item.subCategory) : []),
         [item]
@@ -164,6 +162,7 @@ const ItemViewPage = ({ loc }) => {
         ownItem: 'You cannot bid on your own listing.',
         bidCount: 'Total bids',
         messageSeller: 'Message seller',
+        manageListing: 'Edit or delete it from your seller profile',
         closeChat: 'Close chat',
         loginToMessage: 'Log in to message the seller',
         ownItemMessage: 'You cannot message yourself about your own listing.',
@@ -216,6 +215,7 @@ const ItemViewPage = ({ loc }) => {
         ownItem: 'No puedes pujar en tu propio artículo.',
         bidCount: 'Ofertas totales',
         messageSeller: 'Enviar mensaje al vendedor',
+        manageListing: 'Edítala o elimínala desde tu perfil de vendedor',
         closeChat: 'Cerrar chat',
         loginToMessage: 'Inicia sesión para escribirle al vendedor',
         ownItemMessage: 'No puedes enviarte mensajes sobre tu propio artículo.',
@@ -369,7 +369,7 @@ const ItemViewPage = ({ loc }) => {
                                             <p className="text-4xl font-extrabold text-gray-900">{CRC(item.currentBid, loc, currency)}</p>
                                             <p className="text-xs text-gray-500 mt-1">{L.bidCount}: {item.bids || 0}</p>
                                             {isOwn ? (
-                                                <div className="mt-4 bg-gray-100 p-4 rounded-lg text-center text-gray-700">{L.yourListingNotice}</div>
+                                                <div className="mt-4 bg-gray-100 p-4 rounded-lg text-center text-gray-700">{L.yourListingNotice}<button type="button" className="tap-target block mx-auto mt-2 text-purple-600 font-semibold hover:underline" onClick={() => navigate('/profile?tab=selling')}>{L.manageListing}</button></div>
                                             ) : (
                                             <div className="mt-4 space-y-2">
                                                 <label className="block text-sm font-semibold text-gray-700">{L.yourBid}</label>
@@ -417,7 +417,7 @@ const ItemViewPage = ({ loc }) => {
                                     {item.quantity <= 0 ? (
                                         <p className="mt-6 text-red-600 font-bold">{L.outOfStock}</p>
                                     ) : isOwn ? (
-                                        <div className="mt-6 bg-gray-100 p-4 rounded-lg text-center text-gray-700">{L.yourListingNotice}</div>
+                                        <div className="mt-6 bg-gray-100 p-4 rounded-lg text-center text-gray-700">{L.yourListingNotice}<button type="button" className="tap-target block mx-auto mt-2 text-purple-600 font-semibold hover:underline" onClick={() => navigate('/profile?tab=selling')}>{L.manageListing}</button></div>
                                     ) : (
                                         <div className="mt-6 flex gap-4">
                                             <button className="flex-1 bg-purple-100 text-purple-700 py-3 rounded-lg font-bold hover:bg-purple-200" onClick={handleAddToCart}>{L.add}</button>
@@ -439,7 +439,7 @@ const ItemViewPage = ({ loc }) => {
                                     {averageRating > 0 && (
                                         <span className="inline-flex items-center">
                                             <StarRating rating={averageRating} />
-                                            <span className="text-xs text-gray-500 ml-1">({seller.reviews.length})</span>
+                                            <span className="text-xs text-gray-500 ml-1">({reviewCount})</span>
                                         </span>
                                     )}
                                 </p>

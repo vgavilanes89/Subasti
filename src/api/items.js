@@ -53,3 +53,23 @@ export const placeBid = async (id, amount) => {
     if (!res.ok) throw new Error(await parseErrorMessage(res, 'Could not place bid'));
     return res.json();
 };
+
+// A seller's own listings: what may be changed, editing and taking down.
+export const fetchMyListingStates = async () => {
+    const res = await fetch('/api/items/mine');
+    if (!res.ok) throw new Error('Could not load your listings');
+    return (await res.json()).listings;
+};
+
+const manageListing = async (body) => {
+    const res = await fetch('/api/items/mine', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(await parseErrorMessage(res, 'Could not update your listing'));
+    return res.json();
+};
+
+export const updateListing = (id, fields) => manageListing({ ...fields, action: 'update', id });
+export const removeListing = (id) => manageListing({ action: 'remove', id });

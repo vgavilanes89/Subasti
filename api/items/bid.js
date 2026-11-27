@@ -23,7 +23,7 @@ export default async function handler(req, res) {
   const sql = getSql();
   const rows = await sql`SELECT * FROM items WHERE id = ${itemId}`;
   const row = rows[0];
-  if (!row || row.sale_type !== 'auc') {
+  if (!row || row.removed_at || row.sale_type !== 'auc') {
     return res.status(400).json({ error: 'INVALID_AUCTION' });
   }
   if (row.end_at && new Date(row.end_at).getTime() < Date.now()) {

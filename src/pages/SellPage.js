@@ -1,10 +1,12 @@
-import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useItems } from '../context/ItemsContext';
 import { tCategory, tSubCategory } from '../data/i18n';
 import { getAttributeFields, fieldLabel } from '../data/categoryAttributes';
 import { uploadImage } from '../api/upload';
+import { fetchItem, fetchMyListingStates } from '../api/items';
+import { listingErrorText } from '../data/listingMessages';
 import { PAYMENT_METHODS, paymentMethodLabel } from '../data/paymentMethods';
 
 // Reusable Form Components
@@ -24,8 +26,11 @@ const FormField = ({ label, children }) => (
 
 const SellPage = ({ loc, categories }) => {
     const { user } = useAuth();
-    const { addItem } = useItems();
+    const { addItem, updateMyListing } = useItems();
     const navigate = useNavigate();
+    // /sell lists a new item; /sell/:id edits one of your own.
+    const { id: editId } = useParams();
+    const isEdit = Boolean(editId);
     // If categories is not passed, fallback to empty object to prevent crash
     const CATEGORIES = categories || {}; 
     const initialCategory = Object.keys(CATEGORIES)[0] || '';
@@ -54,6 +59,63 @@ const SellPage = ({ loc, categories }) => {
         // Which ways the buyer may pay; at least one must stay selected.
         paymentMethods: [...PAYMENT_METHODS],
     });
+    // null = ready; otherwise what to show instead of the form.
+    const [editStatus, setEditStatus] = useState(isEdit ? 'loading' : null);
+    // An auction that already ended needs a new duration to run again.
+    const [hasEnded, setHasEnded] = useState(false);
+    const [currentEndAt, setCurrentEndAt] = useState(null);
+    const userId = user?.id;
+
+    useEffect(() => {
+        if (!editId || !userId) return undefined;
+        let cancelled = false;
+        setEditStatus('loading');
+        Promise.all([fetchItem(editId), fetchMyListingStates()])
+            .then(([item, states]) => {
+                if (cancelled) return;
+                const state = states[editId];
+                if (item.sellerId !== userId || !state) { setEditStatus('NOT_FOUND'); return; }
+                if (state.editBlocked) { setEditStatus(state.editBlocked); return; }
+                const ended = item.saleType === 'auc' && item.endAt <= Date.now();
+                const text = (v) => (v === null || v === undefined ? '' : String(v));
+                setHasEnded(ended);
+                setCurrentEndAt(item.endAt);
+                setFormData(prev => ({
+                    ...prev,
+                    title: item.title,
+                    description: item.description || '',
+                    saleType: item.saleType,
+                    category: item.category,
+                    subCategory: item.subCategory || '',
+                    condition: item.condition || 'new',
+                    usedConditionDetail: item.conditionDetail || '',
+                    price: text(item.price),
+                    buyNowPrice: text(item.buyNowPrice),
+                    reservePrice: text(item.reservePrice),
+                    quantity: Math.max(1, item.quantity || 1),
+                    // '' keeps the current end time.
+                    auctionDuration: ended ? '7' : '',
+                    images: item.images?.length ? item.images : [item.image].filter(Boolean),
+                    shippingShip: item.shippingShip,
+                    shippingLocal: item.shippingLocal,
+                    shippingCost: item.shippingShip ? text(item.shippingCost) : prev.shippingCost,
+                    currency: item.currency || 'CRC',
+                    attributes: item.attributes || {},
+                    paymentMethods: item.paymentMethods,
+                }));
+                setEditStatus(null);
+            })
+            .catch(() => { if (!cancelled) setEditStatus('NOT_FOUND'); });
+        return () => { cancelled = true; };
+    }, [editId, userId]);
+
+    // Older listings can carry a category that has since been renamed; keep it
+    // selectable rather than silently switching the listing to another one.
+    const categoryOptions = Object.keys(CATEGORIES);
+    if (formData.category && !categoryOptions.includes(formData.category)) categoryOptions.unshift(formData.category);
+    const subCategoryOptions = [...(CATEGORIES[formData.category] || [])];
+    if (formData.subCategory && !subCategoryOptions.includes(formData.subCategory)) subCategoryOptions.unshift(formData.subCategory);
+
     const [isDragging, setIsDragging] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [uploadingImages, setUploadingImages] = useState(false);
@@ -117,6 +179,14 @@ const SellPage = ({ loc, categories }) => {
         dollars: 'US Dollars ($ USD)',
         pricingNote: 'All prices for this listing use the selected currency.',
         itemDetails: 'Item Details',
+        editTitle: 'Edit Your Listing',
+        save: 'Save Changes',
+        saving: 'Saving…',
+        saveError: 'Could not save your changes. Please try again.',
+        keepEnd: 'Keep the current end time',
+        saleTypeFixed: 'The sale type can\'t be changed after publishing.',
+        loadingListing: 'Loading your listing…',
+        backToProfile: 'Back to your profile',
     } : {
         title: 'Publica Tu Artículo',
         itemTitle: 'Título del Artículo',
@@ -175,6 +245,14 @@ const SellPage = ({ loc, categories }) => {
         dollars: 'Dólares ($ USD)',
         pricingNote: 'Todos los precios de esta publicación usarán la moneda seleccionada.',
         itemDetails: 'Detalles del Artículo',
+        editTitle: 'Editar Publicación',
+        save: 'Guardar Cambios',
+        saving: 'Guardando…',
+        saveError: 'No se pudieron guardar los cambios. Intenta de nuevo.',
+        keepEnd: 'Mantener la fecha de cierre actual',
+        saleTypeFixed: 'El tipo de venta no se puede cambiar después de publicar.',
+        loadingListing: 'Cargando tu publicación…',
+        backToProfile: 'Volver a tu perfil',
     };
 
     const descriptionWordCount = useMemo(() => {
@@ -183,11 +261,12 @@ const SellPage = ({ loc, categories }) => {
 
     const auctionEndDate = useMemo(() => {
         if (formData.saleType !== 'auc') return null;
+        if (!formData.auctionDuration) return currentEndAt ? new Date(currentEndAt) : null;
         const now = new Date();
         const durationDays = parseInt(formData.auctionDuration, 10);
         now.setDate(now.getDate() + durationDays);
         return now;
-    }, [formData.saleType, formData.auctionDuration]);
+    }, [formData.saleType, formData.auctionDuration, currentEndAt]);
 
     const attributeFields = useMemo(
         () => getAttributeFields(formData.category, formData.subCategory),
@@ -340,6 +419,19 @@ const SellPage = ({ loc, categories }) => {
             }
         }
 
+        if (isEdit) {
+            setSubmitting(true);
+            try {
+                await updateMyListing(editId, formData);
+                navigate(`/item/${editId}`);
+            } catch (err) {
+                alert(listingErrorText(err.message, loc) || L.saveError);
+            } finally {
+                setSubmitting(false);
+            }
+            return;
+        }
+
         const newItem = {
             id: `item_${Date.now()}`,
             sellerId: user.id,
@@ -386,10 +478,23 @@ const SellPage = ({ loc, categories }) => {
         );
     }
     
+    if (editStatus) {
+        return (
+            <div className="bg-white p-8 rounded-lg shadow-md border text-center max-w-2xl mx-auto">
+                <p className="text-gray-700">{editStatus === 'loading' ? L.loadingListing : (listingErrorText(editStatus, loc) || L.saveError)}</p>
+                {editStatus !== 'loading' && (
+                    <button onClick={() => navigate('/profile?tab=selling')} className="mt-6 bg-purple-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-purple-700 transition-colors">
+                        {L.backToProfile}
+                    </button>
+                )}
+            </div>
+        );
+    }
+
     return (
         <div className="max-w-4xl mx-auto">
             <div className="bg-white p-8 rounded-lg shadow-md border border-gray-200">
-                <h2 className="text-3xl font-bold text-center text-gray-800 mb-8">{L.title}</h2>
+                <h2 className="text-3xl font-bold text-center text-gray-800 mb-8">{isEdit ? L.editTitle : L.title}</h2>
                 <form onSubmit={handleSubmit} className="space-y-8">
                     {/* Basic Info */}
                     <div>
@@ -407,7 +512,7 @@ const SellPage = ({ loc, categories }) => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <FormField label={L.category}>
                                 <select name="category" value={formData.category} onChange={handleChange} className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500">
-                                    {Object.keys(CATEGORIES).map(c => <option key={c} value={c}>{tCategory(c, loc)}</option>)}
+                                    {categoryOptions.map(c => <option key={c} value={c}>{tCategory(c, loc)}</option>)}
                                 </select>
                             </FormField>
                             <FormField label={L.subCategory}>
@@ -415,19 +520,20 @@ const SellPage = ({ loc, categories }) => {
                                     name="subCategory" 
                                     value={formData.subCategory} 
                                     onChange={handleChange} 
-                                    disabled={!formData.category || !CATEGORIES[formData.category]}
+                                    disabled={subCategoryOptions.length === 0}
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 disabled:bg-gray-100"
                                 >
-                                    {formData.category && CATEGORIES[formData.category] && CATEGORIES[formData.category].map(sub => <option key={sub} value={sub}>{tSubCategory(sub, loc)}</option>)}
+                                    {subCategoryOptions.map(sub => <option key={sub} value={sub}>{tSubCategory(sub, loc)}</option>)}
                                 </select>
                             </FormField>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
                             <FormField label={L.saleType}>
-                                <select name="saleType" value={formData.saleType} onChange={handleChange} className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500">
+                                <select name="saleType" value={formData.saleType} onChange={handleChange} disabled={isEdit} className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 disabled:bg-gray-100">
                                     <option value="auc">{L.auction}</option>
                                     <option value="buy">{L.buyNow}</option>
                                 </select>
+                                {isEdit && <p className="text-xs text-gray-500 mt-1">{L.saleTypeFixed}</p>}
                             </FormField>
                             <FormField label={L.condition}>
                                 <select name="condition" value={formData.condition} onChange={handleChange} className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500">
@@ -473,6 +579,7 @@ const SellPage = ({ loc, categories }) => {
                     {formData.condition === 'used' && (
                         <FormSection title={L.usedInfo}>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {!isEdit && (
                                 <FormField label={L.usedCondition}>
                                     <select name="usedCondition" value={formData.usedCondition} onChange={handleChange} className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500">
                                         <option value="like_new">{L.likeNew}</option>
@@ -481,8 +588,9 @@ const SellPage = ({ loc, categories }) => {
                                         <option value="parts_only">{L.partsOnly}</option>
                                     </select>
                                 </FormField>
+                                )}
                                 <FormField label={L.conditionDetail}>
-                                    <input type="text" name="usedConditionDetail" value={formData.usedConditionDetail} onChange={handleChange} required={formData.usedCondition === 'fair' || formData.usedCondition === 'parts_only'} className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" />
+                                    <input type="text" name="usedConditionDetail" value={formData.usedConditionDetail} onChange={handleChange} required={!isEdit && (formData.usedCondition === 'fair' || formData.usedCondition === 'parts_only')} className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" />
                                 </FormField>
                             </div>
                         </FormSection>
@@ -525,6 +633,7 @@ const SellPage = ({ loc, categories }) => {
                                 <div className="md:col-span-2">
                                     <FormField label={L.auctionDuration}>
                                         <select name="auctionDuration" value={formData.auctionDuration} onChange={handleChange} className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500">
+                                            {isEdit && !hasEnded && <option value="">{L.keepEnd}</option>}
                                             <option value="1">{L.fastAuc24h}</option>
                                             <option value="3">{L.days3}</option>
                                             <option value="7">{L.days7}</option>
@@ -645,7 +754,7 @@ const SellPage = ({ loc, categories }) => {
                         </div>
                     </FormSection>
                     
-                    <button type="submit" disabled={submitting || uploadingImages} className="w-full bg-purple-600 text-white py-4 mt-6 rounded-lg font-semibold text-lg hover:bg-purple-700 transition-colors disabled:opacity-60">{submitting ? L.publishing : (uploadingImages ? L.uploadingImages : L.publish)}</button>
+                    <button type="submit" disabled={submitting || uploadingImages} className="w-full bg-purple-600 text-white py-4 mt-6 rounded-lg font-semibold text-lg hover:bg-purple-700 transition-colors disabled:opacity-60">{submitting ? (isEdit ? L.saving : L.publishing) : (uploadingImages ? L.uploadingImages : (isEdit ? L.save : L.publish))}</button>
                 </form>
             </div>
         </div>

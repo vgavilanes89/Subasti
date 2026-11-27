@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import * as authService from '../api/auth';
 import * as accountApi from '../api/account';
 import * as avatarApi from '../api/avatar';
+import { LOGOUT_EVENT } from '../lib/events';
 
 const AuthContext = createContext();
 
@@ -25,6 +26,8 @@ async function parseErrorMessage(res, fallback) {
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
+    // False until we know whether there's a session to restore.
+    const [authReady, setAuthReady] = useState(false);
     // Real accounts (from /api/auth/*) aren't in this mock map, so merge each
     // one in on login/signup/session-restore — the rest of the app (seller
     // profiles, reviews, messages) still reads other users from here.
@@ -39,7 +42,8 @@ export const AuthProvider = ({ children }) => {
                 setUser(restoredUser);
                 setUsersMap(prev => ({ ...prev, [restoredUser.id]: restoredUser }));
             })
-            .catch(() => {});
+            .catch(() => {})
+            .finally(() => { if (!cancelled) setAuthReady(true); });
         return () => { cancelled = true; };
     }, []);
 
@@ -122,6 +126,8 @@ export const AuthProvider = ({ children }) => {
 
     const logout = async () => {
         setUser(null);
+        // Choosing to sign out also empties this browser's cart.
+        window.dispatchEvent(new Event(LOGOUT_EVENT));
         try {
             await fetch('/api/auth/logout', { method: 'POST' });
         } catch {
@@ -226,6 +232,7 @@ export const AuthProvider = ({ children }) => {
     return (
         <AuthContext.Provider value={{ 
             user, 
+            authReady,
             users: usersMap, // Expose all users for read-only (like reviews)
             login,
             logout,

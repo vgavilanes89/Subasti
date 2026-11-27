@@ -729,4 +729,19 @@ const CheckoutFormBody = (props) => {
     );
 };
 
-export default CheckoutPage;
+// Checkout picks its defaults (delivery, address, payment) when it first
+// renders, so after a refresh wait for the session and saved cart first.
+const CheckoutGate = ({ loc }) => {
+    const { authReady } = useAuth();
+    const { cartLoading } = useCart();
+    if (!authReady || cartLoading) {
+        return (
+            <div className="bg-white p-8 rounded-lg shadow-md border text-center text-gray-500">
+                {loc === 'en' ? 'Loading your cart…' : 'Cargando tu carrito…'}
+            </div>
+        );
+    }
+    return <CheckoutPage loc={loc} />;
+};
+
+export default CheckoutGate;

@@ -17,7 +17,7 @@ export default async function handler(req, res) {
 
   const sql = getSql();
   const rows = await sql`SELECT * FROM items WHERE id = ${id}`;
-  if (!rows[0]) {
+  if (!rows[0] || rows[0].removed_at) {
     return res.status(404).json({ error: 'Item not found' });
   }
   const canSee = await reserveViewer(sql, getUserIdFromRequest(req));

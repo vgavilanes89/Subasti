@@ -80,7 +80,8 @@ export function parsePaymentMethods(raw) {
 // of this to a client as it is.
 export async function getItemById(sql, id) {
   const rows = await sql`SELECT * FROM items WHERE id = ${id}`;
-  return rows[0] ? toPublicItem(rows[0], { includeReserve: true }) : null;
+  // A listing its seller took down can't be bought or settled.
+  return rows[0] && !rows[0].removed_at ? toPublicItem(rows[0], { includeReserve: true }) : null;
 }
 
 // Returns (row) => may this requester see that row's reserve price?

@@ -11,11 +11,14 @@ export const ItemsProvider = ({ children }) => {
     const { user } = useAuth();
     const [items, setItems] = useState([]);
     const [favorites, setFavorites] = useState([]);
+    // False until the catalog has arrived, so nothing treats "not loaded yet" as "gone".
+    const [itemsLoaded, setItemsLoaded] = useState(false);
 
     useEffect(() => {
         const load = async () => {
             const data = await itemsService.fetchItems();
             setItems(data);
+            setItemsLoaded(true);
         };
         load();
         // Reloaded on login/logout: a seller or admin receives reserve prices that others don't.
@@ -39,6 +42,18 @@ export const ItemsProvider = ({ children }) => {
 
     const removeItem = async (id) => {
         await itemsService.deleteItem(id);
+        setItems(prev => prev.filter(i => i.id !== id));
+    };
+
+    // The seller's own edit and delete (see api/items/mine.js).
+    const updateMyListing = async (id, fields) => {
+        const updated = await itemsService.updateListing(id, fields);
+        setItems(prev => prev.map(i => (i.id === id ? updated : i)));
+        return updated;
+    };
+
+    const removeMyListing = async (id) => {
+        await itemsService.removeListing(id);
         setItems(prev => prev.filter(i => i.id !== id));
     };
 
@@ -69,7 +84,7 @@ export const ItemsProvider = ({ children }) => {
     };
 
     return (
-        <ItemsContext.Provider value={{ items, addItem, removeItem, replaceItem, placeBid: placeBidOnItem, favorites, toggleFav, isFav }}>
+        <ItemsContext.Provider value={{ items, itemsLoaded, updateMyListing, removeMyListing, addItem, removeItem, replaceItem, placeBid: placeBidOnItem, favorites, toggleFav, isFav }}>
             {children}
         </ItemsContext.Provider>
     );

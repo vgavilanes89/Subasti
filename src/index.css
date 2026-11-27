@@ -414,6 +414,24 @@ code {
   overflow-x: auto;
 }
 
+.seller-listing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.75rem;
+  min-width: 9rem;
+}
+
+.seller-link-btn--danger {
+  color: #b91c1c;
+}
+
+.seller-listing-note {
+  flex-basis: 100%;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
 .seller-table {
   width: 100%;
   border-collapse: collapse;
@@ -2063,4 +2081,28 @@ code {
 
 .pw-toggle:focus-visible {
   outline: 2px solid var(--brand-gold);
+}
+
+.review-form {
+  align-items: stretch;
+  text-align: left;
+}
+
+.review-stars {
+  display: flex;
+}
+
+.review-star {
+  background: none;
+  border: none;
+  cursor: pointer;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  font-size: 1.75rem;
+  line-height: 1;
+  color: #d1d5db;
+}
+
+.review-star--on {
+  color: #f59e0b;
 }

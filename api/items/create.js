@@ -1,18 +1,10 @@
 import { getSql } from '../_lib/db.js';
 import { getUserIdFromRequest } from '../_lib/session.js';
-import { toPublicItem, generateItemId, generateItemNumber, sanitizeAttributes, parsePaymentMethods } from '../_lib/items.js';
+import { toPublicItem, generateItemId, generateItemNumber } from '../_lib/items.js';
+import { parseListingInput, DAY_MS } from '../_lib/listing.js';
 
 const UNIQUE_VIOLATION = '23505';
 const MAX_ITEM_NUMBER_ATTEMPTS = 5;
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-const MAX_IMAGES = 5;
-// Images are uploaded to Blob storage client-side (see src/api/upload.js)
-// before this endpoint ever sees them, so it should only receive short
-// URLs — never raw base64. A 2048-char cap is generous for any real URL
-// and rejects anyone bypassing that upload flow.
-const MAX_IMAGE_URL_CHARS = 2048;
-const IMAGE_URL_PATTERN = /^https?:\/\//i;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -26,34 +18,13 @@ export default async function handler(req, res) {
   }
 
   const body = typeof req.body === 'object' && req.body ? req.body : {};
-  const title = typeof body.title === 'string' ? body.title.trim() : '';
-  const description = typeof body.description === 'string' ? body.description.trim() : '';
-  const category = typeof body.category === 'string' ? body.category : '';
-  const subCategory = typeof body.subCategory === 'string' ? body.subCategory : null;
   const saleType = body.saleType === 'auc' ? 'auc' : 'buy';
-  const condition = body.condition === 'used' ? 'used' : 'new';
-  // SellPage's form state calls this field usedConditionDetail; the catalog
-  // (and every reader of it) calls it conditionDetail.
-  const conditionDetail = condition === 'used' && typeof body.usedConditionDetail === 'string'
-    ? body.usedConditionDetail.trim() || null
-    : null;
-  const currency = body.currency === 'USD' ? 'USD' : 'CRC';
-  const price = Number(body.price);
-  const images = Array.isArray(body.images)
-    ? body.images.filter((u) => typeof u === 'string' && u.length <= MAX_IMAGE_URL_CHARS && IMAGE_URL_PATTERN.test(u))
-    : [];
-  const shippingShip = Boolean(body.shippingShip);
-  const shippingLocal = Boolean(body.shippingLocal);
-  const shippingCost = shippingShip ? Number(body.shippingCost) || 0 : 0;
-  const attributes = sanitizeAttributes(body.attributes);
-  const paymentMethods = parsePaymentMethods(body.paymentMethods);
-
-  if (!title || title.length < 10) return res.status(400).json({ error: 'INVALID_TITLE' });
-  if (!category) return res.status(400).json({ error: 'INVALID_CATEGORY' });
-  if (!Number.isFinite(price) || price <= 0) return res.status(400).json({ error: 'INVALID_PRICE' });
-  if (!paymentMethods) return res.status(400).json({ error: 'PAYMENT_METHOD_REQUIRED' });
-  if (images.length === 0) return res.status(400).json({ error: 'IMAGES_REQUIRED' });
-  if (images.length > MAX_IMAGES) return res.status(400).json({ error: 'TOO_MANY_IMAGES' });
+  const parsed = parseListingInput(body);
+  if (parsed.error) return res.status(400).json({ error: parsed.error });
+  const {
+    title, description, category, subCategory, condition, conditionDetail, currency, price, images,
+    shippingShip, shippingLocal, shippingCost, attributes, paymentMethods,
+  } = parsed.value;
 
   let quantity = 1;
   let buyNowPrice = null;
@@ -63,20 +34,14 @@ export default async function handler(req, res) {
   let endAt = null;
 
   if (saleType === 'buy') {
-    quantity = Number.isFinite(Number(body.quantity)) && Number(body.quantity) > 0 ? Math.floor(Number(body.quantity)) : 1;
+    quantity = parsed.value.quantity;
   } else {
     const durationDays = Number.isFinite(Number(body.auctionDuration)) ? Number(body.auctionDuration) : 7;
     endAt = new Date(Date.now() + durationDays * DAY_MS);
     currentBid = price;
     bids = 0;
-    if (body.reservePrice) {
-      const rp = Number(body.reservePrice);
-      if (Number.isFinite(rp) && rp > 0) reservePrice = rp;
-    }
-    if (body.buyNowPrice) {
-      const bnp = Number(body.buyNowPrice);
-      if (Number.isFinite(bnp) && bnp > 0) buyNowPrice = bnp;
-    }
+    reservePrice = parsed.value.reservePrice;
+    buyNowPrice = parsed.value.buyNowPrice;
   }
 
   const sql = getSql();

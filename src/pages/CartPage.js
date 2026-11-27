@@ -6,7 +6,7 @@ import { PLACEHOLDER_IMG, CRC, itemCurrency, formatMoneyTotals } from '../compon
 import { tCategory } from '../data/i18n';
 
 const CartPage = ({ loc }) => {
-    const { cart, updateQuantity, removeFromCart } = useCart();
+    const { cart, cartLoading, updateQuantity, removeFromCart } = useCart();
     const { items } = useItems();
     const navigate = useNavigate();
     const L = loc === 'en' ? {
@@ -58,6 +58,14 @@ const CartPage = ({ loc }) => {
             return sums;
         }, {});
     }, [cartWithDetails]);
+
+    if (cartLoading) {
+        return (
+            <div className="bg-white p-8 rounded-lg shadow-md border text-center text-gray-500">
+                {loc === 'en' ? 'Loading your cart…' : 'Cargando tu carrito…'}
+            </div>
+        );
+    }
 
     if (cart.length === 0) {
         return (

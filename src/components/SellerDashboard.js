@@ -5,7 +5,6 @@ import {
     formatMoney,
     formatMoneyTotals,
     itemCurrency,
-    calculateAverageRating,
     CountdownTimer,
     StatCard,
 } from './Shared';
@@ -19,6 +18,10 @@ import { sellerStatusLabel, orderStatusClass, canSellerShip, canSellerCancel } f
 import EscrowPanel from './EscrowPanel';
 import PayoutAccountSection from './PayoutAccountSection';
 import SecondChanceSection from './SecondChanceSection';
+import { useItems } from '../context/ItemsContext';
+import { useSellerReviews } from '../lib/useSellerReviews';
+import { fetchMyListingStates } from '../api/items';
+import { listingErrorText } from '../data/listingMessages';
 
 const sumByCurrency = (entries, getAmount) =>
     entries.reduce((acc, entry) => {
@@ -173,7 +176,39 @@ const SellerDashboard = ({ user, users, items, loc }) => {
         }
     }, [sellerThreads, activeThreadId]);
 
+    const { average: avgRating, count: reviewCount } = useSellerReviews(user.id);
+
     const myListings = useMemo(() => items.filter(i => i.sellerId === user.id), [items, user.id]);
+
+    // What each listing may still have done to it. Re-read when the listings
+    // change, e.g. a bid arrives and locks an auction.
+    const { removeMyListing } = useItems();
+    const [listingStates, setListingStates] = useState({});
+    const [removingId, setRemovingId] = useState(null);
+    useEffect(() => {
+        let cancelled = false;
+        fetchMyListingStates()
+            .then((states) => { if (!cancelled) setListingStates(states); })
+            .catch(() => {});
+        return () => { cancelled = true; };
+    }, [myListings]);
+
+    const handleDeleteListing = async (item) => {
+        const question = loc === 'en'
+            ? `Delete "${item.title}"? Buyers will no longer see it. Existing orders are not affected.`
+            : `¿Eliminar "${item.title}"? Los compradores ya no la verán. Los pedidos existentes no cambian.`;
+        if (!window.confirm(question)) return;
+        setRemovingId(item.id);
+        try {
+            await removeMyListing(item.id);
+        } catch (err) {
+            alert(listingErrorText(err.message, loc)
+                || (loc === 'en' ? 'Could not delete the listing. Please try again.' : 'No se pudo eliminar la publicación. Intenta de nuevo.'));
+            fetchMyListingStates().then(setListingStates).catch(() => {});
+        } finally {
+            setRemovingId(null);
+        }
+    };
 
     const activeListings = useMemo(
         () => myListings.filter(i => i.saleType !== 'auc' || i.endAt > Date.now()),
@@ -201,8 +236,6 @@ const SellerDashboard = ({ user, users, items, loc }) => {
     const pendingTotals = sumByCurrency(pendingPayout, o => o.amount);
 
     const unreadTotal = sellerThreads.reduce((n, t) => n + (t.unreadForSeller || 0), 0);
-    const avgRating = calculateAverageRating(user.reviews || []);
-    const reviewCount = user.reviews?.length || 0;
 
     const buyerName = (buyerId) => {
         if (buyerId.startsWith('guest')) return L.anonymous;
@@ -332,6 +365,7 @@ const SellerDashboard = ({ user, users, items, loc }) => {
                                     <th>{L.price}</th>
                                     <th>{L.views}</th>
                                     <th>{L.status}</th>
+                                    <th>{loc === 'en' ? 'Manage' : 'Gestionar'}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -364,6 +398,25 @@ const SellerDashboard = ({ user, users, items, loc }) => {
                                                 )}
                                             </td>
                                             <td><span className={st.cls}>{st.label}</span></td>
+                                            <td>
+                                                {listingStates[item.id] && (
+                                                    <div className="seller-listing-actions">
+                                                        {!listingStates[item.id].editBlocked && (
+                                                            <button type="button" className="seller-link-btn" onClick={() => navigate(`/sell/${item.id}`)}>
+                                                                {loc === 'en' ? 'Edit' : 'Editar'}
+                                                            </button>
+                                                        )}
+                                                        {!listingStates[item.id].removeBlocked && (
+                                                            <button type="button" className="seller-link-btn seller-link-btn--danger" disabled={removingId === item.id} onClick={() => handleDeleteListing(item)}>
+                                                                {loc === 'en' ? 'Delete' : 'Eliminar'}
+                                                            </button>
+                                                        )}
+                                                        {listingStates[item.id].editBlocked && (
+                                                            <p className="seller-listing-note">{listingErrorText(listingStates[item.id].editBlocked, loc)}</p>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </td>
                                         </tr>
                                     );
                                 })}

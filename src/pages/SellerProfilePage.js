@@ -2,14 +2,16 @@ import React, { useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useItems } from '../context/ItemsContext';
-import { StarRating, calculateAverageRating } from '../components/Shared';
+import { StarRating } from '../components/Shared';
+import { useSellerReviews } from '../lib/useSellerReviews';
+import { removeReview } from '../api/reviews';
 import ProductCard from '../components/ProductCard';
 import Avatar from '../components/Avatar';
 
 const SellerProfilePage = ({ loc }) => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { users, ensureUserLoaded } = useAuth();
+    const { user, users, ensureUserLoaded } = useAuth();
     const { items, isFav, toggleFav } = useItems();
 
     const seller = users[id];
@@ -26,8 +28,12 @@ const SellerProfilePage = ({ loc }) => {
         notFound: "Seller not found.",
         reviewsFrom: "from",
         reviews: "reviews",
+        review: "review",
         anonymous: "Anonymous",
         noReviews: "No reviews yet.",
+        remove: "Remove review",
+        confirmRemove: "Remove this review for everyone?",
+        removeFailed: "Could not remove the review.",
     } : {
         title: "Perfil de",
         listings: "Artículos de",
@@ -37,12 +43,26 @@ const SellerProfilePage = ({ loc }) => {
         notFound: "Vendedor no encontrado.",
         reviewsFrom: "de",
         reviews: "reseñas",
+        review: "reseña",
         anonymous: "Anónimo",
         noReviews: "Aún no hay reseñas.",
+        remove: "Quitar reseña",
+        confirmRemove: "¿Quitar esta reseña para todos?",
+        removeFailed: "No se pudo quitar la reseña.",
     };
 
     const sellerItems = useMemo(() => items.filter(item => item.sellerId === seller?.id), [items, seller]);
-    const averageRating = useMemo(() => calculateAverageRating(seller?.reviews), [seller]);
+    const { reviews, count, average, loaded, reload } = useSellerReviews(id);
+
+    const handleRemoveReview = async (reviewId) => {
+        if (!window.confirm(L.confirmRemove)) return;
+        try {
+            await removeReview(reviewId);
+            reload();
+        } catch {
+            alert(L.removeFailed);
+        }
+    };
 
     const handleOpen = (itemId) => {
         navigate(`/item/${itemId}`);
@@ -71,29 +91,35 @@ const SellerProfilePage = ({ loc }) => {
                     <Avatar name={seller.profileName} src={seller.avatarUrl} size={72} />
                     <h1 className="text-3xl font-bold">{loc === 'en' ? `${seller.profileName}${L.title}` : `${L.title} ${seller.profileName}`}</h1>
                 </div>
-                <div className="flex items-center gap-2 mt-2">
-                    <StarRating rating={averageRating} />
-                    <span className="text-gray-600">({averageRating.toFixed(1)} {L.reviewsFrom} {seller.reviews.length} {L.reviews})</span>
-                </div>
+                {count > 0 && (
+                    <div className="flex items-center gap-2 mt-2">
+                        <StarRating rating={average} />
+                        <span className="text-gray-600">({average.toFixed(1)} {L.reviewsFrom} {count} {count === 1 ? L.review : L.reviews})</span>
+                    </div>
+                )}
                 <p className="text-gray-500 mt-1">{`${seller.city}, ${seller.province}`}</p>
             </div>
             
             <div className="bg-white p-6 rounded-lg shadow-md border mb-6">
                 <h2 className="text-2xl font-bold mb-4">{L.reviewsTitle}</h2>
                 <div className="space-y-4">
-                    {seller.reviews.map((review, index) => {
-                        const reviewer = users[review.from];
-                        return (
-                            <div key={index} className="border-b pb-4">
-                                <div className="flex items-center mb-1">
-                                    <StarRating rating={review.rating} />
-                                    <p className="ml-2 font-bold">{reviewer?.profileName || L.anonymous}</p>
-                                </div>
-                                <p className="text-gray-600">{review.comment}</p>
+                    {reviews.map((review) => (
+                        <div key={review.id} className="border-b pb-4">
+                            <div className="flex items-center flex-wrap gap-2 mb-1">
+                                <StarRating rating={review.rating} />
+                                <p className="font-bold">{review.from || L.anonymous}</p>
+                                <p className="text-xs text-gray-500">
+                                    {new Date(review.createdAt).toLocaleDateString(loc === 'en' ? 'en-US' : 'es-CR', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                    {review.itemTitle ? ` · ${review.itemTitle}` : ''}
+                                </p>
                             </div>
-                        );
-                    })}
-                    {seller.reviews.length === 0 && <p className="text-gray-500">{L.noReviews}</p>}
+                            {review.comment && <p className="text-gray-600 break-words">{review.comment}</p>}
+                            {user?.isAdmin && (
+                                <button type="button" className="tap-target text-xs text-red-700 hover:underline mt-1" onClick={() => handleRemoveReview(review.id)}>{L.remove}</button>
+                            )}
+                        </div>
+                    ))}
+                    {loaded && reviews.length === 0 && <p className="text-gray-500">{L.noReviews}</p>}
                 </div>
             </div>
 

@@ -33,11 +33,12 @@ async function sellerList(sql, userId) {
       AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.item_id = i.id AND o.order_type = 'buy_now')
     ORDER BY i.end_at DESC
   `;
-  if (items.length === 0) return [];
+  const listed = items.filter((i) => !i.removed_at);
+  if (listed.length === 0) return [];
   const offers = await sql`
     SELECT * FROM second_chance_offers WHERE seller_id = ${userId} ORDER BY created_at DESC
   `;
-  return items.map((i) => {
+  return listed.map((i) => {
     const o = offers.find((x) => x.item_id === i.id);
     return {
       itemId: i.id,
@@ -114,7 +115,7 @@ export default async function handler(req, res) {
       const itemId = typeof body.itemId === 'string' ? body.itemId : '';
       const amount = Number(body.amount);
       const item = (await sql`SELECT * FROM items WHERE id = ${itemId}`)[0];
-      if (!item || item.seller_id !== userId) return res.status(404).json({ error: 'Item not found' });
+      if (!item || item.removed_at || item.seller_id !== userId) return res.status(404).json({ error: 'Item not found' });
 
       const eligible = item.sale_type === 'auc'
         && item.end_at && new Date(item.end_at).getTime() < Date.now()

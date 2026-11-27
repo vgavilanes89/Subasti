@@ -129,7 +129,8 @@ function App() {
                 
                 {/* User Routes */}
                 <Route path="/profile" element={<ProfilePage loc={loc} />} />
-                <Route path="/sell" element={<SellPage loc={loc} categories={CATEGORIES} />} />
+                <Route path="/sell" element={<SellPage key="new" loc={loc} categories={CATEGORIES} />} />
+                <Route path="/sell/:id" element={<SellPage key="edit" loc={loc} categories={CATEGORIES} />} />
                 <Route path="/favorites" element={<FavoritesPage loc={loc} />} />
                 
                 {/* Transaction Routes */}

@@ -77,6 +77,18 @@ export const HELP_TOPICS = [
                 kw: T('confirm receipt release funds', 'confirmar recibido liberar fondos'),
             },
             {
+                id: 'buy-review',
+                q: T('How do I review a seller?', '¿Cómo reseño a un vendedor?'),
+                a: [
+                    T('Once an order is completed or refunded, go to Profile → Buying and choose Leave a review on it in your purchase history. Give one to five stars and, if you like, a short comment.',
+                      'Cuando un pedido está completado o reembolsado, ve a Perfil → Compras y elige Dejar una reseña en tu historial. Da de una a cinco estrellas y, si quieres, un comentario corto.'),
+                    T('Reviews appear on the seller\'s profile with your profile name. You get one per order and it can\'t be edited. Subasti can remove a review that breaks the rules.',
+                      'Las reseñas aparecen en el perfil del vendedor con tu nombre de perfil. Tienes una por pedido y no se puede editar. Subasti puede quitar una reseña que incumpla las reglas.'),
+                ],
+                links: [{ to: '/profile?tab=buying', label: T('My purchases', 'Mis compras') }],
+                kw: T('review rating stars feedback seller', 'resena calificacion estrellas opinion vendedor'),
+            },
+            {
                 id: 'buy-contact',
                 q: T('How do I contact a seller?', '¿Cómo contacto a un vendedor?'),
                 a: [
@@ -177,6 +189,18 @@ export const HELP_TOPICS = [
                 ],
                 links: [{ to: '/profile?tab=selling', label: T('My sales', 'Mis ventas') }],
                 kw: T('ship shipping tracking order sold', 'enviar rastreo pedido vendido'),
+            },
+            {
+                id: 'sell-edit',
+                q: T('Can I edit or delete my listing?', '¿Puedo editar o eliminar mi publicación?'),
+                a: [
+                    T('Yes, from Profile → Selling, under Current listings. You can change the details, photos, prices, shipping and payment methods. The sale type (auction or fixed price) stays as you published it.',
+                      'Sí, desde Perfil → Ventas, en Publicaciones actuales. Puedes cambiar los detalles, fotos, precios, envío y métodos de pago. El tipo de venta (subasta o precio fijo) se queda como lo publicaste.'),
+                    T('An auction can only be edited before its first bid, and can\'t be deleted while it is running with bids, while its winner still has to pay, or while a second-chance offer is waiting. Deleting a listing doesn\'t change orders already placed.',
+                      'Una subasta solo se puede editar antes de la primera oferta, y no se puede eliminar mientras está activa con ofertas, mientras el ganador aún debe pagar o mientras hay una oferta de segunda oportunidad pendiente. Eliminar una publicación no cambia los pedidos ya hechos.'),
+                ],
+                links: [{ to: '/profile?tab=selling', label: T('My listings', 'Mis publicaciones') }],
+                kw: T('edit delete remove change listing photo price relist', 'editar eliminar borrar quitar cambiar publicacion foto precio'),
             },
             {
                 id: 'sell-cancel',
@@ -374,8 +398,8 @@ export const HELP_TOPICS = [
                 id: 'acc-logout',
                 q: T('Why was I signed out?', '¿Por qué se cerró mi sesión?'),
                 a: [
-                    T('For your security, you are signed out after 3 hours of inactivity. Just log in again; your cart, favorites and orders are kept.',
-                      'Por tu seguridad, tu sesión se cierra tras 3 horas de inactividad. Solo inicia sesión de nuevo; tu carrito, favoritos y pedidos se conservan.'),
+                    T('For your security, you are signed out after 3 hours of inactivity. Just log in again; your cart (on the same browser), favorites and orders are kept. Signing out yourself empties the cart.',
+                      'Por tu seguridad, tu sesión se cierra tras 3 horas de inactividad. Solo inicia sesión de nuevo; tu carrito (en el mismo navegador), favoritos y pedidos se conservan. Si cierras sesión tú, el carrito se vacía.'),
                 ],
                 kw: T('session timeout logout inactive', 'sesion inactividad cerrar'),
             },

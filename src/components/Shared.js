@@ -32,14 +32,6 @@ export const formatMoneyTotals = (amountsByCurrency, loc) =>
         .map(([currency, total]) => formatMoney(total, loc, currency))
         .join(' + ');
 
-export const calculateAverageRating = (reviews) => {
-    if (!reviews || reviews.length === 0) {
-        return 0;
-    }
-    const total = reviews.reduce((acc, review) => acc + review.rating, 0);
-    return total / reviews.length;
-};
-
 // --- Hooks ---
 export const useCountdown = (targetDate) => {
     const countDownDate = new Date(targetDate).getTime();
@@ -130,8 +122,10 @@ export const StatCard = ({ label, value, sub, accent }) => (
 
 export const StarRating = ({ rating }) => {
     const totalStars = 5;
-    const fullStars = Math.floor(rating);
-    const halfStar = rating % 1 !== 0;
+    // To the nearest half: 4.2 shows four stars, 4.3 four and a half.
+    const rounded = Math.round((rating || 0) * 2) / 2;
+    const fullStars = Math.floor(rounded);
+    const halfStar = rounded % 1 !== 0;
     const emptyStars = totalStars - fullStars - (halfStar ? 1 : 0);
 
     return (

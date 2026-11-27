@@ -31,7 +31,7 @@ export default async function handler(req, res) {
     ORDER BY COALESCE(m.last_bid_at, i.created_at) DESC
   `;
 
-  return res.status(200).json(rows.map((row) => ({
+  return res.status(200).json(rows.filter((row) => !row.removed_at).map((row) => ({
     item: toPublicItem(row),
     myHighestBid: row.my_max !== null && row.my_max !== undefined
       ? Number(row.my_max)
