@@ -18,7 +18,8 @@ export const ItemsProvider = ({ children }) => {
             setItems(data);
         };
         load();
-    }, []);
+        // Reloaded on login/logout: a seller or admin receives reserve prices that others don't.
+    }, [user?.id]);
 
     // Favorites are per-account now (see api/favorites/*), not client-only
     // state — reload them whenever the logged-in user changes, and clear on

@@ -199,7 +199,7 @@ const SWEEP_BATCH = 200;
 
 export async function notifyEndedAuctionLosers(sql) {
   const rows = await sql`
-    SELECT i.id, i.title, i.currency, i.current_bid, i.highest_bidder_id,
+    SELECT i.id, i.title, i.currency, i.current_bid, i.highest_bidder_id, i.seller_id,
            b.bidder_id, b.my_max,
            (i.reserve_price IS NOT NULL AND i.current_bid < i.reserve_price) AS reserve_missed,
            EXISTS (SELECT 1 FROM orders o WHERE o.item_id = i.id AND o.order_type = 'buy_now') AS bought_outright
@@ -230,6 +230,22 @@ export async function notifyEndedAuctionLosers(sql) {
         body = `El artículo se vendió por compra inmediata antes de que terminara la subasta. Tu puja más alta fue ${mine}.`;
       } else if (r.reserve_missed) {
         body = `No se alcanzó el precio de reserva, por lo que la subasta terminó sin venta. Tu puja más alta fue ${mine}.`;
+        if (r.bidder_id === r.highest_bidder_id) {
+          body += ' Como fuiste el mejor postor, el vendedor puede ofrecerte el artículo.';
+          // Tell the seller they can make that offer (once per auction).
+          const seller = await getUserContact(sql, r.seller_id);
+          await createNotification({
+            sql,
+            id: `notif_reservemissed_${r.id}`,
+            userId: r.seller_id,
+            type: 'order_status',
+            title: `Tu subasta "${r.title}" no alcanzó la reserva`,
+            body: `La puja más alta fue ${mine}. Puedes ofrecer el artículo al mejor postor desde Perfil → Ventas.`,
+            link: '/profile?tab=selling',
+            email: seller?.email,
+            name: seller?.name,
+          });
+        }
       } else {
         body = `Otra persona ganó con ${formatMoney(r.current_bid, r.currency)}. Tu puja más alta fue ${mine}.`;
       }

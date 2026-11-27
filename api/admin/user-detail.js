@@ -120,7 +120,7 @@ export default async function handler(req, res) {
     },
     buyerOrders,
     sellerOrders,
-    listedItems: listedItemRows.map(toPublicItem),
+    listedItems: listedItemRows.map((row) => toPublicItem(row, { includeReserve: true })),
     bids,
     favorites,
   });

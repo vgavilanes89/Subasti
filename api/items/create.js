@@ -101,7 +101,7 @@ export default async function handler(req, res) {
         )
         RETURNING *
       `;
-      return res.status(201).json(toPublicItem(rows[0]));
+      return res.status(201).json(toPublicItem(rows[0], { includeReserve: true }));
     } catch (err) {
       if (err.code === UNIQUE_VIOLATION && (err.constraint || '').includes('item_number')) {
         continue; // collision on the random item number — retry with a new one

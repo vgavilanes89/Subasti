@@ -3,6 +3,7 @@
  * Requires env: VERIFIK_API_KEY
  */
 import { createRateLimiter, getClientIp } from './_lib/rateLimit.js';
+import { createCedulaToken } from './_lib/cedulaToken.js';
 
 const RATE_LIMIT = 5; // requests
 const RATE_WINDOW_MS = 60 * 1000;
@@ -65,10 +66,19 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'not_found' });
     }
 
+    const titleCase = (value) => String(value || '').toLowerCase().split(/\s+/).filter(Boolean)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    const fullName = titleCase(data.fullName || [data.firstName, data.lastName].filter(Boolean).join(' '));
+    if (!fullName) {
+      return res.status(404).json({ error: 'not_found' });
+    }
+
     return res.status(200).json({
-      fullName: data.fullName || [data.firstName, data.lastName].filter(Boolean).join(' '),
+      fullName,
       firstName: data.firstName || '',
       lastName: data.lastName || '',
+      // Sign-up requires this proof that the number returned a name.
+      verificationToken: createCedulaToken(documentNumber, fullName),
     });
   } catch (err) {
     console.error('Verifik lookup error', err.message);

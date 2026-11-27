@@ -18,6 +18,7 @@ import ChatPanel from './ChatPanel';
 import { sellerStatusLabel, orderStatusClass, canSellerShip, canSellerCancel } from '../data/escrow';
 import EscrowPanel from './EscrowPanel';
 import PayoutAccountSection from './PayoutAccountSection';
+import SecondChanceSection from './SecondChanceSection';
 
 const sumByCurrency = (entries, getAmount) =>
     entries.reduce((acc, entry) => {
@@ -311,6 +312,8 @@ const SellerDashboard = ({ user, users, items, loc }) => {
             </div>
 
             <PayoutAccountSection loc={loc} realName={user.realName} />
+
+            <SecondChanceSection loc={loc} />
 
             <div className="seller-section">
                 <div className="seller-section-header">

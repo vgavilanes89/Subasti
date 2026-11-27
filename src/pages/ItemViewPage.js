@@ -89,6 +89,15 @@ const ItemViewPage = ({ loc }) => {
             document.removeEventListener('visibilitychange', poll);
         };
     }, [item?.id, item?.saleType, isFinished, replaceItem]);
+
+    // Whether the reserve was met is only revealed once the auction is over, so ask
+    // once more when the clock runs out.
+    useEffect(() => {
+        if (!item || item.saleType !== 'auc' || !isFinished || item.reserveMet !== null) return;
+        const itemId = item.id;
+        const timer = setTimeout(() => { fetchItem(itemId).then(replaceItem).catch(() => {}); }, 2000);
+        return () => clearTimeout(timer);
+    }, [item, isFinished, replaceItem]);
     const averageRating = useMemo(
         () => calculateAverageRating(seller ? seller.reviews : []),
         [seller]
@@ -133,7 +142,8 @@ const ItemViewPage = ({ loc }) => {
         buyNow: 'Buy Now', 
         auctionEnded: 'Auction Ended', 
         sold: 'Sold! Winning Bid:', 
-        reserveNotMet: 'Reserve price not met.', 
+        reserveNotMet: 'Reserve price not met.',
+        endedNoBids: 'The auction ended with no bids.',
         finalBid: 'Final Bid:', 
         available: 'available', 
         soldBy: 'Sold by', 
@@ -184,7 +194,8 @@ const ItemViewPage = ({ loc }) => {
         buyNow: 'Comprar Ahora', 
         auctionEnded: 'Subasta Terminada', 
         sold: '¡Vendido! Oferta Ganadora:', 
-        reserveNotMet: 'Precio de reserva no alcanzado.', 
+        reserveNotMet: 'Precio de reserva no alcanzado.',
+        endedNoBids: 'La subasta terminó sin pujas.',
         finalBid: 'Oferta Final:', 
         available: 'disponibles', 
         soldBy: 'Vendido por', 
@@ -218,7 +229,8 @@ const ItemViewPage = ({ loc }) => {
     };
 
     const currency = itemCurrency(item);
-    const reserveMet = item.reservePrice ? item.currentBid >= item.reservePrice : true;
+    // true / false once ended; null while it isn't known yet.
+    const reserveMet = item.reserveMet;
     const images = item.images && item.images.length > 0 ? item.images : [PLACEHOLDER_IMG];
 
     const isOwn = !!user && user.id === item.sellerId;
@@ -347,7 +359,9 @@ const ItemViewPage = ({ loc }) => {
                                     {isFinished ? (
                                         <div className="bg-gray-100 p-4 rounded-lg text-center">
                                             <h3 className="text-lg font-bold text-gray-800">{L.auctionEnded}</h3>
-                                            <p className="mt-2">{reserveMet ? `${L.sold} ${CRC(item.currentBid, loc, currency)}` : L.reserveNotMet}</p>
+                                            {reserveMet !== null && (
+                                                <p className="mt-2">{!item.highestBidderId ? L.endedNoBids : reserveMet ? `${L.sold} ${CRC(item.currentBid, loc, currency)}` : L.reserveNotMet}</p>
+                                            )}
                                         </div>
                                     ) : (
                                         <>

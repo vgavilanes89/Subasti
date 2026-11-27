@@ -5,6 +5,7 @@ import { useMessages } from '../context/MessagesContext';
 import ChatPanel from './ChatPanel';
 import * as ordersApi from '../api/orders';
 import { fetchMyBids } from '../api/bids';
+import BuyerOffersSection from './BuyerOffersSection';
 import { buyerStatusLabel, orderStatusClass } from '../data/escrow';
 import EscrowPanel from './EscrowPanel';
 import PayOrderModal from './PayOrderModal';
@@ -20,7 +21,9 @@ export const bidStatus = (item, userId, now = Date.now()) => {
     const isTop = item.highestBidderId === userId;
     if (!ended) return isTop ? 'winning' : 'outbid';
     if (!isTop) return 'lost';
-    return !item.reservePrice || item.currentBid >= item.reservePrice ? 'won' : 'reserve';
+    // Not known yet if this data was fetched before the auction ended.
+    if (item.reserveMet === null) return 'ended';
+    return item.reserveMet === false ? 'reserve' : 'won';
 };
 
 const BID_BADGE = {
@@ -29,6 +32,7 @@ const BID_BADGE = {
     won: 'seller-badge seller-badge--ok',
     lost: 'seller-badge',
     reserve: 'seller-badge seller-badge--warn',
+    ended: 'seller-badge',
 };
 
 const BidRow = ({ entry, status, loc, L, onOpenItem }) => {
@@ -261,8 +265,9 @@ const BuyerDashboard = ({
         bidStatus_won: 'You won',
         bidStatus_lost: 'Not won',
         bidStatus_reserve: 'Reserve not met',
+        bidStatus_ended: 'Auction ended',
         wonHint: 'Complete payment under "Awaiting payment" above.',
-        reserveHint: 'The reserve price was not reached, so there is no sale.',
+        reserveHint: 'The reserve price was not reached. As the highest bidder, the seller may offer you the item.',
         outbidNotice: 'auction(s) where you have been outbid.',
         shipNotice: 'item(s) are on the way to you.',
         pickupNotice: 'pickup(s) ready to schedule with the seller.',
@@ -338,8 +343,9 @@ const BuyerDashboard = ({
         bidStatus_won: 'Ganaste',
         bidStatus_lost: 'No ganada',
         bidStatus_reserve: 'Reserva no alcanzada',
+        bidStatus_ended: 'Subasta terminada',
         wonHint: 'Completa el pago en "Esperando pago" arriba.',
-        reserveHint: 'No se alcanzó el precio de reserva, por lo que no hay venta.',
+        reserveHint: 'No se alcanzó el precio de reserva. Como mejor postor, el vendedor puede ofrecerte el artículo.',
         outbidNotice: 'subasta(s) donde te superaron la puja.',
         shipNotice: 'artículo(s) están en camino.',
         pickupNotice: 'recogida(s) listas para coordinar con el vendedor.',
@@ -430,7 +436,7 @@ const BuyerDashboard = ({
             item.saleType === 'auc' &&
             item.endAt < now &&
             item.highestBidderId === user.id &&
-            (!item.reservePrice || item.currentBid >= item.reservePrice)
+            item.reserveMet !== false // the server checks the reserve itself
         );
         if (won.length === 0) return;
 
@@ -629,6 +635,14 @@ const BuyerDashboard = ({
                 <strong>{L.notices}:</strong>{' '}
                 {hasUrgent ? noticeParts.join(' ') : L.noNotices}
             </div>
+
+            <BuyerOffersSection
+                loc={loc}
+                onAccepted={() => {
+                    ordersApi.fetchBuyerOrders(user.id).then(setOrders).catch(() => {});
+                    fetchMyBids().then(setBids).catch(() => {});
+                }}
+            />
 
             <div className="seller-section" id="buyer-bids">
                 <h4>{L.myBids}</h4>

@@ -9,11 +9,13 @@ import PasswordInput from '../components/PasswordInput';
 const SignupPage = ({loc}) => {
     const { signup } = useAuth();
     const [passwordError, setPasswordError] = useState('');
+    // Set only when the lookup returned a name for the number now in the box.
+    const [verification, setVerification] = useState(null);
+    const [cedulaError, setCedulaError] = useState('');
     const navigate = useNavigate();
     const [formData, setFormData] = useState({ cedula: '', realName: '', profileName: '', email: '', password: '', countryCode: '+506', phone: '', province: '', city: ''});
     const [isFetchingCedula, setIsFetchingCedula] = useState(false);
     const [profileNameError, setProfileNameError] = useState('');
-    const [isNameFetched, setIsNameFetched] = useState(false);
     // Caches the outcome of the last completed lookup so re-blurring an unchanged
     // cedula (e.g. tabbing through the field) doesn't re-bill the paid lookup.
     const cedulaLookupCache = useRef(null);
@@ -23,8 +25,8 @@ const SignupPage = ({loc}) => {
 
 
     const L = loc === 'en' 
-        ? {title:'Create Your Account', cedula: 'ID Number (Cédula)', fetching: 'Fetching...', realName: 'Full Name', profileName: 'Profile Name (public)', email:'Email', pass:'Password', phone:'Phone Number', province:'Province', city: 'City', submit:'Create Account', switch:'Already have an account?', link:'Log in', cedulaNotFound: 'ID number not found.', profileNameInvalid: 'Profile name can only contain letters and numbers.', profileNameSameAsReal: 'Profile name cannot be the same as your full name.', select: 'Select...', profileNameHint: 'Letters and numbers only, no spaces.'}
-        : {title:'Crea Tu Cuenta', cedula: 'Número de Cédula', fetching: 'Consultando...', realName: 'Nombre Completo', profileName: 'Nombre de Perfil (público)', email:'Correo', pass:'Contraseña', phone:'Número de Teléfono', province:'Provincia', city: 'Cantón', submit:'Crear Cuenta', switch:'¿Ya tienes una cuenta?', link:'Inicia sesión', cedulaNotFound: 'Cédula no encontrada.', profileNameInvalid: 'El nombre de perfil solo puede contener letras y números.', profileNameSameAsReal: 'El nombre de perfil no puede ser igual a su nombre completo.', select: 'Seleccionar...', profileNameHint: 'Solo letras y números, sin espacios.'};
+        ? {title:'Create Your Account', cedula: 'ID Number (Cédula)', fetching: 'Fetching...', realName: 'Full Name', profileName: 'Profile Name (public)', email:'Email', pass:'Password', phone:'Phone Number', province:'Province', city: 'City', submit:'Create Account', switch:'Already have an account?', link:'Log in', cedulaNotFound: 'We could not find a name for this ID number, so an account cannot be created with it. If you are not a Costa Rican national, another way to register is coming.', nameFromId: 'Filled in from your ID number', verifyFirst: 'Enter your ID number so we can verify your name before creating the account.', verifyAgain: 'Your ID verification expired. Click into the ID number box and out again to verify it.', profileNameInvalid: 'Profile name can only contain letters and numbers.', profileNameSameAsReal: 'Profile name cannot be the same as your full name.', select: 'Select...', profileNameHint: 'Letters and numbers only, no spaces.'}
+        : {title:'Crea Tu Cuenta', cedula: 'Número de Cédula', fetching: 'Consultando...', realName: 'Nombre Completo', profileName: 'Nombre de Perfil (público)', email:'Correo', pass:'Contraseña', phone:'Número de Teléfono', province:'Provincia', city: 'Cantón', submit:'Crear Cuenta', switch:'¿Ya tienes una cuenta?', link:'Inicia sesión', cedulaNotFound: 'No encontramos un nombre para esta cédula, así que no se puede crear una cuenta con ella. Si no eres costarricense, pronto habrá otra forma de registrarte.', nameFromId: 'Se completa con tu cédula', verifyFirst: 'Escribe tu cédula para verificar tu nombre antes de crear la cuenta.', verifyAgain: 'La verificación de tu cédula venció. Entra en la casilla de cédula y sal de nuevo para verificarla.', profileNameInvalid: 'El nombre de perfil solo puede contener letras y números.', profileNameSameAsReal: 'El nombre de perfil no puede ser igual a su nombre completo.', select: 'Seleccionar...', profileNameHint: 'Solo letras y números, sin espacios.'};
     
     const selectedCountry = useMemo(() => COUNTRY_CODES.find(c => c.code === formData.countryCode), [formData.countryCode]);
 
@@ -35,10 +37,15 @@ const SignupPage = ({loc}) => {
             setProfileNameError(''); // Clear error on change
         }
         if (name === 'cedula') {
-            setIsNameFetched(false);
+            // A different number has to be verified again, and the old name goes with it.
+            setVerification(null);
+            setCedulaError('');
         }
         setFormData(prev => {
             const newState = {...prev, [name]: value};
+            if (name === 'cedula') {
+                newState.realName = '';
+            }
             if(name === 'province') {
                 newState.city = ''; // Reset city when province changes
             }
@@ -68,6 +75,8 @@ const SignupPage = ({loc}) => {
         setProfileNameError(error);
     };
 
+    const isVerified = Boolean(verification && verification.cedula === formData.cedula);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         const error = validateProfileName(formData.profileName, formData.realName);
@@ -81,9 +90,15 @@ const SignupPage = ({loc}) => {
             return;
         }
         try {
-            await signup(formData);
+            await signup({ ...formData, verificationToken: verification?.token });
             navigate('/');
         } catch (err) {
+            if (err.message === 'CEDULA_NOT_VERIFIED') {
+                setVerification(null);
+                cedulaLookupCache.current = null;
+                setCedulaError(L.verifyAgain);
+                return;
+            }
             if (err.message === 'WEAK_PASSWORD') {
                 setPasswordError(PASSWORD_PROBLEM_TEXT[loc].TOO_COMMON);
                 return;
@@ -112,7 +127,7 @@ const SignupPage = ({loc}) => {
         if (cached && cached.cedula === formData.cedula) {
             if (cached.result === 'success') {
                 setFormData((prev) => ({ ...prev, realName: cached.realName, profileName: cached.profileName }));
-                setIsNameFetched(true);
+                setVerification({ cedula: cached.cedula, token: cached.token });
             } else if (cached.result === 'not_found') {
                 alert(L.cedulaNotFound);
             }
@@ -120,12 +135,14 @@ const SignupPage = ({loc}) => {
         }
 
         setIsFetchingCedula(true);
-        setIsNameFetched(false);
+        setVerification(null);
+        setCedulaError('');
         try {
             const res = await fetch(`/api/cedula?cedula=${encodeURIComponent(formData.cedula)}`);
             if (res.status === 404) {
                 cedulaLookupCache.current = { cedula: formData.cedula, result: 'not_found' };
-                alert(L.cedulaNotFound);
+                setFormData((prev) => ({ ...prev, realName: '' }));
+                setCedulaError(L.cedulaNotFound);
                 return;
             }
             if (res.status === 429) {
@@ -143,13 +160,17 @@ const SignupPage = ({loc}) => {
                 return;
             }
             const data = await res.json();
-            const fullName = toTitleCase(data.fullName);
+            if (!data.fullName || !data.verificationToken) {
+                setCedulaError(L.cedulaNotFound);
+                return;
+            }
+            const fullName = data.fullName;
             const firstName = toTitleCase(data.firstName).replace(/\s/g, '');
             const lastNameFirst = toTitleCase(data.lastName).split(/\s+/)[0] || '';
             const profileName = `${firstName}${lastNameFirst}`.replace(/[^a-zA-Z0-9]/g, '');
-            cedulaLookupCache.current = { cedula: formData.cedula, result: 'success', realName: fullName, profileName };
+            cedulaLookupCache.current = { cedula: formData.cedula, result: 'success', realName: fullName, profileName, token: data.verificationToken };
+            setVerification({ cedula: formData.cedula, token: data.verificationToken });
             setFormData((prev) => ({ ...prev, realName: fullName, profileName }));
-            setIsNameFetched(true);
         } catch {
             alert(loc === 'en' ? 'Could not look up ID number.' : 'No se pudo consultar la cédula.');
         } finally {
@@ -177,10 +198,11 @@ const SignupPage = ({loc}) => {
                             disabled={isFetchingCedula}
                             className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 disabled:bg-gray-100"
                         />
+                        {cedulaError && <p className="text-xs text-red-600 mt-1" role="alert">{cedulaError}</p>}
                     </div>
                     <div>
                         <label className="text-sm font-bold text-gray-700 block mb-2">{L.realName}</label>
-                        <input type="text" name="realName" value={formData.realName} onChange={handleChange} required disabled={isNameFetched} className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 disabled:bg-gray-200 disabled:cursor-not-allowed"/>
+                        <input type="text" name="realName" value={formData.realName} readOnly required placeholder={L.nameFromId} className="bg-gray-100 w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 disabled:bg-gray-200 disabled:cursor-not-allowed"/>
                     </div>
                     <div>
                         <label className="text-sm font-bold text-gray-700 block mb-2">{L.profileName}</label>
@@ -234,7 +256,8 @@ const SignupPage = ({loc}) => {
                         </div>
                     </div>
                     
-                    <button type="submit" className="w-full bg-purple-600 text-white py-3 mt-4 rounded-lg font-semibold hover:bg-purple-700 transition-colors">{L.submit}</button>
+                    {!isVerified && <p className="text-xs text-gray-500 mt-4">{L.verifyFirst}</p>}
+                    <button type="submit" disabled={!isVerified} className="w-full bg-purple-600 text-white py-3 mt-4 rounded-lg font-semibold hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">{L.submit}</button>
                 </form>
                 <p className="text-center text-sm text-gray-600 mt-6">{L.switch} <Link to="/login" className="font-semibold text-purple-600 hover:underline">{L.link}</Link></p>
             </div>

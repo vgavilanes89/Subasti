@@ -112,7 +112,8 @@ export const HELP_TOPICS = [
                 q: T('What are a reserve price and Buy Now?', '¿Qué son el precio de reserva y la Compra Inmediata?'),
                 a: [
                     { list: [
-                        T('Reserve price: the lowest price the seller will accept. If bidding ends below it, there is no sale.', 'Precio de reserva: el precio más bajo que el vendedor acepta. Si las pujas terminan por debajo, no hay venta.'),
+                        T('Reserve price: the lowest price the seller will accept. Only the seller can see the amount. If bidding ends below it, there is no sale.', 'Precio de reserva: el precio más bajo que el vendedor acepta. Solo el vendedor ve el monto. Si las pujas terminan por debajo, no hay venta.'),
+                        T('Second chance: when the reserve is not reached, the seller can offer the item to the highest bidder, at their bid or more. The bidder has 48 hours to accept or decline, under Profile → Buying. If accepted, pay within 48 hours.', 'Segunda oportunidad: si no se alcanza la reserva, el vendedor puede ofrecer el artículo al mejor postor, por su puja o más. El postor tiene 48 horas para aceptar o rechazar, en Perfil → Compras. Si acepta, paga dentro de 48 horas.'),
                         T('Buy Now: some auctions let you skip the bidding and buy right away at a fixed price. Buying it ends the auction.', 'Compra Inmediata: algunas subastas te dejan comprar de inmediato a un precio fijo, sin pujar. Al comprarlo, la subasta termina.'),
                     ] },
                 ],

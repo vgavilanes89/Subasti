@@ -4,6 +4,7 @@ import { getSql } from '../_lib/db.js';
 import { createRateLimiter, getClientIp } from '../_lib/rateLimit.js';
 import { createSessionToken, setSessionCookie } from '../_lib/session.js';
 import { parseSignupInput, validateSignupInput, toPublicUser, generateAccountNumber } from '../_lib/users.js';
+import { verifiedNameFor } from '../_lib/cedulaToken.js';
 
 const RATE_LIMIT = 10; // requests
 const RATE_WINDOW_MS = 60 * 1000;
@@ -25,6 +26,13 @@ export default async function handler(req, res) {
 
   const body = typeof req.body === 'object' && req.body ? req.body : {};
   const fields = parseSignupInput(body);
+  // No account without a cédula that returned a name. The name comes from that
+  // lookup (inside the signed proof), not from what the browser sends.
+  const verifiedName = verifiedNameFor(body.verificationToken, fields.cedula);
+  if (!verifiedName) {
+    return res.status(400).json({ error: 'CEDULA_NOT_VERIFIED' });
+  }
+  fields.realName = verifiedName;
   const validationError = validateSignupInput(fields);
   if (validationError) {
     return res.status(400).json({ error: validationError });

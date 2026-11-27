@@ -46,7 +46,7 @@ export default async function handler(req, res) {
   if (!Number.isFinite(price) || price <= 0) return res.status(400).json({ error: 'INVALID_PRICE' });
 
   const sql = getSql();
-  const existing = await sql`SELECT sale_type FROM items WHERE id = ${id}`;
+  const existing = await sql`SELECT sale_type, reserve_price FROM items WHERE id = ${id}`;
   if (!existing[0]) {
     return res.status(404).json({ error: 'Item not found' });
   }
@@ -54,7 +54,8 @@ export default async function handler(req, res) {
 
   let rows;
   if (saleType === 'auc') {
-    let reservePrice = null;
+    // Not sent at all = leave it as it is; sent empty = remove it.
+    let reservePrice = body.reservePrice === undefined ? existing[0].reserve_price : null;
     if (body.reservePrice) {
       const rp = Number(body.reservePrice);
       if (Number.isFinite(rp) && rp > 0) reservePrice = rp;
@@ -94,5 +95,5 @@ export default async function handler(req, res) {
     `;
   }
 
-  return res.status(200).json(toPublicItem(rows[0]));
+  return res.status(200).json(toPublicItem(rows[0], { includeReserve: true }));
 }

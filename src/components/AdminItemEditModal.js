@@ -89,7 +89,8 @@ const AdminItemEditModal = ({ item, loc, onClose, onSaved }) => {
             const res = await fetch('/api/admin/update-item', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: item.id, ...form }),
+                // If this screen never received the reserve, don't send an empty one (that would delete it).
+                body: JSON.stringify({ id: item.id, ...form, ...(item.reservePrice === undefined && form.reservePrice === '' ? { reservePrice: undefined } : {}) }),
             });
             const body = await res.json();
             if (!res.ok) throw new Error(body.error || 'SAVE_FAILED');

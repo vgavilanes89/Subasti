@@ -7,7 +7,12 @@ import { normalizePaymentMethods, acceptedMethods } from '../../src/data/payment
 const toMs = (value) => (value ? new Date(value).getTime() : null);
 const toNum = (value) => (value === null || value === undefined ? null : Number(value));
 
-export function toPublicItem(row) {
+// The reserve price is private to the seller (and admins): it is left out unless
+// the caller says this viewer may see it. Everyone else only learns whether it
+// was met, and only once the auction is over, so it can't be probed while live.
+export function toPublicItem(row, { includeReserve = false } = {}) {
+  const reserve = toNum(row.reserve_price);
+  const ended = row.end_at ? new Date(row.end_at).getTime() < Date.now() : false;
   return {
     id: row.id,
     itemNumber: row.item_number,
@@ -30,7 +35,9 @@ export function toPublicItem(row) {
     buyNowPrice: toNum(row.buy_now_price),
     currentBid: toNum(row.current_bid),
     bids: row.bids,
-    reservePrice: toNum(row.reserve_price),
+    hasReserve: reserve !== null,
+    reserveMet: reserve === null ? true : (ended ? toNum(row.current_bid) >= reserve : null),
+    ...(includeReserve ? { reservePrice: reserve } : {}),
     endAt: toMs(row.end_at),
     highestBidderId: row.highest_bidder_id,
     attributes: row.attributes || {},
@@ -69,9 +76,19 @@ export function parsePaymentMethods(raw) {
   return list.length > 0 ? list : null;
 }
 
+// For server-side rules only (it carries the reserve) — never send the result
+// of this to a client as it is.
 export async function getItemById(sql, id) {
   const rows = await sql`SELECT * FROM items WHERE id = ${id}`;
-  return rows[0] ? toPublicItem(rows[0]) : null;
+  return rows[0] ? toPublicItem(rows[0], { includeReserve: true }) : null;
+}
+
+// Returns (row) => may this requester see that row's reserve price?
+export async function reserveViewer(sql, userId) {
+  if (!userId) return () => false;
+  const rows = await sql`SELECT is_admin FROM users WHERE id = ${userId}`;
+  const isAdmin = Boolean(rows[0]?.is_admin);
+  return (row) => isAdmin || row.seller_id === String(userId);
 }
 
 export function generateItemId() {
