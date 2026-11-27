@@ -13,6 +13,7 @@ const SignupPage = ({loc}) => {
     // Set only when the lookup returned a name for the number now in the box.
     const [verification, setVerification] = useState(null);
     const [cedulaError, setCedulaError] = useState('');
+    const [acceptedTerms, setAcceptedTerms] = useState(false);
     // Bot check before a lookup (only when the server has it switched on).
     const [siteKey, setSiteKey] = useState(null);
     const botToken = useRef('');
@@ -46,8 +47,8 @@ const SignupPage = ({loc}) => {
 
 
     const L = loc === 'en' 
-        ? {title:'Create Your Account', cedula: 'ID Number (Cédula)', fetching: 'Fetching...', realName: 'Full Name', profileName: 'Profile Name (public)', email:'Email', pass:'Password', phone:'Phone Number', province:'Province', city: 'City', submit:'Create Account', switch:'Already have an account?', link:'Log in', cedulaNotFound: 'We could not find a name for this ID number, so an account cannot be created with it. If you are not a Costa Rican national, another way to register is coming.', nameFromId: 'Filled in from your ID number', botCheckWait: 'Complete the security check below to verify your ID.', botCheckFailed: 'The security check did not pass. Try it again, then click into the ID box and out.', alreadyRegistered: 'An account already exists for this ID number. Log in, or reset your password if you forgot it.', lookupLimit: 'Too many ID lookups from your connection. Please try again later.', verifyFirst: 'Enter your ID number so we can verify your name before creating the account.', verifyAgain: 'Your ID verification expired. Click into the ID number box and out again to verify it.', profileNameInvalid: 'Profile name can only contain letters and numbers.', profileNameSameAsReal: 'Profile name cannot be the same as your full name.', select: 'Select...', profileNameHint: 'Letters and numbers only, no spaces.'}
-        : {title:'Crea Tu Cuenta', cedula: 'Número de Cédula', fetching: 'Consultando...', realName: 'Nombre Completo', profileName: 'Nombre de Perfil (público)', email:'Correo', pass:'Contraseña', phone:'Número de Teléfono', province:'Provincia', city: 'Cantón', submit:'Crear Cuenta', switch:'¿Ya tienes una cuenta?', link:'Inicia sesión', cedulaNotFound: 'No encontramos un nombre para esta cédula, así que no se puede crear una cuenta con ella. Si no eres costarricense, pronto habrá otra forma de registrarte.', nameFromId: 'Se completa con tu cédula', botCheckWait: 'Completa la verificación de seguridad de abajo para verificar tu cédula.', botCheckFailed: 'La verificación de seguridad no pasó. Inténtalo de nuevo y luego entra y sal de la casilla de cédula.', alreadyRegistered: 'Ya existe una cuenta para esta cédula. Inicia sesión, o restablece tu contraseña si la olvidaste.', lookupLimit: 'Demasiadas consultas de cédula desde tu conexión. Inténtalo más tarde.', verifyFirst: 'Escribe tu cédula para verificar tu nombre antes de crear la cuenta.', verifyAgain: 'La verificación de tu cédula venció. Entra en la casilla de cédula y sal de nuevo para verificarla.', profileNameInvalid: 'El nombre de perfil solo puede contener letras y números.', profileNameSameAsReal: 'El nombre de perfil no puede ser igual a su nombre completo.', select: 'Seleccionar...', profileNameHint: 'Solo letras y números, sin espacios.'};
+        ? {title:'Create Your Account', cedula: 'ID Number (Cédula)', fetching: 'Fetching...', realName: 'Full Name', profileName: 'Profile Name (public)', email:'Email', pass:'Password', phone:'Phone Number', province:'Province', city: 'City', submit:'Create Account', switch:'Already have an account?', link:'Log in', cedulaNotFound: 'We could not find a name for this ID number, so an account cannot be created with it. If you are not a Costa Rican national, another way to register is coming.', nameFromId: 'Filled in from your ID number', agreeStart: 'I have read and agree to the', agreeTerms: 'Terms and Conditions', agreeAnd: 'and the', agreePrivacy: 'Privacy Policy', botCheckWait: 'Complete the security check below to verify your ID.', botCheckFailed: 'The security check did not pass. Try it again, then click into the ID box and out.', alreadyRegistered: 'An account already exists for this ID number. Log in, or reset your password if you forgot it.', lookupLimit: 'Too many ID lookups from your connection. Please try again later.', verifyFirst: 'Enter your ID number so we can verify your name before creating the account.', verifyAgain: 'Your ID verification expired. Click into the ID number box and out again to verify it.', profileNameInvalid: 'Profile name can only contain letters and numbers.', profileNameSameAsReal: 'Profile name cannot be the same as your full name.', select: 'Select...', profileNameHint: 'Letters and numbers only, no spaces.'}
+        : {title:'Crea Tu Cuenta', cedula: 'Número de Cédula', fetching: 'Consultando...', realName: 'Nombre Completo', profileName: 'Nombre de Perfil (público)', email:'Correo', pass:'Contraseña', phone:'Número de Teléfono', province:'Provincia', city: 'Cantón', submit:'Crear Cuenta', switch:'¿Ya tienes una cuenta?', link:'Inicia sesión', cedulaNotFound: 'No encontramos un nombre para esta cédula, así que no se puede crear una cuenta con ella. Si no eres costarricense, pronto habrá otra forma de registrarte.', nameFromId: 'Se completa con tu cédula', agreeStart: 'He leído y acepto los', agreeTerms: 'Términos y Condiciones', agreeAnd: 'y la', agreePrivacy: 'Política de Privacidad', botCheckWait: 'Completa la verificación de seguridad de abajo para verificar tu cédula.', botCheckFailed: 'La verificación de seguridad no pasó. Inténtalo de nuevo y luego entra y sal de la casilla de cédula.', alreadyRegistered: 'Ya existe una cuenta para esta cédula. Inicia sesión, o restablece tu contraseña si la olvidaste.', lookupLimit: 'Demasiadas consultas de cédula desde tu conexión. Inténtalo más tarde.', verifyFirst: 'Escribe tu cédula para verificar tu nombre antes de crear la cuenta.', verifyAgain: 'La verificación de tu cédula venció. Entra en la casilla de cédula y sal de nuevo para verificarla.', profileNameInvalid: 'El nombre de perfil solo puede contener letras y números.', profileNameSameAsReal: 'El nombre de perfil no puede ser igual a su nombre completo.', select: 'Seleccionar...', profileNameHint: 'Solo letras y números, sin espacios.'};
     
     const selectedCountry = useMemo(() => COUNTRY_CODES.find(c => c.code === formData.countryCode), [formData.countryCode]);
 
@@ -111,7 +112,7 @@ const SignupPage = ({loc}) => {
             return;
         }
         try {
-            await signup({ ...formData, verificationToken: verification?.token });
+            await signup({ ...formData, verificationToken: verification?.token, acceptedTerms });
             navigate('/');
         } catch (err) {
             if (err.message === 'CEDULA_NOT_VERIFIED') {
@@ -304,8 +305,25 @@ const SignupPage = ({loc}) => {
                         </div>
                     </div>
                     
+                    {/* Links open in a new tab so what's been typed here isn't lost. */}
+                    <label className="flex items-start gap-2 text-sm text-gray-700 mt-2">
+                        <input
+                            type="checkbox"
+                            name="acceptedTerms"
+                            checked={acceptedTerms}
+                            onChange={(e) => setAcceptedTerms(e.target.checked)}
+                            required
+                            className="mt-0.5 h-5 w-5 flex-shrink-0 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                        />
+                        <span>
+                            {L.agreeStart}{' '}
+                            <a href="/terms" target="_blank" rel="noopener noreferrer" className="font-semibold text-purple-600 hover:underline">{L.agreeTerms}</a>
+                            {' '}{L.agreeAnd}{' '}
+                            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="font-semibold text-purple-600 hover:underline">{L.agreePrivacy}</a>.
+                        </span>
+                    </label>
                     {!isVerified && <p className="text-xs text-gray-500 mt-4">{L.verifyFirst}</p>}
-                    <button type="submit" disabled={!isVerified} className="w-full bg-purple-600 text-white py-3 mt-4 rounded-lg font-semibold hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">{L.submit}</button>
+                    <button type="submit" disabled={!isVerified || !acceptedTerms} className="w-full bg-purple-600 text-white py-3 mt-4 rounded-lg font-semibold hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">{L.submit}</button>
                 </form>
                 <p className="text-center text-sm text-gray-600 mt-6">{L.switch} <Link to="/login" className="font-semibold text-purple-600 hover:underline">{L.link}</Link></p>
             </div>
