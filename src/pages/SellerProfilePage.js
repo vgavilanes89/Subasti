@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useItems } from '../context/ItemsContext';
@@ -8,6 +8,9 @@ import { removeReview } from '../api/reviews';
 import ProductCard from '../components/ProductCard';
 import Avatar from '../components/Avatar';
 import ReportButton from '../components/ReportButton';
+import NotFoundPage from './NotFoundPage';
+import { usePageMeta } from '../lib/usePageMeta';
+import { pageTitle } from '../data/pageMeta';
 
 const SellerProfilePage = ({ loc }) => {
     const { id } = useParams();
@@ -17,16 +20,22 @@ const SellerProfilePage = ({ loc }) => {
 
     const seller = users[id];
 
+    // Which id came back empty, so "not found" only shows once we know.
+    const [missingId, setMissingId] = useState(null);
     useEffect(() => {
-        if (id && !users[id]) ensureUserLoaded(id);
+        if (!id || users[id]) return undefined;
+        let cancelled = false;
+        ensureUserLoaded(id).then((profile) => { if (!cancelled && !profile) setMissingId(id); });
+        return () => { cancelled = true; };
     }, [id, users, ensureUserLoaded]);
+
+    usePageMeta(seller ? { title: pageTitle(seller.profileName) } : null);
     const L = loc === 'en' ? {
         title: "'s Profile",
         listings: "'s Listings",
         noListings: "This seller has no active listings.",
         back: "Back",
         reviewsTitle: "Seller Reviews",
-        notFound: "Seller not found.",
         reviewsFrom: "from",
         reviews: "reviews",
         review: "review",
@@ -44,7 +53,6 @@ const SellerProfilePage = ({ loc }) => {
         noListings: "Este vendedor no tiene artículos activos.",
         back: "Atrás",
         reviewsTitle: "Reseñas del Vendedor",
-        notFound: "Vendedor no encontrado.",
         reviewsFrom: "de",
         reviews: "reseñas",
         review: "reseña",
@@ -78,15 +86,9 @@ const SellerProfilePage = ({ loc }) => {
     };
 
     if (!seller) {
-        return (
-            <div>
-                <button className="tap-target text-purple-600 font-semibold mb-4 inline-flex items-center" onClick={() => navigate('/')}>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-                    {L.back}
-                </button>
-                <div className="bg-white p-8 rounded-lg shadow-md text-center">{L.notFound}</div>
-            </div>
-        );
+        return missingId === id
+            ? <NotFoundPage loc={loc} kind="seller" />
+            : <div className="bg-white p-8 rounded-lg shadow-md border text-center text-gray-500">{loc === 'en' ? 'Loading…' : 'Cargando…'}</div>;
     }
 
     const ratingLine = (label, value, total) => total > 0 && (

@@ -1,6 +1,38 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "build",
-  "crons": [{ "path": "/api/cron/auction-results", "schedule": "0 14 * * *" }],
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "crons": [
+    {
+      "path": "/api/cron/auction-results",
+      "schedule": "0 14 * * *"
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/item/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(WhatsApp/.*)|(.*(facebookexternalhit|Facebot|Twitterbot|LinkedInBot|Slackbot|TelegramBot|Discordbot|SkypeUriPreview|Pinterest).*)"
+        }
+      ],
+      "destination": "/api/page?type=item&id=:id"
+    },
+    {
+      "source": "/seller/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(WhatsApp/.*)|(.*(facebookexternalhit|Facebot|Twitterbot|LinkedInBot|Slackbot|TelegramBot|Discordbot|SkypeUriPreview|Pinterest).*)"
+        }
+      ],
+      "destination": "/api/page?type=seller&id=:id"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 }

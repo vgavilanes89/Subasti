@@ -15,12 +15,15 @@ import Avatar from '../components/Avatar';
 import { acceptedMethods, paymentMethodLabel } from '../data/paymentMethods';
 import { EMAIL_NOT_CONFIRMED, emailNeededText } from '../data/emailConfirm';
 import ReportButton from '../components/ReportButton';
+import NotFoundPage from './NotFoundPage';
+import { usePageMeta } from '../lib/usePageMeta';
+import { pageTitle, summarize } from '../data/pageMeta';
 
 const ItemViewPage = ({ loc }) => {
     // 1. Get ID from URL and tools from Context
     const { id } = useParams();
     const navigate = useNavigate();
-    const { items, isFav, toggleFav, placeBid, replaceItem } = useItems();
+    const { items, itemsLoaded, isFav, toggleFav, placeBid, replaceItem } = useItems();
     const { addToCart } = useCart();
     // We access 'users' map here to look up seller details by ID
     const { user, users, ensureUserLoaded } = useAuth();
@@ -107,18 +110,13 @@ const ItemViewPage = ({ loc }) => {
         [item]
     );
 
+    usePageMeta(item ? { title: pageTitle(item.title), description: summarize(item.description) } : null);
+
     // 5. Handle "Not Found" case AFTER hooks
     if (!item) {
-        return (
-            <div>
-                <button className="text-purple-600 font-semibold mb-4" onClick={() => navigate('/')}>
-                    ← {loc === 'en' ? 'Back to search' : 'Volver a la búsqueda'}
-                </button>
-                <div className="bg-white p-8 rounded-lg shadow-md text-center">
-                    {loc === 'en' ? 'Item not found' : 'Artículo no encontrado'}
-                </div>
-            </div>
-        );
+        return itemsLoaded
+            ? <NotFoundPage loc={loc} kind="item" />
+            : <div className="bg-white p-8 rounded-lg shadow-md border text-center text-gray-500">{loc === 'en' ? 'Loading…' : 'Cargando…'}</div>;
     }
 
     // 6. Localization & Logic

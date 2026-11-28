@@ -36,6 +36,8 @@ import TermsPage from './pages/TermsPage';
 import PrivacyPage from './pages/PrivacyPage';
 import EmailConfirmBanner from './components/EmailConfirmBanner';
 import VerifyEmailPage from './pages/VerifyEmailPage';
+import PageMeta from './components/PageMeta';
+import NotFoundPage from './pages/NotFoundPage';
 
 const footerLinkClass = 'hover:text-white transition-colors';
 
@@ -115,6 +117,7 @@ function App() {
             <Header loc={loc} setLoc={setLoc} />
 
             <EmailConfirmBanner loc={loc} />
+            <PageMeta loc={loc} />
 
             {isHomePage && <WelcomeBanner loc={loc} />}
 
@@ -154,6 +157,7 @@ function App() {
                 <Route path="/faq" element={<FaqPage loc={loc} />} />
                 <Route path="/terms" element={<TermsPage loc={loc} />} />
                 <Route path="/privacy" element={<PrivacyPage loc={loc} />} />
+                <Route path="*" element={<NotFoundPage loc={loc} />} />
               </Routes>
             </main>
 
