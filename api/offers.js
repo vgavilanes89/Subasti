@@ -23,19 +23,47 @@ const LOOKBACK_DAYS = 30;
 const isExpired = (o) => o.status === 'pending' && new Date(o.expires_at).getTime() < Date.now();
 const offerState = (o) => (isExpired(o) ? 'expired' : o.status);
 
-// Auctions of this seller that ended below reserve and weren't sold any other way.
+// Who would be offered an auction whose highest bidder is suspended: the best
+// remaining bidder, at what they bid. null if there is none.
+async function nextBidder(sql, item) {
+  const row = (await sql`
+    SELECT h.bidder_id, MAX(h.amount) AS amount, u.profile_name
+    FROM bid_history h JOIN users u ON u.id::text = h.bidder_id
+    WHERE h.item_id = ${item.id} AND to_jsonb(h) ->> 'cancelled_at' IS NULL
+      AND h.bidder_id <> ${item.highest_bidder_id} AND h.bidder_id <> ${item.seller_id}
+      AND NOT u.is_suspended
+    GROUP BY h.bidder_id, u.profile_name
+    ORDER BY amount DESC LIMIT 1
+  `)[0];
+  return row ? { bidderId: row.bidder_id, amount: Number(row.amount), name: row.profile_name } : null;
+}
+
+// Auctions of this seller that ended without a sale and can be offered on: below
+// reserve, or won by an account since suspended. Not sold any other way.
 async function sellerList(sql, userId) {
   const items = await sql`
-    SELECT i.*, u.profile_name AS bidder_name
+    SELECT i.*, u.profile_name AS bidder_name, COALESCE(u.is_suspended, FALSE) AS winner_suspended
     FROM items i LEFT JOIN users u ON u.id::text = i.highest_bidder_id
     WHERE i.seller_id = ${userId} AND i.sale_type = 'auc'
       AND i.end_at < now() AND i.end_at > now() - (${LOOKBACK_DAYS} * interval '1 day')
-      AND i.reserve_price IS NOT NULL AND i.current_bid < i.reserve_price
       AND i.highest_bidder_id IS NOT NULL
+      AND (
+        (NOT COALESCE(u.is_suspended, FALSE) AND i.reserve_price IS NOT NULL AND i.current_bid < i.reserve_price)
+        OR (u.is_suspended AND NOT EXISTS (
+          SELECT 1 FROM orders o WHERE o.item_id = i.id AND o.buyer_id = i.highest_bidder_id AND o.status <> 'cancelled'))
+      )
       AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.item_id = i.id AND o.order_type = 'buy_now')
     ORDER BY i.end_at DESC
   `;
-  const listed = items.filter((i) => !i.removed_at);
+  const listed = [];
+  for (const i of items.filter((row) => !row.removed_at)) {
+    if (!i.winner_suspended) {
+      listed.push({ ...i, target: { amount: Number(i.current_bid), name: i.bidder_name || '' }, reason: 'reserve' });
+      continue;
+    }
+    const target = await nextBidder(sql, i);
+    if (target) listed.push({ ...i, target, reason: 'winner_unavailable' });
+  }
   if (listed.length === 0) return [];
   const offers = await sql`
     SELECT * FROM second_chance_offers WHERE seller_id = ${userId} ORDER BY created_at DESC
@@ -47,9 +75,11 @@ async function sellerList(sql, userId) {
       title: i.title,
       image: i.image,
       currency: i.currency,
-      highestBid: Number(i.current_bid),
-      reservePrice: Number(i.reserve_price),
-      bidderName: i.bidder_name || '',
+      reason: i.reason,
+      // The bid of whoever would receive the offer.
+      highestBid: i.target.amount,
+      reservePrice: i.reserve_price === null ? null : Number(i.reserve_price),
+      bidderName: i.target.name,
       endedAt: new Date(i.end_at).getTime(),
       offer: o ? { id: o.id, amount: Number(o.amount), status: offerState(o), expiresAt: new Date(o.expires_at).getTime() } : null,
     };
@@ -122,29 +152,35 @@ export default async function handler(req, res) {
       const item = (await sql`SELECT * FROM items WHERE id = ${itemId}`)[0];
       if (!item || item.removed_at || item.seller_id !== userId) return res.status(404).json({ error: 'Item not found' });
 
-      const eligible = item.sale_type === 'auc'
+      const ended = item.sale_type === 'auc'
         && item.end_at && new Date(item.end_at).getTime() < Date.now()
-        && item.reserve_price !== null && Number(item.current_bid) < Number(item.reserve_price)
         && item.highest_bidder_id;
-      if (!eligible) return res.status(409).json({ error: 'NOT_ELIGIBLE' });
+      if (!ended) return res.status(409).json({ error: 'NOT_ELIGIBLE' });
+      let target = { bidderId: item.highest_bidder_id, amount: Number(item.current_bid) };
+      if (await isSuspendedUser(sql, item.highest_bidder_id)) {
+        target = await nextBidder(sql, item);
+      } else if (item.reserve_price === null || Number(item.current_bid) >= Number(item.reserve_price)) {
+        target = null; // it sold to the highest bidder
+      }
+      if (!target) return res.status(409).json({ error: 'NOT_ELIGIBLE' });
       const sold = await sql`SELECT 1 FROM orders WHERE item_id = ${itemId} AND status <> ${ORDER_STATUS.CANCELLED} LIMIT 1`;
       if (sold[0]) return res.status(409).json({ error: 'ALREADY_SOLD' });
       // The bidder already agreed to pay their own bid, so the offer can't be below it.
-      if (!Number.isFinite(amount) || amount < Number(item.current_bid)) {
+      if (!Number.isFinite(amount) || amount < target.amount) {
         return res.status(400).json({ error: 'AMOUNT_TOO_LOW' });
       }
 
       const id = `offer_${randomUUID()}`;
       const inserted = await sql`
         INSERT INTO second_chance_offers (id, item_id, seller_id, bidder_id, amount, currency, expires_at)
-        VALUES (${id}, ${itemId}, ${userId}, ${item.highest_bidder_id}, ${amount}, ${item.currency || 'CRC'},
+        VALUES (${id}, ${itemId}, ${userId}, ${target.bidderId}, ${amount}, ${item.currency || 'CRC'},
                 to_timestamp(${Date.now() + OFFER_WINDOW_MS} / 1000.0))
         ON CONFLICT (item_id) WHERE status <> 'withdrawn' DO NOTHING
         RETURNING id
       `;
       if (!inserted[0]) return res.status(409).json({ error: 'ALREADY_OFFERED' });
 
-      await notify(sql, item.highest_bidder_id,
+      await notify(sql, target.bidderId,
         `Segunda oportunidad: "${item.title}"`,
         `El vendedor te ofrece el artículo por ${formatMoney(amount, item.currency)}. Tienes 48 horas para aceptar o rechazar en Perfil → Compras.`,
         '/profile?tab=buying');

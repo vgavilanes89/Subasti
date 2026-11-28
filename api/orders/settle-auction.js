@@ -45,6 +45,16 @@ export default async function handler(req, res) {
     return res.status(409).json({ error: 'ALREADY_SOLD' });
   }
 
+  // Offered to someone else while this account was suspended.
+  const offeredOn = await sql`
+    SELECT 1 FROM second_chance_offers
+    WHERE item_id = ${item.id} AND bidder_id <> ${userId}
+      AND (status = 'accepted' OR (status = 'pending' AND expires_at > now())) LIMIT 1
+  `;
+  if (offeredOn[0]) {
+    return res.status(409).json({ error: 'ALREADY_SOLD' });
+  }
+
   const amount = item.currentBid;
   const wantsPickup = body.fulfillment === 'pickup' && item.shippingLocal;
   const wantsShip = body.fulfillment === 'ship' && item.shippingShip;

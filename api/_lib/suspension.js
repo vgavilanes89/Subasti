@@ -1,9 +1,11 @@
 import { createNotification, getUserContact, formatMoney } from './notify.js';
+import { generateOrderId } from './orders.js';
 
-// What happens to a suspended account's bids on auctions that are still
-// running: they are cancelled. The rows stay in bid_history, marked, and the
+// What happens to a suspended account's auctions. Wins it hasn't paid for are
+// cancelled, so the seller isn't stuck. Its bids on auctions still running are
+// cancelled. The rows stay in bid_history, marked, and the
 // price drops back to the best remaining bid. Reinstating the account does not
-// bring them back. (Auctions that have already ended are left as they are.)
+// bring either back. Other bids on ended auctions are left as they are.
 
 const MAX_ATTEMPTS = 3;
 
@@ -86,13 +88,90 @@ export async function cancelRunningBids(sql, userId) {
   return ids.size;
 }
 
+const tellSeller = async (sql, sellerId, title, itemId) => {
+  try {
+    const contact = await getUserContact(sql, sellerId);
+    await createNotification({
+      sql, userId: sellerId, type: 'order_status',
+      title: 'La venta de tu subasta no se concretó',
+      body: `La cuenta ganadora de "${title}" fue suspendida. Revisa en Perfil → Ventas si puedes ofrecerla al siguiente postor, o elimina la publicación.`,
+      link: '/profile?tab=selling', email: contact?.email, name: contact?.name,
+    });
+  } catch (err) {
+    console.error('Released-win notification failed:', err.message);
+  }
+};
+
+// Returns how many auctions were released to their sellers.
+export async function releaseUnpaidWins(sql, userId) {
+  // Wins already turned into an order but not paid. If they have reported a
+  // SINPE transfer, the money may be there: that stays for an admin to check.
+  const cancelled = await sql`
+    UPDATE orders SET status = 'cancelled', cancelled_at = now()
+    WHERE buyer_id = ${userId} AND order_type = 'auction_won' AND status = 'pending_payment'
+      AND payment_reported_at IS NULL
+    RETURNING id, item_id, seller_id, item_title
+  `;
+
+  // Wins with no order yet (one is only created when the winner comes to pay).
+  // Recorded as a cancelled sale, which also stops them claiming it later.
+  const unclaimed = await sql`
+    SELECT i.* FROM items i
+    WHERE i.highest_bidder_id = ${userId} AND i.sale_type = 'auc' AND i.end_at <= now()
+      AND (i.reserve_price IS NULL OR i.current_bid >= i.reserve_price)
+      AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.item_id = i.id AND (o.buyer_id = ${userId} OR o.order_type = 'buy_now'))
+  `;
+  const released = new Map(cancelled.map((o) => [o.item_id, { sellerId: o.seller_id, title: o.item_title }]));
+  for (const item of unclaimed) {
+    const inserted = await sql`
+      INSERT INTO orders (
+        id, buyer_id, seller_id, item_id, item_title, image, amount, currency,
+        shipping_cost, status, fulfillment, order_type, purchased_at, cancelled_at
+      ) VALUES (
+        ${generateOrderId()}, ${userId}, ${item.seller_id}, ${item.id}, ${item.title}, ${item.image},
+        ${item.current_bid}, ${item.currency || 'CRC'}, 0, 'cancelled',
+        ${item.shipping_ship ? 'ship' : 'pickup'}, 'auction_won', now(), now()
+      )
+      ON CONFLICT (item_id, buyer_id) WHERE order_type = 'auction_won' DO NOTHING
+      RETURNING id
+    `;
+    if (inserted[0]) released.set(item.id, { sellerId: item.seller_id, title: item.title });
+  }
+
+  // Offers made to them: unanswered ones, and accepted ones just cancelled
+  // above. Withdrawing frees the seller to offer someone else.
+  const withdrawn = await sql`
+    UPDATE second_chance_offers SET status = 'withdrawn', responded_at = now()
+    WHERE bidder_id = ${userId}
+      AND (status = 'pending' OR (status = 'accepted' AND order_id = ANY(${cancelled.map((o) => o.id)})))
+    RETURNING item_id, seller_id
+  `;
+  for (const offer of withdrawn) {
+    if (released.has(offer.item_id)) continue;
+    const item = (await sql`SELECT title FROM items WHERE id = ${offer.item_id}`)[0];
+    released.set(offer.item_id, { sellerId: offer.seller_id, title: item?.title || '' });
+  }
+
+  for (const [itemId, sale] of released) await tellSeller(sql, sale.sellerId, sale.title, itemId);
+  return released.size;
+}
+
 // For the two places an admin suspends someone. The suspension has already
 // happened, so a failure here is reported rather than thrown.
 export async function afterSuspension(sql, userId) {
+  const outcome = { auctionsAffected: 0, winsReleased: 0, bidCancelFailed: false };
+  // Separately, so one failing doesn't stop the other.
   try {
-    return { auctionsAffected: await cancelRunningBids(sql, userId), bidCancelFailed: false };
+    outcome.auctionsAffected = await cancelRunningBids(sql, userId);
   } catch (err) {
     console.error('Cancelling bids failed (has sql/028 been run?):', err.message);
-    return { auctionsAffected: 0, bidCancelFailed: true };
+    outcome.bidCancelFailed = true;
   }
+  try {
+    outcome.winsReleased = await releaseUnpaidWins(sql, userId);
+  } catch (err) {
+    console.error('Releasing unpaid wins failed:', err.message);
+    outcome.bidCancelFailed = true;
+  }
+  return outcome;
 }
