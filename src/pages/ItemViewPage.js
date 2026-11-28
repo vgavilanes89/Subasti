@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useItems } from '../context/ItemsContext';
-import { useSellerReviews } from '../lib/useSellerReviews';
+import { useReviews } from '../lib/useReviews';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { PLACEHOLDER_IMG, CRC, CountdownTimer, StarRating, useCountdown, itemCurrency } from '../components/Shared';
@@ -99,7 +99,7 @@ const ItemViewPage = ({ loc }) => {
         const timer = setTimeout(() => { fetchItem(itemId).then(replaceItem).catch(() => {}); }, 2000);
         return () => clearTimeout(timer);
     }, [item, isFinished, replaceItem]);
-    const { average: averageRating, count: reviewCount } = useSellerReviews(item?.sellerId);
+    const { average: averageRating, count: reviewCount } = useReviews(item?.sellerId, 'seller');
     const attributeFields = useMemo(
         () => (item ? getAttributeFields(item.category, item.subCategory) : []),
         [item]

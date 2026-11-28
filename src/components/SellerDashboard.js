@@ -19,7 +19,8 @@ import EscrowPanel from './EscrowPanel';
 import PayoutAccountSection from './PayoutAccountSection';
 import SecondChanceSection from './SecondChanceSection';
 import { useItems } from '../context/ItemsContext';
-import { useSellerReviews } from '../lib/useSellerReviews';
+import { useReviews, useBuyerRatings, useMyReviews } from '../lib/useReviews';
+import OrderReview from './OrderReview';
 import { fetchMyListingStates } from '../api/items';
 import { listingErrorText } from '../data/listingMessages';
 
@@ -176,7 +177,11 @@ const SellerDashboard = ({ user, users, items, loc }) => {
         }
     }, [sellerThreads, activeThreadId]);
 
-    const { average: avgRating, count: reviewCount } = useSellerReviews(user.id);
+    const { average: avgRating, count: reviewCount } = useReviews(user.id, 'seller');
+    const [myReviews, reloadReviews] = useMyReviews(user.id);
+    // How other sellers rated each buyer, shown on the sale.
+    const buyerIds = useMemo(() => orders.map(o => o.buyerId), [orders]);
+    const buyerRatings = useBuyerRatings(buyerIds);
 
     const myListings = useMemo(() => items.filter(i => i.sellerId === user.id), [items, user.id]);
 
@@ -236,6 +241,13 @@ const SellerDashboard = ({ user, users, items, loc }) => {
     const pendingTotals = sumByCurrency(pendingPayout, o => o.amount);
 
     const unreadTotal = sellerThreads.reduce((n, t) => n + (t.unreadForSeller || 0), 0);
+
+    const buyerRatingText = (buyerId) => {
+        if (!buyerRatings) return '';
+        const r = buyerRatings[buyerId];
+        if (!r) return loc === 'en' ? 'no buyer reviews yet' : 'sin reseñas como comprador';
+        return `★ ${r.average.toFixed(1)} (${r.count})`;
+    };
 
     const buyerName = (buyerId) => {
         if (buyerId.startsWith('guest')) return L.anonymous;
@@ -439,7 +451,8 @@ const SellerDashboard = ({ user, users, items, loc }) => {
                                     <div className="seller-order-info">
                                         <p className="font-semibold text-gray-800">{order.itemTitle}</p>
                                         <p className="text-sm text-gray-600">
-                                            {L.buyer}: <span className="font-medium">{buyerName(order.buyerId)}</span>
+                                            {L.buyer}: <button type="button" className="buyer-profile-link" onClick={() => navigate(`/seller/${order.buyerId}`)}>{buyerName(order.buyerId)}</button>
+                                            {buyerRatingText(order.buyerId) && <span className="buyer-rating">{buyerRatingText(order.buyerId)}</span>}
                                             {' · '}{L.sold}: {formatDate(order.soldAt ?? order.purchasedAt)}
                                         </p>
                                         <p className="text-sm text-gray-600">
@@ -519,6 +532,7 @@ const SellerDashboard = ({ user, users, items, loc }) => {
                                             </button>
                                         </div>
                                     )}
+                                    <OrderReview order={order} loc={loc} subject="buyer" mine={myReviews} onReviewed={reloadReviews} />
                                     {canSellerCancel(order) && (
                                         <button
                                             type="button"

@@ -39,7 +39,7 @@ const CONTENT = {
             {
                 h: 'What other people can see',
                 list: [
-                    ['Everyone', 'your profile name, profile photo, province and city, return policy, listings, the reviews you receive as a seller, and the reviews you write (shown with your profile name and the item\'s title). Your cédula, full name, email and phone are not shown on your public profile.'],
+                    ['Everyone', 'your profile name, profile photo, province and city, return policy, listings, the reviews you receive as a seller or as a buyer, and the reviews you write (shown with your profile name; a review of a seller also shows the item\'s title). Your cédula, full name, email and phone are not shown on your public profile.'],
                     ['The other side of a sale', 'a seller sees the buyer\'s profile name and, for shipped orders, the delivery name and address. Buyers and sellers see the messages they exchange.'],
                     ['Subasti staff', 'account, listing, order, payment and payout information, as needed to operate the site, verify payments, resolve claims and give support.'],
                 ],
@@ -123,7 +123,7 @@ const CONTENT = {
             {
                 h: 'Qué pueden ver otras personas',
                 list: [
-                    ['Todo el público', 'su nombre de perfil, foto, provincia y cantón, política de devoluciones, publicaciones, las reseñas que reciba como vendedor y las que escriba (con su nombre de perfil y el título del artículo). Su cédula, nombre completo, correo y teléfono no se muestran en su perfil público.'],
+                    ['Todo el público', 'su nombre de perfil, foto, provincia y cantón, política de devoluciones, publicaciones, las reseñas que reciba como vendedor o como comprador y las que escriba (con su nombre de perfil; la reseña a un vendedor muestra además el título del artículo). Su cédula, nombre completo, correo y teléfono no se muestran en su perfil público.'],
                     ['La otra parte de una venta', 'el vendedor ve el nombre de perfil del comprador y, en pedidos con envío, el nombre y la dirección de entrega. Comprador y vendedor ven los mensajes que se envían.'],
                     ['Personal de Subasti', 'información de cuentas, publicaciones, pedidos, pagos y cuentas de cobro, en lo necesario para operar el sitio, verificar pagos, resolver reclamos y dar soporte.'],
                 ],

@@ -12,8 +12,8 @@ import PayOrderModal from './PayOrderModal';
 import { useEnsureUsers } from '../lib/useEnsureUsers';
 import { useRefreshOnNotification } from '../lib/useRefreshOnNotification';
 import { acceptedMethods } from '../data/paymentMethods';
-import ReviewForm from './ReviewForm';
-import { fetchMyReviewedOrders } from '../api/reviews';
+import OrderReview from './OrderReview';
+import { useMyReviews } from '../lib/useReviews';
 
 // Where an auction stands for this bidder. Ended auctions are judged from the
 // item's own endAt, so the badge flips the moment the clock runs out even
@@ -82,8 +82,7 @@ const BuyerOrderCard = ({
     onOpenItem,
     onMessageSeller,
     claiming,
-    canReview,
-    reviewed,
+    myReviews,
     onReviewed,
 }) => {
     const [claimDraft, setClaimDraft] = useState('');
@@ -214,8 +213,7 @@ const BuyerOrderCard = ({
                         )}
                     </>
                 )}
-                {canReview && <ReviewForm order={order} loc={loc} onReviewed={onReviewed} />}
-                {reviewed && <p className="text-xs text-gray-500">{loc === 'en' ? 'You reviewed this sale' : 'Ya reseñaste esta compra'}</p>}
+                <OrderReview order={order} loc={loc} subject="seller" mine={myReviews} onReviewed={onReviewed} />
                 <button
                     type="button"
                     onClick={() => onMessageSeller(order)}
@@ -247,14 +245,7 @@ const BuyerDashboard = ({
     const [loading, setLoading] = useState(true);
     const [claiming, setClaiming] = useState(null);
     const [payingOrder, setPayingOrder] = useState(null);
-    // null until known (or if reviews aren't available), so no order offers a review twice.
-    const [reviewedIds, setReviewedIds] = useState(null);
-    useEffect(() => {
-        fetchMyReviewedOrders()
-            .then((r) => setReviewedIds(r.available ? r.orderIds : null))
-            .catch(() => {});
-    }, [user.id]);
-    const handleReviewed = (orderId) => setReviewedIds(prev => [...(prev || []), orderId]);
+    const [myReviews, reloadReviews] = useMyReviews(user.id);
 
     useEnsureUsers(orders.map(o => o.sellerId));
 
@@ -610,9 +601,8 @@ const BuyerDashboard = ({
                             onOpenItem={handleOpenItem}
                             onMessageSeller={handleMessageSeller}
                             claiming={claiming}
-                            canReview={!!reviewedIds && ['completed', 'refunded'].includes(order.status) && !reviewedIds.includes(order.id)}
-                            reviewed={!!reviewedIds && reviewedIds.includes(order.id)}
-                            onReviewed={handleReviewed}
+                            myReviews={myReviews}
+                            onReviewed={reloadReviews}
                         />
                     ))}
                 </div>
