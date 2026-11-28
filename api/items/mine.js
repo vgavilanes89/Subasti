@@ -2,7 +2,7 @@ import { getSql } from '../_lib/db.js';
 import { getUserIdFromRequest } from '../_lib/session.js';
 import { toPublicItem } from '../_lib/items.js';
 import {
-  parseListingInput, listingState, loadListingRefs, deleteUnusedImages, AUCTION_DAYS, DAY_MS,
+  parseListingInput, listingState, loadListingRefs, deleteUnusedImages, saveUsedCondition, AUCTION_DAYS, DAY_MS,
 } from '../_lib/listing.js';
 
 // A seller managing their own listings.
@@ -115,5 +115,6 @@ export default async function handler(req, res) {
   if (!updated[0]) return res.status(409).json({ error: 'LISTING_CHANGED' });
 
   await deleteUnusedImages(sql, oldImages.filter((u) => !v.images.includes(u)));
-  return res.status(200).json(toPublicItem(updated[0], { includeReserve: true }));
+  const saved = await saveUsedCondition(sql, updated[0], v.usedCondition);
+  return res.status(200).json(toPublicItem(saved, { includeReserve: true }));
 }

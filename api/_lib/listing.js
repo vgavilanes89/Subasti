@@ -2,6 +2,7 @@
 import { del } from '@vercel/blob';
 import { sanitizeAttributes, parsePaymentMethods } from './items.js';
 import { ORDER_STATUS } from '../../src/data/escrow.js';
+import { USED_CONDITIONS } from '../../src/data/usedConditions.js';
 
 export const DAY_MS = 24 * 60 * 60 * 1000;
 export const AUCTION_DAYS = [1, 3, 7, 15, 21];
@@ -29,6 +30,7 @@ export function parseListingInput(body) {
   const conditionDetail = condition === 'used' && typeof body.usedConditionDetail === 'string'
     ? body.usedConditionDetail.trim() || null
     : null;
+  const usedCondition = condition === 'used' && USED_CONDITIONS.includes(body.usedCondition) ? body.usedCondition : null;
   const currency = body.currency === 'USD' ? 'USD' : 'CRC';
   const price = Number(body.price);
   const images = Array.isArray(body.images)
@@ -50,12 +52,24 @@ export function parseListingInput(body) {
 
   return {
     value: {
-      title, description, category, subCategory, condition, conditionDetail, currency, price, images,
+      title, description, category, subCategory, condition, conditionDetail, usedCondition, currency, price, images,
       shippingShip, shippingLocal, shippingCost, attributes, paymentMethods, quantity,
       reservePrice: positive(body.reservePrice),
       buyNowPrice: positive(body.buyNowPrice),
     },
   };
+}
+
+// Saved apart from the rest of the listing so publishing and editing still
+// work before sql/025 adds the column. Returns the row as it now stands.
+export async function saveUsedCondition(sql, row, usedCondition) {
+  try {
+    await sql`UPDATE items SET used_condition = ${usedCondition} WHERE id = ${row.id}`;
+    return { ...row, used_condition: usedCondition };
+  } catch (err) {
+    console.error('Could not save the used condition (has sql/025 been run?):', err.message);
+    return row;
+  }
 }
 
 // Orders in these states no longer count as a sale.

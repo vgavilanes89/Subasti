@@ -1,3 +1,4 @@
+import { usedConditionLabel } from './usedConditions';
 const CATEGORY_EN = {
     'Electrónicos': 'Electronics',
     'Hogar': 'Home',
@@ -146,11 +147,14 @@ export const tCategory = (name, loc) =>
 export const tSubCategory = (name, loc) =>
     loc === 'en' ? (SUBCATEGORY_EN[name] || name) : name;
 
-export const formatCondition = (condition, loc, detail = '') => {
+export const formatCondition = (condition, loc, detail = '', usedCondition = null) => {
     const label = loc === 'en'
         ? (condition === 'new' ? 'New' : condition === 'used' ? 'Used' : condition)
         : (condition === 'new' ? 'Nuevo' : condition === 'used' ? 'Usado' : condition);
-    return detail && condition === 'used' ? `${label} (${detail})` : label;
+    if (condition !== 'used') return label;
+    const grade = usedConditionLabel(usedCondition, loc);
+    const graded = grade ? `${label} - ${grade}` : label;
+    return detail ? `${graded} (${detail})` : graded;
 };
 
 export const saleTypeBadge = (saleType, loc) =>

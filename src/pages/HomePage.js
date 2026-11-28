@@ -221,7 +221,7 @@ const HomePage = ({ loc, categories }) => {
         <h3 className="text-sm text-gray-500 mb-1">{tCategory(it.category, loc)} {it.subCategory && <span className="text-gray-400">&gt; {tSubCategory(it.subCategory, loc)}</span>}</h3>
         <div className="flex-grow">
           <h2 className="text-md font-bold text-gray-800 group-hover:text-purple-700 transition-colors">{it.title}</h2>
-          <p className="text-xs text-gray-500 mt-1">{formatCondition(it.condition, loc, it.conditionDetail)}</p>
+          <p className="text-xs text-gray-500 mt-1">{formatCondition(it.condition, loc, it.conditionDetail, it.usedCondition)}</p>
         </div>
         <div className="mt-4">
           {it.saleType === 'auc' ? (

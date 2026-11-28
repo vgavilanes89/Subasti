@@ -27,6 +27,7 @@ export function toPublicItem(row, { includeReserve = false } = {}) {
     saleType: row.sale_type,
     condition: row.condition,
     conditionDetail: row.condition_detail,
+    usedCondition: row.condition === 'used' ? row.used_condition || null : null,
     sellerId: row.seller_id,
     quantity: row.quantity,
     shippingShip: row.shipping_ship,

@@ -88,6 +88,8 @@ const SellPage = ({ loc, categories }) => {
                     category: item.category,
                     subCategory: item.subCategory || '',
                     condition: item.condition || 'new',
+                    // '' = published before the grade was saved.
+                    usedCondition: item.condition === 'used' ? item.usedCondition || '' : prev.usedCondition,
                     usedConditionDetail: item.conditionDetail || '',
                     price: text(item.price),
                     buyNowPrice: text(item.buyNowPrice),
@@ -185,6 +187,7 @@ const SellPage = ({ loc, categories }) => {
         saveError: 'Could not save your changes. Please try again.',
         keepEnd: 'Keep the current end time',
         saleTypeFixed: 'The sale type can\'t be changed after publishing.',
+        notSpecified: 'Not specified',
         loadingListing: 'Loading your listing…',
         backToProfile: 'Back to your profile',
     } : {
@@ -251,6 +254,7 @@ const SellPage = ({ loc, categories }) => {
         saveError: 'No se pudieron guardar los cambios. Intenta de nuevo.',
         keepEnd: 'Mantener la fecha de cierre actual',
         saleTypeFixed: 'El tipo de venta no se puede cambiar después de publicar.',
+        notSpecified: 'Sin especificar',
         loadingListing: 'Cargando tu publicación…',
         backToProfile: 'Volver a tu perfil',
     };
@@ -579,18 +583,17 @@ const SellPage = ({ loc, categories }) => {
                     {formData.condition === 'used' && (
                         <FormSection title={L.usedInfo}>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {!isEdit && (
                                 <FormField label={L.usedCondition}>
                                     <select name="usedCondition" value={formData.usedCondition} onChange={handleChange} className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500">
+                                        {isEdit && <option value="">{L.notSpecified}</option>}
                                         <option value="like_new">{L.likeNew}</option>
                                         <option value="good">{L.good}</option>
                                         <option value="fair">{L.fair}</option>
                                         <option value="parts_only">{L.partsOnly}</option>
                                     </select>
                                 </FormField>
-                                )}
                                 <FormField label={L.conditionDetail}>
-                                    <input type="text" name="usedConditionDetail" value={formData.usedConditionDetail} onChange={handleChange} required={!isEdit && (formData.usedCondition === 'fair' || formData.usedCondition === 'parts_only')} className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" />
+                                    <input type="text" name="usedConditionDetail" value={formData.usedConditionDetail} onChange={handleChange} required={formData.usedCondition === 'fair' || formData.usedCondition === 'parts_only'} className="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" />
                                 </FormField>
                             </div>
                         </FormSection>

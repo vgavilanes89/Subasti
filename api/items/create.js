@@ -1,7 +1,7 @@
 import { getSql } from '../_lib/db.js';
 import { getUserIdFromRequest } from '../_lib/session.js';
 import { toPublicItem, generateItemId, generateItemNumber } from '../_lib/items.js';
-import { parseListingInput, DAY_MS } from '../_lib/listing.js';
+import { parseListingInput, saveUsedCondition, DAY_MS } from '../_lib/listing.js';
 
 const UNIQUE_VIOLATION = '23505';
 const MAX_ITEM_NUMBER_ATTEMPTS = 5;
@@ -23,7 +23,7 @@ export default async function handler(req, res) {
   if (parsed.error) return res.status(400).json({ error: parsed.error });
   const {
     title, description, category, subCategory, condition, conditionDetail, currency, price, images,
-    shippingShip, shippingLocal, shippingCost, attributes, paymentMethods,
+    shippingShip, shippingLocal, shippingCost, attributes, paymentMethods, usedCondition,
   } = parsed.value;
 
   let quantity = 1;
@@ -66,7 +66,8 @@ export default async function handler(req, res) {
         )
         RETURNING *
       `;
-      return res.status(201).json(toPublicItem(rows[0], { includeReserve: true }));
+      const saved = await saveUsedCondition(sql, rows[0], usedCondition);
+      return res.status(201).json(toPublicItem(saved, { includeReserve: true }));
     } catch (err) {
       if (err.code === UNIQUE_VIOLATION && (err.constraint || '').includes('item_number')) {
         continue; // collision on the random item number — retry with a new one

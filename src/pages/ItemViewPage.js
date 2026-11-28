@@ -467,7 +467,7 @@ const ItemViewPage = ({ loc }) => {
                 <h3 className="font-bold text-xl mb-3">{L.details}</h3>
                 <p className="mb-1"><b>{L.itemNumber}:</b> <span>{item.itemNumber}</span></p>
                 <p className="mb-1"><b>{L.sale}:</b> <span className="capitalize">{item.saleType==='auc'?L.auc:L.buy}</span></p>
-                <p className="mb-1"><b>{L.condition}:</b> <span>{formatCondition(item.condition, loc, item.conditionDetail)}</span></p>
+                <p className="mb-1"><b>{L.condition}:</b> <span>{formatCondition(item.condition, loc, item.conditionDetail, item.usedCondition)}</span></p>
                 {item.saleType === 'buy' && item.quantity > 1 && <p className="mb-1"><b>{L.quantity}:</b> {item.quantity}</p>}
                 <p className="mb-1"><b>{L.acceptedPayments}:</b> {acceptedMethods(item).map((m) => paymentMethodLabel(m, loc)).join(' · ')}</p>
                 {attributeFields.map((field) => {
