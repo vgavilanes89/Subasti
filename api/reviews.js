@@ -4,6 +4,7 @@ import { getUserIdFromRequest } from './_lib/session.js';
 import { getRequestingAdmin } from './_lib/admin.js';
 import { createNotification, getUserContact } from './_lib/notify.js';
 import { isReviewable, reviewClosesAt, REVIEW_WINDOW_DAYS } from '../src/data/reviewRules.js';
+import { blockUnconfirmed } from './_lib/emailConfirm.js';
 
 // Buyers and sellers review each other, once per order each, after the sale is
 // settled. Neither review is shown until both are written or the window ends.
@@ -147,6 +148,8 @@ export default async function handler(req, res) {
 
     const userId = getUserIdFromRequest(req);
     if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+
+    if (await blockUnconfirmed(sql, userId, res)) return undefined;
 
     const orderId = typeof body.orderId === 'string' ? body.orderId : '';
     const rating = body.rating;

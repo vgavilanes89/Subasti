@@ -3,6 +3,7 @@ import { getUserIdFromRequest } from '../_lib/session.js';
 import { toPublicOrder, generateOrderId } from '../_lib/orders.js';
 import { getItemById } from '../_lib/items.js';
 import { ESCROW_WINDOW_MS, ORDER_STATUS } from '../../src/data/escrow.js';
+import { blockUnconfirmed } from '../_lib/emailConfirm.js';
 
 // Items and bids are real Postgres rows now (see api/items/bid.js), so
 // "who won at what price" is read straight from the item itself rather than
@@ -17,6 +18,7 @@ export default async function handler(req, res) {
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
+  if (await blockUnconfirmed(getSql(), userId, res)) return undefined;
 
   const body = typeof req.body === 'object' && req.body ? req.body : {};
   const sql = getSql();

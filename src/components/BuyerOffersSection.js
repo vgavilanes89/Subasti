@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { formatMoney, PLACEHOLDER_IMG } from './Shared';
 import { fetchOffers, postOffer } from '../api/offers';
 import { useRefreshOnNotification } from '../lib/useRefreshOnNotification';
+import { EMAIL_NOT_CONFIRMED, emailNeededText } from '../data/emailConfirm';
 
 // Buyer: second-chance offers waiting for an answer (the seller's offer after an
 // auction ended below its reserve).
@@ -56,7 +57,7 @@ const BuyerOffersSection = ({ loc, onAccepted }) => {
                 onAccepted?.();
             }
         } catch (err) {
-            setError(L.errors[err.message] || L.errors.REQUEST_FAILED);
+            setError(err.message === EMAIL_NOT_CONFIRMED ? emailNeededText(loc) : (L.errors[err.message] || L.errors.REQUEST_FAILED));
             load();
         } finally {
             setBusy(null);

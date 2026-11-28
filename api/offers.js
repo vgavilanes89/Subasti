@@ -4,6 +4,7 @@ import { getUserIdFromRequest } from './_lib/session.js';
 import { generateOrderId, toPublicOrder } from './_lib/orders.js';
 import { createNotification, getUserContact, formatMoney } from './_lib/notify.js';
 import { ESCROW_WINDOW_MS, ORDER_STATUS } from '../src/data/escrow.js';
+import { blockUnconfirmed } from './_lib/emailConfirm.js';
 
 // Second-chance offers. An auction that ends below its reserve price makes no
 // sale; the seller may then offer the item to the highest bidder, who accepts
@@ -109,6 +110,8 @@ export default async function handler(req, res) {
 
   const body = typeof req.body === 'object' && req.body ? req.body : {};
   const action = body.action;
+  // Withdrawing or declining is always allowed.
+  if ((action === 'create' || action === 'accept') && await blockUnconfirmed(sql, userId, res)) return undefined;
 
   try {
     if (action === 'create') {

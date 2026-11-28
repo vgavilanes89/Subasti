@@ -19,7 +19,7 @@ const CONTENT = {
                 list: [
                     ['Account', 'cédula number, the name registered to it, profile name, email, phone, province and city, password, and optionally a profile photo and return policy.'],
                     ['Listings', 'titles, descriptions, details, prices and photos you publish.'],
-                    ['Buying and selling', 'orders, bids, offers, claims and their reasons, reviews you write, delivery addresses, tracking information, and the SINPE Móvil number you say you paid from.'],
+                    ['Buying and selling', 'orders, bids, offers, claims and their reasons, reviews you write, reports you send about listings or accounts, delivery addresses, tracking information, and the SINPE Móvil number you say you paid from.'],
                     ['Saved details', 'delivery addresses and SINPE Móvil numbers you choose to save. For saved cards we keep only a reference to your record at our payment processor.'],
                     ['Seller payouts', "the account holder's name and the bank account (IBAN) or SINPE Móvil number where you want to be paid."],
                     ['Messages', 'messages with other users and with Subasti, and anything you send through the Contact form.'],
@@ -103,7 +103,7 @@ const CONTENT = {
                 list: [
                     ['Cuenta', 'número de cédula, el nombre registrado a esa cédula, nombre de perfil, correo, teléfono, provincia y cantón, contraseña y, si lo desea, foto de perfil y política de devoluciones.'],
                     ['Publicaciones', 'títulos, descripciones, detalles, precios y fotos que usted publica.'],
-                    ['Compras y ventas', 'pedidos, pujas, ofertas, reclamos y sus motivos, reseñas que escriba, direcciones de entrega, información de rastreo y el número de SINPE Móvil desde el que indica haber pagado.'],
+                    ['Compras y ventas', 'pedidos, pujas, ofertas, reclamos y sus motivos, reseñas que escriba, reportes que envíe sobre publicaciones o cuentas, direcciones de entrega, información de rastreo y el número de SINPE Móvil desde el que indica haber pagado.'],
                     ['Datos guardados', 'direcciones de entrega y números de SINPE Móvil que decida guardar. De las tarjetas guardadas solo conservamos una referencia a su registro en nuestro procesador de pagos.'],
                     ['Pagos a vendedores', 'nombre del titular y la cuenta bancaria (IBAN) o número de SINPE Móvil donde desea recibir su dinero.'],
                     ['Mensajes', 'mensajes con otros usuarios y con Subasti, y lo que envíe por el formulario de Contacto.'],

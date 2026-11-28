@@ -2,6 +2,7 @@ import { getSql } from '../_lib/db.js';
 import { getUserIdFromRequest } from '../_lib/session.js';
 import { toPublicThread, generateMessageId, getThreadById } from '../_lib/messages.js';
 import { sendEmail, escapeHtml } from '../_lib/notify.js';
+import { blockUnconfirmed } from '../_lib/emailConfirm.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -29,6 +30,9 @@ export default async function handler(req, res) {
   if (thread.seller_id !== userId && thread.buyer_id !== userId) {
     return res.status(403).json({ error: 'Forbidden' });
   }
+
+  // Support chats stay open, so someone stuck confirming can still ask.
+  if (thread.item_id !== 'admin_support' && await blockUnconfirmed(sql, userId, res)) return undefined;
 
   const id = generateMessageId();
   await sql`

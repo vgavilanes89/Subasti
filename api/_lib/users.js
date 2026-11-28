@@ -1,4 +1,5 @@
 import { checkPassword } from '../../src/lib/passwordPolicy.js';
+import { isUnconfirmed } from './emailConfirm.js';
 export function toPublicUser(row) {
   return {
     id: String(row.id),
@@ -13,6 +14,7 @@ export function toPublicUser(row) {
     city: row.city,
     isAdmin: row.is_admin,
     isSuspended: row.is_suspended,
+    emailUnconfirmed: isUnconfirmed(row),
     returnPolicy: row.return_policy,
     avatarUrl: row.avatar_url || null,
     createdAt: row.created_at ? new Date(row.created_at).getTime() : null,

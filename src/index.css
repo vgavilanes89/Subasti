@@ -2139,3 +2139,69 @@ code {
   font-size: 0.75rem;
   color: #6b7280;
 }
+
+.email-banner {
+  background: #fffbeb;
+  border-bottom: 1px solid #fcd34d;
+  color: #78350f;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.email-banner-actions,
+.email-banner-form {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin-top: 0.25rem;
+}
+
+.email-banner-form .seller-input {
+  width: 16rem;
+  max-width: 100%;
+}
+
+.email-banner-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  min-height: 2.25rem;
+  font-weight: 600;
+  text-decoration: underline;
+  color: inherit;
+}
+
+.email-banner-message {
+  margin-top: 0.25rem;
+  font-weight: 600;
+}
+
+.report-link {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+
+.report-link:hover {
+  color: #b91c1c;
+  text-decoration: underline;
+}
+
+.report-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 28rem;
+  text-align: left;
+}
+
+.report-thanks {
+  font-size: 0.875rem;
+  color: #166534;
+}

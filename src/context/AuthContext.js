@@ -109,6 +109,17 @@ export const AuthProvider = ({ children }) => {
         };
     }, [user]);
 
+    // Re-reads the signed-in account, e.g. after its email is confirmed.
+    const refreshUser = useCallback(async () => {
+        try {
+            const res = await fetch('/api/auth/me');
+            if (!res.ok) return;
+            const fresh = await res.json();
+            setUser(current => (JSON.stringify(current) === JSON.stringify(fresh) ? current : fresh));
+            setUsersMap(prev => ({ ...prev, [fresh.id]: fresh }));
+        } catch { /* keep what we have */ }
+    }, []);
+
     const login = async (email, password) => {
         const res = await fetch('/api/auth/login', {
             method: 'POST',
@@ -233,6 +244,7 @@ export const AuthProvider = ({ children }) => {
         <AuthContext.Provider value={{ 
             user, 
             authReady,
+            refreshUser,
             users: usersMap, // Expose all users for read-only (like reviews)
             login,
             logout,

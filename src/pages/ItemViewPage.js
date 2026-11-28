@@ -13,6 +13,8 @@ import ChatPanel from '../components/ChatPanel';
 import EscrowPanel from '../components/EscrowPanel';
 import Avatar from '../components/Avatar';
 import { acceptedMethods, paymentMethodLabel } from '../data/paymentMethods';
+import { EMAIL_NOT_CONFIRMED, emailNeededText } from '../data/emailConfirm';
+import ReportButton from '../components/ReportButton';
 
 const ItemViewPage = ({ loc }) => {
     // 1. Get ID from URL and tools from Context
@@ -306,8 +308,8 @@ const ItemViewPage = ({ loc }) => {
             setBidError('');
             setBidAmountTouched(false);
             alert(updated.endAt > prevEndAt ? `${L.bidSuccess} ${L.bidExtended}` : L.bidSuccess);
-        } catch {
-            setBidError(`${L.bidTooLow} ${CRC(minBid, loc, currency)}`);
+        } catch (err) {
+            setBidError(err.message === EMAIL_NOT_CONFIRMED ? emailNeededText(loc) : `${L.bidTooLow} ${CRC(minBid, loc, currency)}`);
         } finally {
             setBidding(false);
         }
@@ -457,6 +459,11 @@ const ItemViewPage = ({ loc }) => {
                                     <h4 className="font-bold text-sm text-gray-700 mb-1">{L.returnPolicy}</h4>
                                     <p className="text-sm text-gray-600">{seller.returnPolicy || L.noReturnPolicy}</p>
                                 </div>
+                                {user?.id !== item.sellerId && (
+                                    <div className="border-t mt-4 pt-3">
+                                        <ReportButton key={item.id} targetType="item" targetId={item.id} loc={loc} />
+                                    </div>
+                                )}
                             </div>
                         )}
                 </div>

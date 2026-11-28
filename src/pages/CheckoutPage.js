@@ -14,6 +14,7 @@ import { useWallet } from '../lib/useWallet';
 import { cardBrandName, formatSinpePhone } from '../lib/walletFormat';
 import { getStripePromise } from '../lib/stripe';
 import { commonPaymentMethods, acceptedMethods, paymentMethodLabel } from '../data/paymentMethods';
+import { EMAIL_NOT_CONFIRMED, emailNeededText } from '../data/emailConfirm';
 
 async function waitForOrders(paymentIntentId, attempts = 8, delayMs = 800) {
     for (let i = 0; i < attempts; i++) {
@@ -492,8 +493,9 @@ const CheckoutFormBody = (props) => {
                 alert(L.orderSuccess);
                 navigate('/profile?tab=buying');
             }
-        } catch {
-            alert(loc === 'en' ? 'Checkout failed. Please try again.' : 'Error en la compra. Intente de nuevo.');
+        } catch (err) {
+            alert(err.message === EMAIL_NOT_CONFIRMED ? emailNeededText(loc)
+                : (loc === 'en' ? 'Checkout failed. Please try again.' : 'Error en la compra. Intente de nuevo.'));
         } finally {
             setPlacing(false);
         }

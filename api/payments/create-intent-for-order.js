@@ -6,6 +6,7 @@ import { ORDER_STATUS } from '../../src/data/escrow.js';
 import { getItemById } from '../_lib/items.js';
 import { itemAcceptsMethod } from '../../src/data/paymentMethods.js';
 import { savedCardIntentOptions } from '../_lib/wallet.js';
+import { blockUnconfirmed } from '../_lib/emailConfirm.js';
 
 // Pays off an EXISTING pending_payment order (an auction win) — unlike
 // create-intent.js, there's no cart to resolve; the order already has the
@@ -20,6 +21,7 @@ export default async function handler(req, res) {
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
+  if (await blockUnconfirmed(getSql(), userId, res)) return undefined;
 
   const body = typeof req.body === 'object' && req.body ? req.body : {};
   const orderId = typeof body.orderId === 'string' ? body.orderId : '';

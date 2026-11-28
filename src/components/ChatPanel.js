@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useMessages } from '../context/MessagesContext';
 import { useEnsureUsers } from '../lib/useEnsureUsers';
 import Avatar from './Avatar';
+import { EMAIL_NOT_CONFIRMED, emailNeededText } from '../data/emailConfirm';
 
 const displayName = (userId, users, loc, role) => {
     if (!userId) return role === 'seller' ? (loc === 'en' ? 'Seller' : 'Vendedor') : (loc === 'en' ? 'Buyer' : 'Comprador');
@@ -34,8 +35,9 @@ const ThreadBox = ({ thread, open, onToggle, label, counterpart, unread, user, u
         try {
             await sendMessage(thread.id, draft);
             setDraft('');
-        } catch {
-            // ignore
+        } catch (err) {
+            // Other failures leave the draft in the box to retry.
+            if (err.message === EMAIL_NOT_CONFIRMED) alert(emailNeededText(loc));
         } finally {
             setSending(false);
         }
@@ -199,8 +201,9 @@ const ChatPanel = ({
         try {
             await sendMessage(activeThreadId, messageDraft);
             setMessageDraft('');
-        } catch {
-            // ignore
+        } catch (err) {
+            // Other failures leave the draft in the box to retry.
+            if (err.message === EMAIL_NOT_CONFIRMED) alert(emailNeededText(loc));
         } finally {
             setSending(false);
         }

@@ -8,6 +8,7 @@ import { uploadImage } from '../api/upload';
 import { fetchItem, fetchMyListingStates } from '../api/items';
 import { listingErrorText } from '../data/listingMessages';
 import { PAYMENT_METHODS, paymentMethodLabel } from '../data/paymentMethods';
+import { EMAIL_NOT_CONFIRMED, emailNeededText } from '../data/emailConfirm';
 
 // Reusable Form Components
 const FormSection = ({ title, children }) => (
@@ -464,6 +465,7 @@ const SellPage = ({ loc, categories }) => {
                 TOO_MANY_IMAGES: L.errorMsg,
                 IMAGES_REQUIRED: L.errorMsg,
                 PAYMENT_METHOD_REQUIRED: L.paymentRequired,
+                [EMAIL_NOT_CONFIRMED]: emailNeededText(loc),
             };
             alert(knownErrors[err.message] || L.publishError);
         } finally {

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { submitReview } from '../api/reviews';
 import { isReviewable, reviewClosesAt } from '../data/reviewRules';
+import { EMAIL_NOT_CONFIRMED, emailNeededText } from '../data/emailConfirm';
 
 // The review part of a settled order, for either side.
 // subject: who is being reviewed, 'seller' or 'buyer'.
@@ -62,7 +63,8 @@ const OrderReview = ({ order, loc, subject, mine, onReviewed }) => {
             onReviewed();
         } catch (err) {
             if (err.message === 'ALREADY_REVIEWED') { onReviewed(); return; }
-            setError(err.message === 'REVIEW_CLOSED' ? L.late : L.failed);
+            setError(err.message === EMAIL_NOT_CONFIRMED ? emailNeededText(loc)
+                : err.message === 'REVIEW_CLOSED' ? L.late : L.failed);
             setSending(false);
         }
     };

@@ -2,6 +2,7 @@ import { getSql } from '../_lib/db.js';
 import { getUserIdFromRequest } from '../_lib/session.js';
 import { toPublicItem, generateItemId, generateItemNumber } from '../_lib/items.js';
 import { parseListingInput, saveUsedCondition, DAY_MS } from '../_lib/listing.js';
+import { blockUnconfirmed } from '../_lib/emailConfirm.js';
 
 const UNIQUE_VIOLATION = '23505';
 const MAX_ITEM_NUMBER_ATTEMPTS = 5;
@@ -16,6 +17,7 @@ export default async function handler(req, res) {
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
+  if (await blockUnconfirmed(getSql(), userId, res)) return undefined;
 
   const body = typeof req.body === 'object' && req.body ? req.body : {};
   const saleType = body.saleType === 'auc' ? 'auc' : 'buy';

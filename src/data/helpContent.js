@@ -91,6 +91,18 @@ export const HELP_TOPICS = [
                 kw: T('review rating stars feedback seller buyer', 'resena calificacion estrellas opinion vendedor comprador'),
             },
             {
+                id: 'buy-report',
+                q: T('How do I report a listing or a user?', '¿Cómo reporto una publicación o un usuario?'),
+                a: [
+                    T('Use Report this listing on the item page, under the seller details, or Report this user on their profile. Choose a reason and tell us what happened.',
+                      'Usa Reportar esta publicación en la página del artículo, bajo los datos del vendedor, o Reportar a este usuario en su perfil. Elige un motivo y cuéntanos qué pasó.'),
+                    T('Only Subasti sees the report, and the person is not told who sent it. We can hide a listing or suspend an account. For a problem with something you already paid for, file a claim on the order instead.',
+                      'Solo Subasti ve el reporte y a la persona no se le dice quién lo envió. Podemos ocultar una publicación o suspender una cuenta. Si el problema es con algo que ya pagaste, presenta un reclamo en el pedido.'),
+                ],
+                links: [{ to: '/contact', label: T('Contact us', 'Contáctanos') }],
+                kw: T('report flag scam fake abuse fraud block', 'reportar denunciar estafa falso abuso fraude bloquear'),
+            },
+            {
                 id: 'buy-contact',
                 q: T('How do I contact a seller?', '¿Cómo contacto a un vendedor?'),
                 a: [
@@ -373,6 +385,17 @@ export const HELP_TOPICS = [
                 ],
                 links: [{ to: '/signup', label: T('Sign up', 'Registrarse') }],
                 kw: T('signup register id verification', 'registro identificacion verificacion'),
+            },
+            {
+                id: 'acc-email',
+                q: T('Why do I need to confirm my email?', '¿Por qué debo confirmar mi correo?'),
+                a: [
+                    T('When you sign up we may email you a link to confirm the address is yours. Until you use it you can browse, but not bid, buy, sell, message or review. The link works for 48 hours.',
+                      'Al registrarte podemos enviarte un enlace para confirmar que el correo es tuyo. Mientras no lo uses puedes navegar, pero no pujar, comprar, vender, enviar mensajes ni reseñar. El enlace funciona durante 48 horas.'),
+                    T('If it did not arrive, check your spam folder, then use Send the link again in the notice at the top of the page. If you typed the wrong address, you can correct it there.',
+                      'Si no llegó, revisa el correo no deseado y usa Enviar el enlace de nuevo en el aviso de arriba. Si escribiste mal el correo, puedes corregirlo ahí.'),
+                ],
+                kw: T('confirm verify email link activation', 'confirmar verificar correo enlace activacion'),
             },
             {
                 id: 'acc-password',

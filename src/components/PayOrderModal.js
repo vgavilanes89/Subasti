@@ -6,6 +6,10 @@ import SinpePaymentPanel from './SinpePaymentPanel';
 import * as walletApi from '../api/wallet';
 import { cardBrandName } from '../lib/walletFormat';
 import { PAYMENT_METHODS } from '../data/paymentMethods';
+import { EMAIL_NOT_CONFIRMED, emailNeededText } from '../data/emailConfirm';
+
+// Why the server wouldn't start a card payment.
+const intentError = async (res) => new Error((await res.json().catch(() => ({}))).error || 'CREATE_INTENT_FAILED');
 
 async function waitForPaidOrder(paymentIntentId, attempts = 8, delayMs = 800) {
     for (let i = 0; i < attempts; i++) {
@@ -34,7 +38,7 @@ const SavedCardPayForm = ({ order, L, cardId, onPaid, onClose }) => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ orderId: order.id, paymentMethodId: cardId }),
             });
-            if (!res.ok) throw new Error('CREATE_INTENT_FAILED');
+            if (!res.ok) throw await intentError(res);
             const { clientSecret } = await res.json();
             const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, { payment_method: cardId });
             if (confirmError) {
@@ -45,8 +49,8 @@ const SavedCardPayForm = ({ order, L, cardId, onPaid, onClose }) => {
                 const updated = await waitForPaidOrder(paymentIntent.id);
                 onPaid(updated || { ...order, status: 'escrow_held' });
             }
-        } catch {
-            setError(L.payError);
+        } catch (err) {
+            setError(err.message === EMAIL_NOT_CONFIRMED ? L.emailNeeded : L.payError);
         } finally {
             setSubmitting(false);
         }
@@ -169,6 +173,7 @@ const PayOrderModal = ({ order, loc, onClose, onPaid, onReported, methods = PAYM
         sinpeFrom: 'Your SINPE Móvil number (the number you pay from)',
         sinpePhoneRequired: 'Enter the 8-digit SINPE Móvil number you are paying from.',
         total: 'Total',
+        emailNeeded: emailNeededText('en'),
     } : {
         title: 'Completar Pago',
         card: 'Tarjeta de Crédito/Débito',
@@ -185,6 +190,7 @@ const PayOrderModal = ({ order, loc, onClose, onPaid, onReported, methods = PAYM
         sinpeFrom: 'Tu número de SINPE Móvil (el número desde el que pagas)',
         sinpePhoneRequired: 'Escribe el número de SINPE Móvil de 8 dígitos desde el que pagas.',
         total: 'Total',
+        emailNeeded: emailNeededText('es'),
     };
 
     useEffect(() => {
@@ -204,11 +210,11 @@ const PayOrderModal = ({ order, loc, onClose, onPaid, onReported, methods = PAYM
             body: JSON.stringify({ orderId: order.id }),
         })
             .then(async (res) => {
-                if (!res.ok) throw new Error('CREATE_INTENT_FAILED');
+                if (!res.ok) throw await intentError(res);
                 return res.json();
             })
             .then((body) => setClientSecret(body.clientSecret))
-            .catch(() => setError(L.payError));
+            .catch((err) => setError(err.message === EMAIL_NOT_CONFIRMED ? L.emailNeeded : L.payError));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [tab]);
 

@@ -6,6 +6,7 @@ import { createSessionToken, setSessionCookie } from '../_lib/session.js';
 import { parseSignupInput, validateSignupInput, toPublicUser, generateAccountNumber } from '../_lib/users.js';
 import { verifiedNameFor } from '../_lib/cedulaToken.js';
 import { TERMS_VERSION } from '../../src/data/legal.js';
+import { confirmationOn, sendConfirmationEmail } from '../_lib/emailConfirm.js';
 
 const RATE_LIMIT = 10; // requests
 const RATE_WINDOW_MS = 60 * 1000;
@@ -62,6 +63,16 @@ export default async function handler(req, res) {
         // columns exist, see sql/024_terms_acceptance.sql).
         await sql`UPDATE users SET terms_accepted_at = now(), terms_version = ${TERMS_VERSION} WHERE id = ${rows[0].id}`
           .catch((err) => console.error('Could not record terms acceptance:', err.message));
+        if (confirmationOn()) {
+          // The account is made either way; the banner offers to send the link again.
+          try {
+            await sql`UPDATE users SET email_confirm_required = TRUE WHERE id = ${rows[0].id}`;
+            user.emailUnconfirmed = true;
+            await sendConfirmationEmail(rows[0]);
+          } catch (err) {
+            console.error('Could not start email confirmation:', err.message);
+          }
+        }
         setSessionCookie(res, createSessionToken(user.id));
         await sql`INSERT INTO login_events (id, user_id) VALUES (${`login_${randomUUID()}`}, ${user.id})`;
         return res.status(201).json(user);

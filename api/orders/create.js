@@ -6,6 +6,7 @@ import { getSinpeNumber } from '../_lib/settings.js';
 import { itemAcceptsMethod } from '../../src/data/paymentMethods.js';
 import { parseSinpePhone } from '../_lib/wallet.js';
 import { ESCROW_WINDOW_MS, ORDER_STATUS } from '../../src/data/escrow.js';
+import { blockUnconfirmed } from '../_lib/emailConfirm.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -17,6 +18,7 @@ export default async function handler(req, res) {
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
+  if (await blockUnconfirmed(getSql(), userId, res)) return undefined;
 
   const body = typeof req.body === 'object' && req.body ? req.body : {};
   const cart = Array.isArray(body.items) ? body.items : [];

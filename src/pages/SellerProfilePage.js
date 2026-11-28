@@ -7,6 +7,7 @@ import { useReviews } from '../lib/useReviews';
 import { removeReview } from '../api/reviews';
 import ProductCard from '../components/ProductCard';
 import Avatar from '../components/Avatar';
+import ReportButton from '../components/ReportButton';
 
 const SellerProfilePage = ({ loc }) => {
     const { id } = useParams();
@@ -127,6 +128,11 @@ const SellerProfilePage = ({ loc }) => {
                 {ratingLine(L.asSeller, average, count)}
                 {ratingLine(L.asBuyerLabel, asBuyer.average, asBuyer.count)}
                 <p className="text-gray-500 mt-1">{`${seller.city}, ${seller.province}`}</p>
+                {user?.id !== seller.id && !seller.isAdmin && (
+                    <div className="mt-3">
+                        <ReportButton key={seller.id} targetType="user" targetId={seller.id} loc={loc} />
+                    </div>
+                )}
             </div>
             
             <div className="bg-white p-6 rounded-lg shadow-md border mb-6">

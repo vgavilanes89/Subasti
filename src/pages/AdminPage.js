@@ -13,6 +13,7 @@ import AdminCreateUserModal from '../components/AdminCreateUserModal';
 import AdminSinpePayments from '../components/AdminSinpePayments';
 import AdminOverdueReviews from '../components/AdminOverdueReviews';
 import { overdueReviews, overdueDeliveries, DEFAULT_GRACE_DAYS } from '../lib/reviewWindow';
+import AdminReports from '../components/AdminReports';
 
 const money = (amount, currency, loc) => CRC(amount, loc, currency);
 
@@ -98,7 +99,7 @@ const AdminPage = ({ loc }) => {
 
     const [tab, setTab] = useState(() => {
         const wanted = new URLSearchParams(window.location.search).get('tab');
-        return ['overview', 'users', 'items', 'orders', 'analytics', 'payouts', 'sinpe', 'review'].includes(wanted) ? wanted : 'overview';
+        return ['overview', 'users', 'items', 'orders', 'analytics', 'payouts', 'sinpe', 'review', 'reports'].includes(wanted) ? wanted : 'overview';
     });
     const [allUsers, setAllUsers] = useState([]);
     const [loadingUsers, setLoadingUsers] = useState(true);
@@ -109,6 +110,14 @@ const AdminPage = ({ loc }) => {
     const [payoutsData, setPayoutsData] = useState({ balances: [], history: [] });
     const [loadingPayouts, setLoadingPayouts] = useState(true);
     const [actionError, setActionError] = useState('');
+    const [openReports, setOpenReports] = useState(0);
+    const loadReportCount = useCallback(() => {
+        fetch('/api/reports?count=1')
+            .then((res) => (res.ok ? res.json() : { open: 0 }))
+            .then((data) => setOpenReports(data.open))
+            .catch(() => {});
+    }, []);
+    useEffect(() => { loadReportCount(); }, [loadReportCount]);
     const [messagingThreadId, setMessagingThreadId] = useState(null);
     const [payoutTarget, setPayoutTarget] = useState(null);
     const [resolvingClaim, setResolvingClaim] = useState(null);
@@ -134,6 +143,7 @@ const AdminPage = ({ loc }) => {
         tabPayouts: 'Payouts',
         tabSinpe: 'SINPE Payments',
         tabReview: 'Overdue Orders',
+        tabReports: 'Reports',
         confirmReleaseUnconfirmed: 'The buyer has NOT confirmed they received this item. Release the funds only if you have checked that it arrived (tracking, or the buyer told you). This cannot be undone.',
         releaseToSeller: 'Release funds to seller',
         confirmRelease: 'Release the held funds to the seller for this order? Do this once the item was received, or when the buyer and seller have settled it between themselves.',
@@ -255,6 +265,7 @@ const AdminPage = ({ loc }) => {
         tabPayouts: 'Pagos a Vendedores',
         tabSinpe: 'Pagos SINPE',
         tabReview: 'Pedidos Vencidos',
+        tabReports: 'Reportes',
         confirmReleaseUnconfirmed: 'El comprador NO ha confirmado que recibió este artículo. Libera los fondos solo si verificaste que llegó (rastreo, o el comprador te lo dijo). Esto no se puede deshacer.',
         releaseToSeller: 'Liberar fondos al vendedor',
         confirmRelease: '¿Liberar al vendedor los fondos retenidos de este pedido? Hazlo cuando el artículo fue recibido, o cuando comprador y vendedor lo arreglaron entre ellos.',
@@ -637,6 +648,7 @@ const AdminPage = ({ loc }) => {
         ['payouts', L.tabPayouts],
         ['sinpe', L.tabSinpe],
         ['review', L.tabReview],
+        ['reports', L.tabReports],
     ];
 
     return (
@@ -707,6 +719,9 @@ const AdminPage = ({ loc }) => {
                             {label}
                             {key === 'review' && overdueReviews(orders).length + overdueDeliveries(orders, graceDays).length > 0 && (
                                 <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5">{overdueReviews(orders).length + overdueDeliveries(orders, graceDays).length}</span>
+                            )}
+                            {key === 'reports' && openReports > 0 && (
+                                <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5">{openReports}</span>
                             )}
                             {key === 'orders' && claimPendingOrders.length > 0 && (
                                 <span className="ml-2 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5">{claimPendingOrders.length}</span>
@@ -1125,6 +1140,18 @@ const AdminPage = ({ loc }) => {
                 )}
 
                 {tab === 'sinpe' && <AdminSinpePayments loc={loc} />}
+
+                {tab === 'reports' && (
+                    <AdminReports
+                        loc={loc}
+                        onChanged={(action) => {
+                            loadReportCount();
+                            // A hidden listing or suspended account shows elsewhere too.
+                            if (action === 'hide_item' || action === 'suspend_user') window.location.assign('/admin?tab=reports');
+                        }}
+                        onMessage={(userId) => handleOpenMessage({ id: userId })}
+                    />
+                )}
 
                 {tab === 'review' && (
                     <AdminOverdueReviews

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { formatMoney, PLACEHOLDER_IMG } from './Shared';
 import { fetchOffers, postOffer } from '../api/offers';
 import { useRefreshOnNotification } from '../lib/useRefreshOnNotification';
+import { EMAIL_NOT_CONFIRMED, emailNeededText } from '../data/emailConfirm';
 
 // Seller: auctions that ended below the reserve. The seller may offer the item
 // to the highest bidder once; the bidder has 48 hours to accept.
@@ -63,7 +64,7 @@ const SecondChanceSection = ({ loc }) => {
         try {
             setRows(await postOffer(body));
         } catch (err) {
-            setError(L.errors[err.message] || L.errors.REQUEST_FAILED);
+            setError(err.message === EMAIL_NOT_CONFIRMED ? emailNeededText(loc) : (L.errors[err.message] || L.errors.REQUEST_FAILED));
             load();
         } finally {
             setBusy(null);

@@ -34,6 +34,8 @@ import HelpPage from './pages/HelpPage';
 import FaqPage from './pages/FaqPage';
 import TermsPage from './pages/TermsPage';
 import PrivacyPage from './pages/PrivacyPage';
+import EmailConfirmBanner from './components/EmailConfirmBanner';
+import VerifyEmailPage from './pages/VerifyEmailPage';
 
 const footerLinkClass = 'hover:text-white transition-colors';
 
@@ -112,6 +114,8 @@ function App() {
             {/* Persistent Header */}
             <Header loc={loc} setLoc={setLoc} />
 
+            <EmailConfirmBanner loc={loc} />
+
             {isHomePage && <WelcomeBanner loc={loc} />}
 
             {/* Main Content Area with Routing */}
@@ -123,6 +127,7 @@ function App() {
                 
                 {/* Auth Routes */}
                 <Route path="/login" element={<LoginPage loc={loc} />} />
+                <Route path="/verify-email" element={<VerifyEmailPage loc={loc} />} />
                 <Route path="/signup" element={<SignupPage loc={loc} />} />
                 <Route path="/forgot-password" element={<ForgotPasswordPage loc={loc} />} />
                 <Route path="/reset-password" element={<ResetPasswordPage loc={loc} />} />

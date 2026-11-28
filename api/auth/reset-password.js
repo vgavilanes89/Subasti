@@ -65,6 +65,10 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'INVALID_OR_EXPIRED_LINK' });
     }
 
+    // The link went to their inbox, so this confirms the address too.
+    await sql`UPDATE users SET email_verified_at = COALESCE(email_verified_at, now()) WHERE id = ${row.id}`
+      .catch((err) => console.error('Could not mark email confirmed:', err.message));
+
     const owner = await getUserContact(sql, String(row.id));
     if (owner) {
       await createNotification({
