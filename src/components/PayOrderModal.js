@@ -50,7 +50,7 @@ const SavedCardPayForm = ({ order, L, cardId, onPaid, onClose }) => {
                 onPaid(updated || { ...order, status: 'escrow_held' });
             }
         } catch (err) {
-            setError(err.message === EMAIL_NOT_CONFIRMED ? L.emailNeeded : L.payError);
+            setError(err.message === EMAIL_NOT_CONFIRMED ? L.emailNeeded : err.message === 'SELLER_UNAVAILABLE' ? L.sellerUnavailable : L.payError);
         } finally {
             setSubmitting(false);
         }
@@ -174,6 +174,7 @@ const PayOrderModal = ({ order, loc, onClose, onPaid, onReported, methods = PAYM
         sinpePhoneRequired: 'Enter the 8-digit SINPE Móvil number you are paying from.',
         total: 'Total',
         emailNeeded: emailNeededText('en'),
+        sellerUnavailable: 'This seller\'s account is suspended. Do not pay; contact us about this order.',
     } : {
         title: 'Completar Pago',
         card: 'Tarjeta de Crédito/Débito',
@@ -191,6 +192,7 @@ const PayOrderModal = ({ order, loc, onClose, onPaid, onReported, methods = PAYM
         sinpePhoneRequired: 'Escribe el número de SINPE Móvil de 8 dígitos desde el que pagas.',
         total: 'Total',
         emailNeeded: emailNeededText('es'),
+        sellerUnavailable: 'La cuenta de este vendedor está suspendida. No pagues; contáctanos sobre este pedido.',
     };
 
     useEffect(() => {
@@ -214,7 +216,7 @@ const PayOrderModal = ({ order, loc, onClose, onPaid, onReported, methods = PAYM
                 return res.json();
             })
             .then((body) => setClientSecret(body.clientSecret))
-            .catch((err) => setError(err.message === EMAIL_NOT_CONFIRMED ? L.emailNeeded : L.payError));
+            .catch((err) => setError(err.message === EMAIL_NOT_CONFIRMED ? L.emailNeeded : err.message === 'SELLER_UNAVAILABLE' ? L.sellerUnavailable : L.payError));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [tab]);
 

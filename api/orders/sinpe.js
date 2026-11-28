@@ -1,7 +1,7 @@
 import { getSql } from '../_lib/db.js';
-import { getUserIdFromRequest } from '../_lib/session.js';
+import { getActiveUserId } from '../_lib/session.js';
 import { getOrderById, generatePaymentReference } from '../_lib/orders.js';
-import { getItemById } from '../_lib/items.js';
+import { getItemById, isSuspendedUser } from '../_lib/items.js';
 import { getSinpeNumber } from '../_lib/settings.js';
 import { parseSinpePhone } from '../_lib/wallet.js';
 import { createNotification, formatMoney } from '../_lib/notify.js';
@@ -38,7 +38,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const userId = getUserIdFromRequest(req);
+  const userId = await getActiveUserId(req);
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
@@ -64,6 +64,14 @@ export default async function handler(req, res) {
 
     let orders = rows.filter((o) => o.status === ORDER_STATUS.PENDING_PAYMENT);
     if (orders.length === 0) return res.status(409).json({ error: 'NOT_PAYABLE' });
+
+    // No payment instructions for a suspended seller. Reporting a transfer already
+    // made stays open, so an admin can still check it and refund.
+    if (action === 'prepare') {
+      for (const o of orders) {
+        if (await isSuspendedUser(sql, o.seller_id)) return res.status(409).json({ error: 'SELLER_UNAVAILABLE' });
+      }
+    }
 
     // Only a way the seller accepts. (A deleted item can't be checked, so it
     // doesn't strand the order.)

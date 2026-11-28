@@ -25,7 +25,7 @@ const BuyerOffersSection = ({ loc, onAccepted }) => {
         working: 'Working…',
         confirmAccept: (a) => `Accept the offer of ${a}? You will have 48 hours to pay.`,
         accepted: 'Accepted. Complete your payment under "Payment required".',
-        errors: { OFFER_CLOSED: 'This offer is no longer open.', ALREADY_SOLD: 'This item has already been sold.', REQUEST_FAILED: 'Something went wrong. Please try again.' },
+        errors: { SELLER_UNAVAILABLE: 'This seller is no longer available.', OFFER_CLOSED: 'This offer is no longer open.', ALREADY_SOLD: 'This item has already been sold.', REQUEST_FAILED: 'Something went wrong. Please try again.' },
     } : {
         title: 'Ofertas para ti',
         intro: 'Fuiste el mejor postor pero no se alcanzó la reserva. El vendedor te ofrece el artículo.',
@@ -39,7 +39,7 @@ const BuyerOffersSection = ({ loc, onAccepted }) => {
         working: 'Procesando…',
         confirmAccept: (a) => `¿Aceptar la oferta de ${a}? Tendrás 48 horas para pagar.`,
         accepted: 'Aceptada. Completa el pago en "Pago requerido".',
-        errors: { OFFER_CLOSED: 'Esta oferta ya no está disponible.', ALREADY_SOLD: 'Este artículo ya se vendió.', REQUEST_FAILED: 'Algo salió mal. Inténtalo de nuevo.' },
+        errors: { SELLER_UNAVAILABLE: 'Este vendedor ya no está disponible.', OFFER_CLOSED: 'Esta oferta ya no está disponible.', ALREADY_SOLD: 'Este artículo ya se vendió.', REQUEST_FAILED: 'Algo salió mal. Inténtalo de nuevo.' },
     };
 
     const load = useCallback(() => { fetchOffers('buyer').then(setOffers).catch(() => {}); }, []);

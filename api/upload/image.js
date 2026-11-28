@@ -1,5 +1,5 @@
 import { put } from '@vercel/blob';
-import { getUserIdFromRequest } from '../_lib/session.js';
+import { getActiveUserId } from '../_lib/session.js';
 
 // Takes the raw image body (already downscaled/compressed client-side, so
 // this is one photo at a time — comfortably under Vercel's ~4.5MB request
@@ -37,7 +37,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const userId = getUserIdFromRequest(req);
+  const userId = await getActiveUserId(req);
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }

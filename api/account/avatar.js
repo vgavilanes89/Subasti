@@ -1,6 +1,6 @@
 import { put, del } from '@vercel/blob';
 import { getSql } from '../_lib/db.js';
-import { getUserIdFromRequest } from '../_lib/session.js';
+import { getActiveUserId } from '../_lib/session.js';
 import { createRateLimiter } from '../_lib/rateLimit.js';
 import { toPublicUser } from '../_lib/users.js';
 
@@ -52,7 +52,7 @@ async function deleteBlobQuietly(url) {
 }
 
 async function handle(req, res) {
-  const userId = getUserIdFromRequest(req);
+  const userId = await getActiveUserId(req);
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }

@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { getSql } from './_lib/db.js';
-import { getUserIdFromRequest } from './_lib/session.js';
+import { getActiveUserId } from './_lib/session.js';
 import { getRequestingAdmin } from './_lib/admin.js';
 import { countHit } from './_lib/dbRateLimit.js';
 import { createNotification, getUserContact } from './_lib/notify.js';
@@ -147,7 +147,7 @@ export default async function handler(req, res) {
     }
 
     // A new report.
-    const userId = getUserIdFromRequest(req);
+    const userId = await getActiveUserId(req);
     if (!userId) return res.status(401).json({ error: 'Not authenticated' });
     if (await blockUnconfirmed(sql, userId, res)) return undefined;
 

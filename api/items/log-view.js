@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { getSql } from '../_lib/db.js';
-import { getUserIdFromRequest } from '../_lib/session.js';
+import { getActiveUserId } from '../_lib/session.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -14,7 +14,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'itemId is required' });
   }
 
-  const userId = getUserIdFromRequest(req);
+  const userId = await getActiveUserId(req);
   const sql = getSql();
   await sql`
     INSERT INTO item_view_events (id, item_id, user_id)

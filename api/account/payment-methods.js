@@ -1,5 +1,5 @@
 import { getSql } from '../_lib/db.js';
-import { getUserIdFromRequest } from '../_lib/session.js';
+import { getActiveUserId } from '../_lib/session.js';
 import { getStripe } from '../_lib/stripe.js';
 import {
   MAX_SINPE_NUMBERS, parseSinpePhone, toPublicSinpe, generateSinpeId,
@@ -42,7 +42,7 @@ async function buildSummary(sql, userId) {
 const setDefault = (sql, userId, value) => sql`UPDATE users SET default_payment = ${value} WHERE id = ${userId}`;
 
 export default async function handler(req, res) {
-  const userId = getUserIdFromRequest(req);
+  const userId = await getActiveUserId(req);
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }

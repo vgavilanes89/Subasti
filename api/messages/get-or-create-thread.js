@@ -1,5 +1,5 @@
 import { getSql } from '../_lib/db.js';
-import { getUserIdFromRequest } from '../_lib/session.js';
+import { getActiveUserId } from '../_lib/session.js';
 import { toPublicThread, generateThreadId } from '../_lib/messages.js';
 import { getItemById } from '../_lib/items.js';
 
@@ -11,7 +11,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const buyerId = getUserIdFromRequest(req);
+  const buyerId = await getActiveUserId(req);
   if (!buyerId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }

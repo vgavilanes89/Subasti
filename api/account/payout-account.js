@@ -1,12 +1,12 @@
 import { getSql } from '../_lib/db.js';
-import { getUserIdFromRequest } from '../_lib/session.js';
+import { getActiveUserId } from '../_lib/session.js';
 import { parsePayoutAccount, toPublicPayoutAccount } from '../_lib/payoutAccount.js';
 import { createNotification, getUserContact } from '../_lib/notify.js';
 
 // A seller's own payout destination. Only ever readable/writable by the
 // owner here (admins read it through /api/admin/payouts when paying out).
 async function handle(req, res) {
-  const userId = getUserIdFromRequest(req);
+  const userId = await getActiveUserId(req);
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }

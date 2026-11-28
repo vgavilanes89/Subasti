@@ -201,6 +201,7 @@ export async function notifyEndedAuctionLosers(sql) {
   const rows = await sql`
     SELECT i.id, i.title, i.currency, i.current_bid, i.highest_bidder_id, i.seller_id,
            to_jsonb(i) ->> 'removed_at' AS removed_at,
+           EXISTS (SELECT 1 FROM users u WHERE u.id::text = i.seller_id AND u.is_suspended) AS seller_suspended,
            b.bidder_id, b.my_max,
            (i.reserve_price IS NOT NULL AND i.current_bid < i.reserve_price) AS reserve_missed,
            EXISTS (SELECT 1 FROM orders o WHERE o.item_id = i.id AND o.order_type = 'buy_now') AS bought_outright
@@ -232,7 +233,7 @@ export async function notifyEndedAuctionLosers(sql) {
       } else if (r.reserve_missed) {
         body = `No se alcanzó el precio de reserva, por lo que la subasta terminó sin venta. Tu puja más alta fue ${mine}.`;
         // No second chance to talk about once the seller has taken the listing down.
-        if (r.bidder_id === r.highest_bidder_id && !r.removed_at) {
+        if (r.bidder_id === r.highest_bidder_id && !r.removed_at && !r.seller_suspended) {
           body += ' Como fuiste el mejor postor, el vendedor puede ofrecerte el artículo.';
           // Tell the seller they can make that offer (once per auction).
           const seller = await getUserContact(sql, r.seller_id);

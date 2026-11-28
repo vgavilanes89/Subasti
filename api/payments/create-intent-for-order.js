@@ -1,9 +1,9 @@
 import { getSql } from '../_lib/db.js';
-import { getUserIdFromRequest } from '../_lib/session.js';
+import { getActiveUserId } from '../_lib/session.js';
 import { getStripe, toStripeAmount } from '../_lib/stripe.js';
 import { getOrderById } from '../_lib/orders.js';
 import { ORDER_STATUS } from '../../src/data/escrow.js';
-import { getItemById } from '../_lib/items.js';
+import { getItemById, isSuspendedUser } from '../_lib/items.js';
 import { itemAcceptsMethod } from '../../src/data/paymentMethods.js';
 import { savedCardIntentOptions } from '../_lib/wallet.js';
 import { blockUnconfirmed } from '../_lib/emailConfirm.js';
@@ -17,7 +17,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const userId = getUserIdFromRequest(req);
+  const userId = await getActiveUserId(req);
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
@@ -34,6 +34,8 @@ export default async function handler(req, res) {
   if (order.status !== ORDER_STATUS.PENDING_PAYMENT) {
     return res.status(409).json({ error: 'NOT_PAYABLE' });
   }
+
+  if (await isSuspendedUser(sql, order.seller_id)) return res.status(409).json({ error: 'SELLER_UNAVAILABLE' });
 
   const orderItem = await getItemById(sql, order.item_id);
   if (orderItem && !itemAcceptsMethod(orderItem, 'card')) {

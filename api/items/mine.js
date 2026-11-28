@@ -1,5 +1,5 @@
 import { getSql } from '../_lib/db.js';
-import { getUserIdFromRequest } from '../_lib/session.js';
+import { getActiveUserId } from '../_lib/session.js';
 import { toPublicItem } from '../_lib/items.js';
 import {
   parseListingInput, listingState, loadListingRefs, deleteUnusedImages, saveUsedCondition, AUCTION_DAYS, DAY_MS,
@@ -11,7 +11,7 @@ import {
 //   POST {action:'update', id, ...form}  edit (auctions only before the first bid)
 //   POST {action:'remove', id}           take the listing down
 export default async function handler(req, res) {
-  const userId = getUserIdFromRequest(req);
+  const userId = await getActiveUserId(req);
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }

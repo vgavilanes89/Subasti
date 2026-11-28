@@ -1,5 +1,5 @@
 import { getSql } from '../_lib/db.js';
-import { getUserIdFromRequest } from '../_lib/session.js';
+import { getActiveUserId } from '../_lib/session.js';
 import {
   MAX_ADDRESSES, parseAddress, toPublicAddress, generateAddressId,
 } from '../_lib/wallet.js';
@@ -20,7 +20,7 @@ const makeDefault = async (sql, userId, id) => {
 };
 
 export default async function handler(req, res) {
-  const userId = getUserIdFromRequest(req);
+  const userId = await getActiveUserId(req);
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }

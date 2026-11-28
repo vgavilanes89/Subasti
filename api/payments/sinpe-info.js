@@ -1,5 +1,5 @@
 import { getSql } from '../_lib/db.js';
-import { getUserIdFromRequest } from '../_lib/session.js';
+import { getActiveUserId } from '../_lib/session.js';
 import { getSinpeNumber } from '../_lib/settings.js';
 
 // Lets checkout know whether SINPE Móvil can be offered. It is only available
@@ -10,7 +10,7 @@ export default async function handler(req, res) {
     res.setHeader('Allow', 'GET');
     return res.status(405).json({ error: 'Method not allowed' });
   }
-  if (!getUserIdFromRequest(req)) {
+  if (!await getActiveUserId(req)) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
   try {

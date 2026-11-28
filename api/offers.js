@@ -1,10 +1,11 @@
 import { randomUUID } from 'crypto';
 import { getSql } from './_lib/db.js';
-import { getUserIdFromRequest } from './_lib/session.js';
+import { getActiveUserId } from './_lib/session.js';
 import { generateOrderId, toPublicOrder } from './_lib/orders.js';
 import { createNotification, getUserContact, formatMoney } from './_lib/notify.js';
 import { ESCROW_WINDOW_MS, ORDER_STATUS } from '../src/data/escrow.js';
 import { blockUnconfirmed } from './_lib/emailConfirm.js';
+import { isSuspendedUser } from './_lib/items.js';
 
 // Second-chance offers. An auction that ends below its reserve price makes no
 // sale; the seller may then offer the item to the highest bidder, who accepts
@@ -60,6 +61,7 @@ async function buyerList(sql, userId) {
     SELECT o.*, i.title, i.image, i.shipping_ship, i.shipping_local, i.shipping_cost
     FROM second_chance_offers o JOIN items i ON i.id = o.item_id
     WHERE o.bidder_id = ${userId} AND o.status = 'pending' AND o.expires_at > now()
+      AND NOT EXISTS (SELECT 1 FROM users u WHERE u.id::text = o.seller_id AND u.is_suspended)
     ORDER BY o.expires_at ASC
   `;
   return rows.map((o) => ({
@@ -86,7 +88,7 @@ const notify = async (sql, userId, title, body, link) => {
 };
 
 export default async function handler(req, res) {
-  const userId = getUserIdFromRequest(req);
+  const userId = await getActiveUserId(req);
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
@@ -180,6 +182,7 @@ export default async function handler(req, res) {
     }
 
     if (action === 'accept') {
+      if (await isSuspendedUser(sql, offer.seller_id)) return res.status(409).json({ error: 'SELLER_UNAVAILABLE' });
       const sold = await sql`SELECT 1 FROM orders WHERE item_id = ${item.id} AND status <> ${ORDER_STATUS.CANCELLED} LIMIT 1`;
       if (sold[0]) return res.status(409).json({ error: 'ALREADY_SOLD' });
 

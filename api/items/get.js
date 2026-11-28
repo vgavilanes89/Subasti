@@ -1,6 +1,6 @@
 import { getSql } from '../_lib/db.js';
-import { toPublicItem, reserveViewer } from '../_lib/items.js';
-import { getUserIdFromRequest } from '../_lib/session.js';
+import { toPublicItem, reserveViewer, isSuspendedUser } from '../_lib/items.js';
+import { getActiveUserId } from '../_lib/session.js';
 
 // Lightweight single-row fetch for the item page's live poll — pulling the
 // full /api/items/list catalog every few seconds would be wasteful.
@@ -20,6 +20,9 @@ export default async function handler(req, res) {
   if (!rows[0] || rows[0].removed_at) {
     return res.status(404).json({ error: 'Item not found' });
   }
-  const canSee = await reserveViewer(sql, getUserIdFromRequest(req));
+  const canSee = await reserveViewer(sql, await getActiveUserId(req));
+  if (!canSee.isAdmin && await isSuspendedUser(sql, rows[0].seller_id)) {
+    return res.status(404).json({ error: 'Item not found' });
+  }
   return res.status(200).json(toPublicItem(rows[0], { includeReserve: canSee(rows[0]) }));
 }

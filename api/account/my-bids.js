@@ -1,6 +1,6 @@
 import { getSql } from '../_lib/db.js';
-import { getUserIdFromRequest } from '../_lib/session.js';
-import { toPublicItem } from '../_lib/items.js';
+import { getActiveUserId } from '../_lib/session.js';
+import { toPublicItem, suspendedUserIds } from '../_lib/items.js';
 
 // Every auction the signed-in user has bid on, with their own highest bid
 // next to the item's live state, so the buyer dashboard can show whether
@@ -12,7 +12,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const userId = getUserIdFromRequest(req);
+  const userId = await getActiveUserId(req);
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
@@ -31,7 +31,8 @@ export default async function handler(req, res) {
     ORDER BY COALESCE(m.last_bid_at, i.created_at) DESC
   `;
 
-  return res.status(200).json(rows.filter((row) => !row.removed_at).map((row) => ({
+  const hidden = await suspendedUserIds(sql);
+  return res.status(200).json(rows.filter((row) => !row.removed_at && !hidden.has(row.seller_id)).map((row) => ({
     item: toPublicItem(row),
     myHighestBid: row.my_max !== null && row.my_max !== undefined
       ? Number(row.my_max)

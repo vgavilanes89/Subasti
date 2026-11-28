@@ -12,7 +12,7 @@ const AdminReports = ({ loc, onChanged, onMessage }) => {
 
     const L = loc === 'en' ? {
         title: 'Reports',
-        intro: 'Listings and accounts people have flagged. Suspending an account blocks its sign-in; its listings stay up, so hide those too if needed.',
+        intro: 'Listings and accounts people have flagged. Suspending an account signs it out and takes its listings off sale until it is reinstated. Check its open orders too.',
         open: 'To review',
         closed: 'Closed',
         loading: 'Loading…',
@@ -32,7 +32,7 @@ const AdminReports = ({ loc, onChanged, onMessage }) => {
         message: 'Message them',
         confirm: {
             hide_item: 'Hide this listing from the site and tell the seller?',
-            suspend_user: 'Suspend this account? It will no longer be able to sign in.',
+            suspend_user: 'Suspend this account? It is signed out and its listings come off sale.',
             resolve: 'Close these reports as handled?',
             dismiss: 'Dismiss these reports with no action?',
         },
@@ -40,7 +40,7 @@ const AdminReports = ({ loc, onChanged, onMessage }) => {
         state: { resolved: 'Handled', dismissed: 'Dismissed' },
     } : {
         title: 'Reportes',
-        intro: 'Publicaciones y cuentas que las personas han señalado. Suspender una cuenta impide iniciar sesión; sus publicaciones siguen visibles, así que ocúltalas también si hace falta.',
+        intro: 'Publicaciones y cuentas que las personas han señalado. Suspender una cuenta cierra su sesión y retira sus publicaciones de la venta hasta que se reactive. Revisa también sus pedidos abiertos.',
         open: 'Por revisar',
         closed: 'Cerrados',
         loading: 'Cargando…',
@@ -60,7 +60,7 @@ const AdminReports = ({ loc, onChanged, onMessage }) => {
         message: 'Enviar mensaje',
         confirm: {
             hide_item: '¿Ocultar esta publicación del sitio y avisar al vendedor?',
-            suspend_user: '¿Suspender esta cuenta? Ya no podrá iniciar sesión.',
+            suspend_user: '¿Suspender esta cuenta? Se cierra su sesión y sus publicaciones salen de la venta.',
             resolve: '¿Cerrar estos reportes como atendidos?',
             dismiss: '¿Descartar estos reportes sin tomar medidas?',
         },

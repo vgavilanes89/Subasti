@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { getSql } from '../_lib/db.js';
-import { getUserIdFromRequest } from '../_lib/session.js';
+import { getActiveUserId } from '../_lib/session.js';
 
 // Search itself stays entirely client-side (instant filtering over the
 // already-loaded item list) — this is a fire-and-forget log call so admin
@@ -19,7 +19,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'query is required' });
   }
 
-  const userId = getUserIdFromRequest(req);
+  const userId = await getActiveUserId(req);
   const sql = getSql();
   await sql`
     INSERT INTO search_events (id, query, result_count, user_id)

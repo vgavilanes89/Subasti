@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import { getSql } from './db.js';
 
 export const SESSION_COOKIE = 'subasti_session';
 // Idle timeout: a session lasts 3 hours from its last renewal. The page renews
@@ -49,6 +50,17 @@ export function clearSessionCookie(res) {
   res.setHeader('Set-Cookie', parts.join('; '));
 }
 
+// What endpoints use: the signed-in account, unless it has since been
+// suspended or deleted. A session cookie outlives both, so check every time.
+export async function getActiveUserId(req) {
+  const userId = getUserIdFromRequest(req);
+  if (!userId) return null;
+  const rows = await getSql()`SELECT is_suspended FROM users WHERE id = ${userId}`;
+  return rows[0] && !rows[0].is_suspended ? userId : null;
+}
+
+// Only what the cookie says. For the auth endpoints that handle suspension
+// themselves; everything else wants getActiveUserId.
 export function getUserIdFromRequest(req) {
   const token = req.cookies?.[SESSION_COOKIE];
   if (!token) return null;

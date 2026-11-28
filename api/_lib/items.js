@@ -77,12 +77,25 @@ export function parsePaymentMethods(raw) {
   return list.length > 0 ? list : null;
 }
 
+// Listings of a suspended account are hidden and can't be bought. Worked out
+// each time rather than stored, so reinstating the account brings them back.
+export async function suspendedUserIds(sql) {
+  const rows = await sql`SELECT id::text AS id FROM users WHERE is_suspended`;
+  return new Set(rows.map((r) => r.id));
+}
+
+export async function isSuspendedUser(sql, userId) {
+  const rows = await sql`SELECT 1 FROM users WHERE id::text = ${userId} AND is_suspended`;
+  return rows.length > 0;
+}
+
 // For server-side rules only (it carries the reserve) — never send the result
 // of this to a client as it is.
 export async function getItemById(sql, id) {
   const rows = await sql`SELECT * FROM items WHERE id = ${id}`;
   // A listing its seller took down can't be bought or settled.
-  return rows[0] && !rows[0].removed_at ? toPublicItem(rows[0], { includeReserve: true }) : null;
+  if (!rows[0] || rows[0].removed_at || await isSuspendedUser(sql, rows[0].seller_id)) return null;
+  return toPublicItem(rows[0], { includeReserve: true });
 }
 
 // Returns (row) => may this requester see that row's reserve price?
@@ -90,7 +103,9 @@ export async function reserveViewer(sql, userId) {
   if (!userId) return () => false;
   const rows = await sql`SELECT is_admin FROM users WHERE id = ${userId}`;
   const isAdmin = Boolean(rows[0]?.is_admin);
-  return (row) => isAdmin || row.seller_id === String(userId);
+  const canSee = (row) => isAdmin || row.seller_id === String(userId);
+  canSee.isAdmin = isAdmin;
+  return canSee;
 }
 
 export function generateItemId() {

@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { getSql } from '../_lib/db.js';
-import { getUserIdFromRequest } from '../_lib/session.js';
+import { getActiveUserId } from '../_lib/session.js';
 import { countHit } from '../_lib/dbRateLimit.js';
 import { toPublicUser } from '../_lib/users.js';
 import { readEmailToken, sendConfirmationEmail, isUnconfirmed } from '../_lib/emailConfirm.js';
@@ -30,7 +30,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
-    const userId = getUserIdFromRequest(req);
+    const userId = await getActiveUserId(req);
     if (!userId) return res.status(401).json({ error: 'Not authenticated' });
     let row = (await sql`SELECT * FROM users WHERE id = ${userId}`)[0];
     if (!row) return res.status(401).json({ error: 'Not authenticated' });

@@ -11,6 +11,6 @@ export async function getRequestingAdmin(req) {
   const sql = getSql();
   const rows = await sql`SELECT * FROM users WHERE id = ${userId}`;
   const row = rows[0];
-  if (!row || !row.is_admin) return null;
+  if (!row || !row.is_admin || row.is_suspended) return null;
   return row;
 }

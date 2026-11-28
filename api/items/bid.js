@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import { getSql } from '../_lib/db.js';
-import { getUserIdFromRequest } from '../_lib/session.js';
-import { toPublicItem } from '../_lib/items.js';
+import { getActiveUserId } from '../_lib/session.js';
+import { toPublicItem, isSuspendedUser } from '../_lib/items.js';
 import { getBidIncrement, ANTI_SNIPE_WINDOW_MS, ANTI_SNIPE_EXTENSION_MS } from '../../src/lib/bidding.js';
 import { notifyOutbid } from '../_lib/notify.js';
 import { blockUnconfirmed } from '../_lib/emailConfirm.js';
@@ -12,7 +12,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const userId = getUserIdFromRequest(req);
+  const userId = await getActiveUserId(req);
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
@@ -25,7 +25,7 @@ export default async function handler(req, res) {
   const sql = getSql();
   const rows = await sql`SELECT * FROM items WHERE id = ${itemId}`;
   const row = rows[0];
-  if (!row || row.removed_at || row.sale_type !== 'auc') {
+  if (!row || row.removed_at || row.sale_type !== 'auc' || await isSuspendedUser(sql, row.seller_id)) {
     return res.status(400).json({ error: 'INVALID_AUCTION' });
   }
   if (row.end_at && new Date(row.end_at).getTime() < Date.now()) {
