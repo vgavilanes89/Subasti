@@ -129,6 +129,7 @@ export const HELP_TOPICS = [
                         T('When the timer ends, the highest bid wins, as long as the reserve price (if the seller set one) was reached.', 'Cuando termina el tiempo, gana la puja más alta, siempre que se alcance el precio de reserva (si el vendedor puso uno).'),
                         T('A bid in the last minute extends the auction by 2 minutes, so nobody wins by bidding at the very last second.', 'Una puja en el último minuto extiende la subasta 2 minutos, así nadie gana pujando al último segundo.'),
                         T('You cannot bid on your own listing.', 'No puedes pujar en tu propia publicación.'),
+                        T('If an account is suspended, its bids on running auctions are cancelled and the price goes back to the best remaining bid. If that is yours, you are told you are the highest bidder again.', 'Si se suspende una cuenta, se anulan sus pujas en subastas activas y el precio vuelve a la mejor puja restante. Si es la tuya, te avisamos que vuelves a ser el mejor postor.'),
                     ] },
                 ],
                 kw: T('bid minimum increment anti snipe', 'pujar minimo incremento'),

@@ -208,7 +208,8 @@ export async function notifyEndedAuctionLosers(sql) {
     FROM items i
     JOIN (
       SELECT item_id, bidder_id, MAX(amount) AS my_max
-      FROM bid_history GROUP BY item_id, bidder_id
+      FROM bid_history h WHERE to_jsonb(h) ->> 'cancelled_at' IS NULL
+      GROUP BY item_id, bidder_id
     ) b ON b.item_id = i.id
     WHERE i.sale_type = 'auc'
       AND i.end_at < now()

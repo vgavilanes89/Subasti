@@ -154,6 +154,8 @@ const AdminPage = ({ loc }) => {
         email: 'Email',
         actions: 'Actions',
         suspend: 'Suspend',
+        confirmSuspend: 'Suspend this account? It is signed out, its listings come off sale, and its bids on running auctions are cancelled. Reinstating it does not bring those bids back.',
+        bidCancelFailed: 'The account is suspended, but its bids could not be cancelled. Unsuspend and suspend it again.',
         unsuspend: 'Unsuspend',
         suspended: 'Suspended',
         message: 'Message',
@@ -276,6 +278,8 @@ const AdminPage = ({ loc }) => {
         email: 'Correo',
         actions: 'Acciones',
         suspend: 'Suspender',
+        confirmSuspend: '¿Suspender esta cuenta? Se cierra su sesión, sus publicaciones salen de la venta y se anulan sus pujas en subastas activas. Reactivarla no recupera esas pujas.',
+        bidCancelFailed: 'La cuenta quedó suspendida, pero no se pudieron anular sus pujas. Reactívala y suspéndela de nuevo.',
         unsuspend: 'Reactivar',
         suspended: 'Suspendido',
         message: 'Mensaje',
@@ -516,6 +520,7 @@ const AdminPage = ({ loc }) => {
     );
 
     const handleToggleSuspend = async (targetUser) => {
+        if (!targetUser.isSuspended && !window.confirm(L.confirmSuspend)) return;
         setActionError('');
         try {
             const res = await fetch('/api/admin/suspend-user', {
@@ -526,6 +531,7 @@ const AdminPage = ({ loc }) => {
             if (!res.ok) throw new Error('SUSPEND_FAILED');
             const updated = await res.json();
             setAllUsers(prev => prev.map(u => (u.id === updated.id ? updated : u)));
+            if (updated.bidCancelFailed) setActionError(L.bidCancelFailed);
         } catch {
             setActionError(L.actionFailed);
         }

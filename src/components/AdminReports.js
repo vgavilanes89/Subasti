@@ -32,11 +32,12 @@ const AdminReports = ({ loc, onChanged, onMessage }) => {
         message: 'Message them',
         confirm: {
             hide_item: 'Hide this listing from the site and tell the seller?',
-            suspend_user: 'Suspend this account? It is signed out and its listings come off sale.',
+            suspend_user: 'Suspend this account? It is signed out, its listings come off sale, and its bids on running auctions are cancelled. Reinstating it does not bring those bids back.',
             resolve: 'Close these reports as handled?',
             dismiss: 'Dismiss these reports with no action?',
         },
         failed: 'Could not do that. Reload and try again.',
+        bidCancelFailed: 'The account is suspended, but its bids could not be cancelled. In Users, unsuspend and suspend it again.',
         state: { resolved: 'Handled', dismissed: 'Dismissed' },
     } : {
         title: 'Reportes',
@@ -60,11 +61,12 @@ const AdminReports = ({ loc, onChanged, onMessage }) => {
         message: 'Enviar mensaje',
         confirm: {
             hide_item: '¿Ocultar esta publicación del sitio y avisar al vendedor?',
-            suspend_user: '¿Suspender esta cuenta? Se cierra su sesión y sus publicaciones salen de la venta.',
+            suspend_user: '¿Suspender esta cuenta? Se cierra su sesión, sus publicaciones salen de la venta y se anulan sus pujas en subastas activas. Reactivarla no recupera esas pujas.',
             resolve: '¿Cerrar estos reportes como atendidos?',
             dismiss: '¿Descartar estos reportes sin tomar medidas?',
         },
         failed: 'No se pudo hacer. Recarga e intenta de nuevo.',
+        bidCancelFailed: 'La cuenta quedó suspendida, pero no se pudieron anular sus pujas. En Usuarios, reactívala y suspéndela de nuevo.',
         state: { resolved: 'Atendido', dismissed: 'Descartado' },
     };
 
@@ -89,6 +91,7 @@ const AdminReports = ({ loc, onChanged, onMessage }) => {
                 body: JSON.stringify({ action, targetType: group.targetType, targetId: group.targetId }),
             });
             if (!res.ok) throw new Error('FAILED');
+            if ((await res.json()).bidCancelFailed) window.alert(L.bidCancelFailed);
             load();
             onChanged(action);
         } catch {

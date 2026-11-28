@@ -1,6 +1,7 @@
 import { getSql } from '../_lib/db.js';
 import { getRequestingAdmin } from '../_lib/admin.js';
 import { toPublicUser } from '../_lib/users.js';
+import { afterSuspension } from '../_lib/suspension.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -34,5 +35,6 @@ export default async function handler(req, res) {
   if (!rows[0]) {
     return res.status(404).json({ error: 'User not found' });
   }
-  return res.status(200).json(toPublicUser(rows[0]));
+  const outcome = suspended ? await afterSuspension(sql, String(rows[0].id)) : {};
+  return res.status(200).json({ ...toPublicUser(rows[0]), ...outcome });
 }

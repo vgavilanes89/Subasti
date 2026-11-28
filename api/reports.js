@@ -5,6 +5,7 @@ import { getRequestingAdmin } from './_lib/admin.js';
 import { countHit } from './_lib/dbRateLimit.js';
 import { createNotification, getUserContact } from './_lib/notify.js';
 import { blockUnconfirmed } from './_lib/emailConfirm.js';
+import { afterSuspension } from './_lib/suspension.js';
 import { REPORT_REASONS, REPORT_DETAILS_MAX } from '../src/data/reports.js';
 
 // Reports about listings and accounts.
@@ -138,6 +139,7 @@ export default async function handler(req, res) {
         `;
         if (!suspended[0]) return res.status(409).json({ error: 'CANNOT_SUSPEND' });
         await closeReports(sql, targetType, targetId, 'resolved', adminId);
+        return res.status(200).json({ ok: true, ...(await afterSuspension(sql, open.owner_id)) });
       } else if (body.action === 'resolve' || body.action === 'dismiss') {
         await closeReports(sql, targetType, targetId, body.action === 'resolve' ? 'resolved' : 'dismissed', adminId);
       } else {

@@ -23,8 +23,9 @@ export default async function handler(req, res) {
     FROM items i
     LEFT JOIN (
       SELECT item_id, MAX(amount) AS my_max, MAX(placed_at) AS last_bid_at
-      FROM bid_history
-      WHERE bidder_id = ${userId}
+      FROM bid_history h
+      -- written this way so it works before sql/028 adds the column
+      WHERE bidder_id = ${userId} AND to_jsonb(h) ->> 'cancelled_at' IS NULL
       GROUP BY item_id
     ) m ON m.item_id = i.id
     WHERE i.sale_type = 'auc' AND (m.item_id IS NOT NULL OR i.highest_bidder_id = ${userId})
